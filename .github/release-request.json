@@ -1,0 +1,6 @@
+{
+  "tag": "v1.5.1",
+  "prerelease": false,
+  "source": "approved-main-merge",
+  "summary": "First stable-channel Release for automatic updates from older ORCA Nova versions. Scientific outputs still require live ORCA smoke tests."
+}

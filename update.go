@@ -98,6 +98,11 @@ func (u *updater) check() updateState {
 		return res
 	}
 	u.state.Checking = true
+	// Failed/offline checks must not offer stale cached updates.
+	u.state.Available = false
+	u.state.Latest = ""
+	u.state.ReleaseURL = ""
+	u.release = githubRelease{}
 	u.state.Message = "GitHub Release 확인 중"
 	u.mu.Unlock()
 	defer func() {

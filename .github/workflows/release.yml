@@ -2,13 +2,15 @@ name: Release Windows Portable
 on:
   push:
     tags: ['v*']
+    branches: [main]
+    paths: ['.github/release-request.json']
   workflow_dispatch:
     inputs:
       release_tag:
         description: 'New release tag, e.g. v1.4.0'
         type: string
         required: true
-        default: 'v1.4.0'
+        default: 'v1.5.2'
       prerelease:
         description: 'Test release; excluded from automatic stable updates'
         type: boolean
@@ -24,6 +26,81 @@ jobs:
       RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v4
+      - name: Resolve approved stable release request
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: pwsh
+        run: |
+          $req = Get-Content '.github/release-request.json' -Raw | ConvertFrom-Json
+          if ($req.source -ne 'approved-main-merge') { throw 'This manifest was not approved for automatic Release' }
+          if ($req.tag -notmatch '^v[0-9]+\.[0-9]+\.[0-9]+        shell: pwsh
+        run: |
+          if ($env:RELEASE_TAG -notmatch '^v[0-9]+\.[0-9]+\.[0-9]+$') { throw 'Version must look like v1.4.0.' }
+          if ('${{ github.event_name }}' -eq 'workflow_dispatch' -and '${{ github.ref_name }}' -ne 'main') { throw 'Run manual releases from main.' }
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Test backend
+        run: go test ./...
+      - name: Build versioned backend
+        shell: pwsh
+        run: |
+          $version=$env:RELEASE_TAG.TrimStart('v')
+          $env:CGO_ENABLED='0'
+          New-Item -ItemType Directory -Force bin | Out-Null
+          go build -trimpath -ldflags "-s -w -H windowsgui -X main.appVersion=$version" -o bin/ORCA_Nova_raw.exe .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python embed_icon.py bin/ORCA_Nova_raw.exe assets/ORCA_Nova.ico bin/ORCA_Nova.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build native WebView2 host
+        shell: pwsh
+        run: |
+          dotnet restore native_host/ORCA_Nova_UI.csproj
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet build native_host/ORCA_Nova_UI.csproj --configuration Release --no-restore
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Package and checksum
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item bin/ORCA_Nova.exe dist/
+          Copy-Item assets/ORCA_Nova.ico dist/
+          $hostRoot = (Resolve-Path 'native_host/bin/Release/net48').Path
+          Get-ChildItem -LiteralPath $hostRoot -Recurse -File | Where-Object { $_.Extension -in @('.dll', '.config') -or $_.Name -eq 'ORCA_Nova_UI.exe' } | ForEach-Object {
+            $relative = $_.FullName.Substring($hostRoot.Length).TrimStart('\')
+            $destination = Join-Path dist $relative
+            New-Item -ItemType Directory -Force (Split-Path -Parent $destination) | Out-Null
+            Copy-Item -LiteralPath $_.FullName -Destination $destination
+          }
+          if (-not (Test-Path dist/ORCA_Nova_UI.exe)) { throw 'native WebView2 host was not packaged' }
+          Compress-Archive -Path dist/* -DestinationPath ORCA_Nova_Portable_Windows.zip -Force
+          Get-FileHash ORCA_Nova_Portable_Windows.zip -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  ORCA_Nova_Portable_Windows.zip" } | Set-Content SHA256SUMS.txt
+      - name: Publish GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $cmd = @('release','create',$env:RELEASE_TAG,'ORCA_Nova_Portable_Windows.zip','SHA256SUMS.txt','--target',$env:GITHUB_SHA,'--generate-notes','--title',('ORCA Nova '+$env:RELEASE_TAG))
+          if ($env:RELEASE_PRERELEASE -eq 'true' -or ('${{ github.event_name }}' -eq 'workflow_dispatch' -and '${{ inputs.prerelease }}' -eq 'true')) { $cmd += '--prerelease' }
+          gh release view $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY --json tagName *> $null
+          if ($LASTEXITCODE -eq 0) { throw "Release $($env:RELEASE_TAG) already exists; refusing overwrite" }
+          gh @cmd
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Record release build failure
+        if: failure()
+        shell: pwsh
+        run: |
+          "ORCA Nova Release failure; run=$env:GITHUB_RUN_ID; commit=$env:GITHUB_SHA; tag=$env:RELEASE_TAG" | Set-Content RELEASE_FAILURE_REPORT.txt
+          "Inspect failed step logs for exact compiler/package error." | Add-Content RELEASE_FAILURE_REPORT.txt
+      - name: Upload failure report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ORCA-Nova-Release-Failure
+          path: RELEASE_FAILURE_REPORT.txt
+) { throw 'Invalid tag in release request' }
+          $isPre = if ($req.prerelease -eq $true) { 'true' } else { 'false' }
+          'RELEASE_TAG=' + $req.tag | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          'RELEASE_PRERELEASE=' + $isPre | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
       - name: Validate release tag and branch
         shell: pwsh
         run: |

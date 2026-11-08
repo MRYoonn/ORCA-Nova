@@ -44,7 +44,7 @@ To build the Go backend locally, run `go test ./...` then `go build .`. The Wind
 - Updates are disabled during an active job and require explicit approval.
 
 ## Status
-Source migration from ORCA Studio to ORCA Nova. CI build and native taskbar icon require Windows-run verification before labeling a Release stable.
+Source migration from ORCA Studio to ORCA Nova. The stable **update channel** can publish builds after Windows CI succeeds, but actual ORCA scientific calculations require real-world validation.
 
 ## Next development milestones
 - P0: Real ORCA 6.x calculation smoke tests on Windows, state/Root validation, reliable rollback of portable updates.

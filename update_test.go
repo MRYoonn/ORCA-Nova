@@ -1,6 +1,9 @@
 package main
 
-import "testing"
+import (
+    "testing"
+    "strings"
+)
 
 func TestCompareVersion(t *testing.T) {
 	cases := []struct {
@@ -24,4 +27,13 @@ func TestChecksumFor(t *testing.T) {
 	if _, err := checksumFor(text, "invalid.zip"); err == nil {
 		t.Fatal("should reject missing checksum")
 	}
+}
+
+func TestChecksumEntries(t *testing.T) {
+    const target = "ORCA_Nova_Portable_Windows.zip"
+    good := strings.Repeat("a", 64) + "  " + target + "\n"
+    sum, err := checksumFor(good, target)
+    if err != nil || sum != strings.Repeat("a", 64) { t.Fatalf("checksum=%q err=%v",sum,err) }
+    if _, err := checksumFor("incorrect  "+target, target); err == nil { t.Fatal("invalid digest accepted") }
+    if _, err := checksumFor(good, "other.zip"); err == nil { t.Fatal("wrong asset accepted") }
 }
