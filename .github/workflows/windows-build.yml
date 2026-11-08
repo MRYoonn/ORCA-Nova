@@ -16,7 +16,17 @@ jobs:
         with:
           go-version-file: go.mod
       - name: Test Go backend and Windows process cancellation
-        run: go test -count=1 ./...
+        shell: pwsh
+        run: |
+          $output = & go test -count=1 -v ./... 2>&1
+          $result = $LASTEXITCODE
+          $output | Tee-Object -FilePath GO_TEST_OUTPUT.txt
+          if ($result -ne 0) {
+            $detail = (($output | Select-Object -Last 100) -join "`n").Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
+            Write-Output "::error title=Windows Go test failure::$detail"
+            $output | Set-Content BUILD_FAILURE_ANALYSIS.md
+          }
+          exit $result
       - name: Vet Go backend
         run: go vet ./...
       - name: Build Windows backend
