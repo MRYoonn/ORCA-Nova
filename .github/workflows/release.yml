@@ -38,7 +38,13 @@ jobs:
           New-Item -ItemType Directory -Force dist | Out-Null
           Copy-Item bin/ORCA_Nova.exe dist/
           Copy-Item assets/ORCA_Nova.ico dist/
-          Get-ChildItem native_host/bin/Release/net48 | Copy-Item -Destination dist -Recurse -Force
+          $hostRoot = (Resolve-Path 'native_host/bin/Release/net48').Path
+          Get-ChildItem -LiteralPath $hostRoot -Recurse -File | Where-Object { $_.Extension -in @('.dll', '.config') -or $_.Name -eq 'ORCA_Nova_UI.exe' } | ForEach-Object {
+            $relative = $_.FullName.Substring($hostRoot.Length).TrimStart('\')
+            $destination = Join-Path dist $relative
+            New-Item -ItemType Directory -Force (Split-Path -Parent $destination) | Out-Null
+            Copy-Item -LiteralPath $_.FullName -Destination $destination
+          }
           if (-not (Test-Path dist/ORCA_Nova_UI.exe)) { throw 'native WebView2 host was not packaged' }
           Compress-Archive -Path dist/* -DestinationPath ORCA_Nova_Portable_Windows.zip -Force
           Get-FileHash ORCA_Nova_Portable_Windows.zip -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  ORCA_Nova_Portable_Windows.zip" } | Set-Content SHA256SUMS.txt
