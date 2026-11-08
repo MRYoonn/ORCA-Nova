@@ -231,6 +231,11 @@ func (a *App) route(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		respond(w, 200, map[string]bool{"ok": true})
+	case "/api/preflight":
+		if r.Method != http.MethodPost { fail(w, 405, "Method not allowed"); return }
+		var req RunRequest
+		if err:=json.NewDecoder(io.LimitReader(r.Body,12<<20)).Decode(&req);err!=nil { fail(w,400,"입력 데이터 오류: "+err.Error());return }
+		respond(w,200,preflight(req))
 	case "/api/run":
 		if r.Method != http.MethodPost {
 			fail(w, 405, "Method not allowed")
@@ -320,6 +325,7 @@ func (a *App) start(w http.ResponseWriter, r *http.Request) {
 		fail(w, 400, "입력 데이터를 읽지 못했어요: "+err.Error())
 		return
 	}
+	if report:=preflight(req); !report.OK { fail(w,400,"계산 전 검사 실패: "+strings.Join(report.Errors," / "));return }
 	if len(req.Files) == 0 || len(req.Files) > 80 || len(req.Stages) == 0 || len(req.Stages) > 30 {
 		fail(w, 400, "실행 파일 또는 계산 단계 개수가 올바르지 않아요.")
 		return
