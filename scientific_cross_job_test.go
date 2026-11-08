@@ -63,3 +63,28 @@ func TestCrossJobProfileBlocksMixedMethod(t *testing.T){
  if err!=nil{t.Fatal(err)}
  if _,err:=scientificProfile(resolved,sources);err==nil{t.Fatal("mismatched functional was silently compared")}
 }
+
+func TestCrossJobDifferentElementalCompositionRejected(t *testing.T){
+ aDir,bDir:=t.TempDir(),t.TempDir()
+ writeProfileFixture(t,aDir,1,-101)
+ writeProfileFixture(t,bDir,3,-100.9)
+ // Same total atomic number is deliberately insufficient to prove chemistry
+ // identity: one CO group and two N atoms both have Z=14.
+ for folder,data:=range map[string]string{
+  aDir:"2\nreactant\nC 0 0 0\nO 1 0 0\n",
+  bDir:"2\ntriplet\nN 0 0 0\nN 1 0 0\n",
+ }{
+  if err:=os.WriteFile(filepath.Join(folder,"molecule.xyz"),[]byte(data),0600);err!=nil{t.Fatal(err)}
+ }
+ app:=&App{queue:&JobQueue{Jobs:[]*QueueEntry{
+  {ID:"a",Job:&Job{Folder:aDir}},
+  {ID:"b",Job:&Job{Folder:bDir}},
+ }}}
+ req:=ScientificProfileRequest{Kind:"adiabatic",Energy:"Electronic",Confirmed:true,
+  Sources:map[string]string{"S0":"same.out","T1":"same.out"},
+  Jobs:map[string]string{"S0":"a","T1":"b"},
+ }
+ if _,_,err:=app.resolveProfileSources(req);err==nil{
+  t.Fatal("different element composition with equal total atomic number was accepted")
+ }
+}
