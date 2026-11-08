@@ -25,3 +25,7 @@ Run 42497110853 exposed `update_integration_test.go:128: unsafe payload accepted
 ## Successful revalidation
 
 Source fix commit 83fdd89 passed focused local updater race tests and vet. Windows run https://github.com/MRYoonn/ORCA-Nova/actions/runs/42497246326 completed SUCCESS in 1m29s, including full Go tests/vet, backend/icon, WebView2 host and complete portable packaging. Failed runs remain historical evidence; they are not reclassified as passing. Actual ORCA/MPI and real updater restart remain outside this validation.
+
+## v1.6.0 RC release review
+
+Fresh GitHub API and both requested DOI/PMC retrieval attempts returned 403; actual Golden numerical validation and reviewed PR merge operations remain blocked. Windows ORCA/MPI and real updater replacement/relaunch are unrun. Scientific review fixed ignored solvent/input blocks, missing XYZ composition admission, and TDDFT inputs being admitted to UKS/ground-state comparisons. Version review fixed RC→same-version stable upgrade detection. Focused race regressions pass; full results are in RELEASE_REGRESSION.md and RELEASE_VALIDATION_REPORT.md. Stable release is deliberately blocked; the explicitly authorized fallback is a prerelease with Korean limitations and --latest=false.

@@ -88,7 +88,10 @@ func newerVersion(a, b string) bool {
 			return false
 		}
 	}
-	return false
+	// A final release supersedes its same-core release candidate.
+	_, _, candidateHasPre := strings.Cut(strings.TrimSpace(a), "-")
+	_, currentPre, currentHasPre := strings.Cut(strings.TrimSpace(b), "-")
+	return !candidateHasPre && currentHasPre && currentPre != ""
 }
 func (u *updater) check() updateState {
 	u.mu.Lock()
