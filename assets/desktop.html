@@ -510,7 +510,7 @@ async function desktopRun(workflow){
   const req=desktopRunData(workflow);
   const checked=await desktopAPI('preflight',req);
   if(!checked.ok)throw Error('계산 전 검사 실패: '+checked.errors.join(' / '));
-  if(checked.warnings?.length&&!confirm('계산 전 검사 주의 사항:\\n'+checked.warnings.join('\\n')+'\\n그래도 실행할까요?')){desktopMessage('주의 사항 확인 후 다시 실행하세요.');return}
+  if(checked.warnings?.length&&!confirm('계산 전 검사 주의 사항:\n'+checked.warnings.join('\n')+'\n그래도 실행할까요?')){desktopMessage('주의 사항 확인 후 다시 실행하세요.');return}
   if(workflow&&editorDirty&&!confirm('현재 단계에서 수동 수정한 INP만 반영돼요. 다른 단계는 설정값에서 자동 생성됩니다. 실행할까요?'))return;
   desktopMessage('ORCA 실행 요청 중...');
   const result=await desktopAPI('run',req);desktopMessage('실행 중 — 결과 폴더: '+result.folder);
@@ -538,7 +538,7 @@ document.getElementById('desktop-preflight').addEventListener('click',async()=>{
   for(const x of report.errors||[])lines.push('오류: '+x);
   for(const x of report.warnings||[])lines.push('주의: '+x);
   lines.push('주의: SCF 수렴, TD-DFT Root와 최종 상태는 계산 후 별도 검토가 필요합니다.');
-  document.getElementById('desktop-live-log').textContent=lines.join('\\n');
+  document.getElementById('desktop-live-log').textContent=lines.join('\n');
   desktopMessage(report.ok?'입력 검사 완료 · 로그를 확인하세요.':'입력 검사에서 오류 발견',!report.ok);
  }catch(e){desktopMessage('입력 검사 실패: '+e.message,true)}
 });
