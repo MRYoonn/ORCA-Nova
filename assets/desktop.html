@@ -111,7 +111,7 @@
 <div id="desktop-app-panel" class="desktop-app-panel">
  <div class="desktop-app-head"><div><b>Windows ORCA Runner</b> <span class="runner-chip">로컬 실행</span><p>ORCA 설치 경로를 한 번 지정하면 INP 생성 → 계산 실행 → OUT 저장까지 할 수 있어요.</p></div><span class="help-icon" tabindex="0" data-title="ORCA Runner" data-help="ORCA 자체는 별도 설치가 필요해요. 이 프로그램은 ORCA를 설치하거나 DFT 계산을 대신하지 않고, 설치된 orca.exe를 실행해요. 계산 중에는 프로그램을 종료하지 마세요.">?</span></div>
  <div class="runner-settings"><label>ORCA.exe 위치 <span class="help-icon" tabindex="0" data-title="ORCA 실행 파일" data-help="예: C:\ORCA\orca.exe. 실행에 사용할 ORCA 설치 폴더의 실제 orca.exe 경로를 입력하세요. Windows에 설치된 ORCA 버전의 MPI 환경이 필요할 수 있어요.">?</span><input id="desktop-orca-path" placeholder="C:\ORCA\orca.exe" spellcheck="false"></label><label>작업 폴더 <span class="help-icon" tabindex="0" data-title="Job Working Directory" data-help="계산 단계별 INP, XYZ, OUT 파일과 실패 보고서를 자동 저장할 폴더예요. 계산마다 새 하위 폴더를 만들어요.">?</span><input id="desktop-work-root" placeholder="C:\Users\...\Documents\ORCA Nova Jobs" spellcheck="false"></label></div>
- <div class="runner-actions"><button id="desktop-save-config" class="btn small ghost">설정 저장</button><button id="desktop-run" class="btn primary">▶ 현재 INP 실행</button><button id="desktop-run-wf" class="btn small">▶ 전체 Workflow 실행</button><button id="desktop-stop" class="btn small danger">■ 계산 중단</button></div>
+ <div class="runner-actions"><button id="desktop-save-config" class="btn small ghost">설정 저장</button><button id="desktop-preflight" class="btn small ghost" data-help="ORCA 실행 없이 XYZ 원자수·좌표, Charge/Multiplicity, Workflow 단계 연결을 미리 확인해요.">🔎 계산 전 검사</button><button id="desktop-run" class="btn primary">▶ 현재 INP 실행</button><button id="desktop-run-wf" class="btn small">▶ 전체 Workflow 실행</button><button id="desktop-stop" class="btn small danger">■ 계산 중단</button></div>
  <div class="runner-more"><label class="btn small ghost" for="desktop-extra-xyz" data-help="여기에서 XYZ를 선택해도 돼요. 기본 XYZ가 없다면 첫 파일을 기본 분자로 등록하고, 나머지는 반응물·생성물 등 추가 XYZ로 등록해요.">+ XYZ 선택 / 추가 <span class="help-icon">?</span></label><input id="desktop-extra-xyz" type="file" accept=".xyz" multiple hidden><span id="desktop-extra-info">기본 XYZ 없음 · 추가 XYZ 0개</span><span class="spacer"></span><button class="btn small ghost" id="desktop-reveal">📁 결과 폴더</button><button class="btn small ghost" id="desktop-quit">앱 종료</button></div>
  <div class="updater-panel" role="group" aria-label="자동 업데이트">
  <div class="updater-heading"><span>↻ GitHub 자동업데이트 <span class="help-icon" tabindex="0" data-title="자동업데이트" data-help="앱이 시작될 때 GitHub Releases를 확인해요. 새로운 버전이 있으면 다운로드와 SHA-256 검증을 거쳐 앱을 종료한 후 교체해요. ORCA 계산 중에는 업데이트되지 않아요.">?</span></span><span id="update-version">v1.3.0</span></div>
@@ -508,6 +508,9 @@ async function desktopRun(workflow){
  try{
   await desktopConfig();
   const req=desktopRunData(workflow);
+  const checked=await desktopAPI('preflight',req);
+  if(!checked.ok)throw Error('계산 전 검사 실패: '+checked.errors.join(' / '));
+  if(checked.warnings?.length&&!confirm('계산 전 검사 주의 사항:\\n'+checked.warnings.join('\\n')+'\\n그래도 실행할까요?')){desktopMessage('주의 사항 확인 후 다시 실행하세요.');return}
   if(workflow&&editorDirty&&!confirm('현재 단계에서 수동 수정한 INP만 반영돼요. 다른 단계는 설정값에서 자동 생성됩니다. 실행할까요?'))return;
   desktopMessage('ORCA 실행 요청 중...');
   const result=await desktopAPI('run',req);desktopMessage('실행 중 — 결과 폴더: '+result.folder);
@@ -526,6 +529,19 @@ async function desktopPoll(){try{
  }catch(e){desktopMessage('로컬 실행 서비스 연결 오류: '+e.message,true)}
 }
 document.getElementById('desktop-save-config').addEventListener('click',async()=>{try{await desktopConfig();toast('설정을 저장했어요.');desktopMessage('설정 저장 완료')}catch(e){desktopMessage('설정 저장 실패: '+e.message,true)}});
+document.getElementById('desktop-preflight').addEventListener('click',async()=>{
+ try{
+  const req=desktopRunData(calc(active).kind==='workflow');
+  const report=await desktopAPI('preflight',req);
+  const lines=[report.ok?'✓ 계산 전 검사 통과':'✕ 계산 전 검사 실패', '계산 단계: '+(report.stages?.length||0)+'개'];
+  for(const st of report.stages||[])lines.push('- '+st.name+': '+(st.atoms||'?')+' atoms · Charge '+st.charge+' · Multiplicity '+st.multiplicity+' · electrons '+(st.electrons||'?'));
+  for(const x of report.errors||[])lines.push('오류: '+x);
+  for(const x of report.warnings||[])lines.push('주의: '+x);
+  lines.push('주의: SCF 수렴, TD-DFT Root와 최종 상태는 계산 후 별도 검토가 필요합니다.');
+  document.getElementById('desktop-live-log').textContent=lines.join('\\n');
+  desktopMessage(report.ok?'입력 검사 완료 · 로그를 확인하세요.':'입력 검사에서 오류 발견',!report.ok);
+ }catch(e){desktopMessage('입력 검사 실패: '+e.message,true)}
+});
 document.getElementById('desktop-run').addEventListener('click',()=>desktopRun(false));
 document.getElementById('desktop-run-wf').addEventListener('click',()=>desktopRun(true));
 document.getElementById('desktop-stop').addEventListener('click',async()=>{if(!confirm('진행 중인 ORCA 계산을 중단할까요?'))return;try{await desktopAPI('stop',{});desktopMessage('중단 요청 완료')}catch(e){desktopMessage(e.message,true)}});
@@ -550,7 +566,7 @@ async function desktopUpdateCheck(){
  try{const d=await desktopAPI('update/check',{});desktopUpdateShow(d)}catch(e){status.textContent='업데이트 확인 실패: '+e.message}finally{b.disabled=false}
 }
 function desktopUpdateShow(d){
- if(!d)return;document.getElementById('update-version').textContent='v'+(d.current||'1.3.0');
+ if(!d)return;document.getElementById('update-version').textContent='v'+(d.current||'1.4.0');
  document.getElementById('update-status').textContent=d.message||'확인 전';
  document.getElementById('update-install').hidden=!d.available;
 }
