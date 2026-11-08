@@ -181,7 +181,7 @@ func rangeEstimate(median, elapsed float64, n int) string {
 		lower, upper = 0.7, 1.4
 	}
 	if elapsed > median*upper {
-		return "유사 계산보다 오래 진행 중 · 재추정 어려움"
+		return "예측 불안정 · 유사 계산보다 오래 진행 중"
 	}
 	lo := math.Max(0, median*lower-elapsed)
 	hi := math.Max(0, median*upper-elapsed)
@@ -209,6 +209,9 @@ func (a *App) currentETA(job *Job) etaView {
 		result.ElapsedSeconds = int64(math.Max(0, time.Since(started).Seconds()))
 	}
 	if job.State != "running" {
+		if finished, e := time.Parse(time.RFC3339, job.Finished); e == nil && err == nil {
+			result.ElapsedSeconds = int64(math.Max(0, finished.Sub(started).Seconds()))
+		}
 		result.StageETA = "계산 종료"
 		result.WorkflowETA = "계산 종료"
 		return result
