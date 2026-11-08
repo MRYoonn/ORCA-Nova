@@ -10,7 +10,7 @@ ORCA Nova does not redistribute ORCA and is not affiliated with its developers.
 - Korean help tooltips for calculations, functionals, basis sets, solvents and other options.
 - Select a locally installed `orca.exe`, run calculations, view `.out` logs, and inspect failure reports.
 - **계산 전 검사 (Preflight):** Check XYZ atom counts/coordinates, Charge/Multiplicity electron parity, source file references and upstream Optimization dependencies without running ORCA.
-- Native WebView2 host with an ORCA Nova icon, Windows portable distribution.
+- Native WebView2 host with an ORCA Nova icon and matching dark Windows title bar (Windows 10/11 where supported), Windows portable distribution.
 - Check GitHub Releases for updates; install a new version only after user approval and SHA-256 check.
 
 > **Validation:** Input templates, spin multiplicities, TD-DFT roots, solvent-model names, convergence and final electronic state must be reviewed for scientific correctness before interpreting output. Actual ORCA 6.x calculations have not yet been verified end-to-end on Windows.
