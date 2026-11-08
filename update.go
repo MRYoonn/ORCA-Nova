@@ -328,6 +328,9 @@ func stageReleaseArchive(zipPath, stageDir string) error {
 	foundExe := false
 	var total uint64
 	for _, z := range zr.File {
+		if strings.HasPrefix(z.Name, "/") || strings.HasPrefix(z.Name, `\`) {
+			return errors.New("rooted ZIP entry path")
+		}
 		name := filepath.Clean(filepath.FromSlash(z.Name))
 		if name == "." || filepath.IsAbs(name) || name == ".." || strings.HasPrefix(name, ".."+string(os.PathSeparator)) || strings.Contains(name, ":") {
 			return errors.New("invalid ZIP entry path")

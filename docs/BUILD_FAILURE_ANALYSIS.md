@@ -17,3 +17,7 @@ New compile/test failures and fixes are recorded below as they occur. Existing h
 Code commit 76a2f0b: Windows workflow failed after 53 seconds (exit 1). The public page did not expose test logs; authenticated API requests remain blocked by 403. No cause is claimed from the exit code alone. Added CI capture of verbose Go test output and a bounded public error annotation to obtain the actual failing test without bypassing access controls. Local Linux 73 test/subtest cases and race suite passed. Follow-up run and fix recorded below.
 
 Run 42496996881 reproduced exit 1. Public diagnostics proved the new descendant cancellation and retry transaction tests passed on Windows. GitHub truncated the broad verbose annotation before the actual failing line, so the diagnostic annotation now selects only FAIL/panic/source-location lines. Full runner output remains captured. No assertions were disabled or success inferred.
+
+## Confirmed Windows defect and fix
+
+Run 42497110853 exposed `update_integration_test.go:128: unsafe payload accepted /absolute.dll`. Windows `filepath.IsAbs` does not reject drive-relative rooted paths the same way as Linux. Fixed archive validation to reject a leading slash or backslash in the original ZIP entry before platform path normalization. This preserves the safety assertion rather than skipping Windows coverage. Descendant cleanup, queue isolation, recovery and reports passed in the same Windows run. Local focused updater tests and follow-up Windows CI verify the correction below.
