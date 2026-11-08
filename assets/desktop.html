@@ -840,9 +840,9 @@ setInterval(batchPoll,2300);batchPoll();
 <div class="viz-controls">
 <label>계산 종류 <select id="viz-profile-kind"><option value="adiabatic">S₀–T₁ Adiabatic</option><option value="reaction">Reaction R–TS–P</option></select></label>
 <label>Energy <select id="viz-profile-energy"><option value="Electronic">Electronic (Eh)</option><option value="Gibbs">Gibbs (Eh)</option></select></label>
-<label id="viz-role-a-label">S₀ <select id="viz-role-a"></select></label>
-<label id="viz-role-b-label">T₁ <select id="viz-role-b"></select></label>
-<label id="viz-role-c-label" hidden>Product <select id="viz-role-c"></select></label>
+<label id="viz-role-a-label">S₀ <select id="viz-role-a-job" aria-label="S₀ 계산 Job"><option value="">현재 선택한 Job</option></select><select id="viz-role-a" aria-label="S₀ OUT"></select></label>
+<label id="viz-role-b-label">T₁ <select id="viz-role-b-job" aria-label="T₁ 계산 Job"><option value="">현재 선택한 Job</option></select><select id="viz-role-b" aria-label="T₁ OUT"></select></label>
+<label id="viz-role-c-label" hidden>Product <select id="viz-role-c-job" aria-label="Product 계산 Job"><option value="">현재 선택한 Job</option></select><select id="viz-role-c" aria-label="Product OUT"></select></label>
 </div>
 <label style="display:block;margin:8px 0"><input type="checkbox" id="viz-profile-confirm"> 파일의 분자 조성·반응식, 계산 수준, 에너지 기준을 직접 대조했습니다.</label>
 <button class="btn small" id="viz-profile-run">선택한 OUT로 에너지 프로파일 계산</button>
@@ -861,12 +861,7 @@ function vizFinite(n){return typeof n==='number'&&Number.isFinite(n)}
 function vizEnergy(p){return p.energyEh??p.energy??p.y}
 function vizCoordinateLabel(s){const inp=s.input||'';if(/%geom[\s\S]*?\bscan\b[\s\S]*?\bB\s+\d+\s+\d+/i.test(inp))return 'Bond Distance (Å)';if(/%geom[\s\S]*?\bscan\b[\s\S]*?\b[AD]\s+\d+\s+\d+/i.test(inp))return 'Scan Angle (degrees)';return 'Scan Coordinate (unit: original INP; Unavailable)'}
 function vizSetModel(d){visualizationModel=d;visualizationModel.profile=null;const el=$('viz-source');el.replaceChildren();for(const [i,s]of(d.sources||[]).entries()){const o=document.createElement('option');o.value=i;o.textContent=s.name;el.append(o)}
- const files=(d.sources||[]).filter(x=>/\.out$/i.test(x.name)).map(x=>x.name);
- for(const id of ['viz-role-a','viz-role-b','viz-role-c']){
-  const sel=$(id),old=sel.value;sel.replaceChildren(...files.map(name=>new Option(name,name)));if(files.includes(old))sel.value=old;
- }
- if(files.length>1&&!$('viz-role-b').value)$('viz-role-b').value=files[1];
- if(files.length>2&&!$('viz-role-c').value)$('viz-role-c').value=files[2];
+ for(const role of ['a','b','c'])void vizLoadRoleFiles(role);
  vizRender()}
 function vizSeries(){
  const s=vizSource(),a=vizAnalysis(s),kind=$('viz-kind').value;let rows=[],xlabel='Index',ylabel='';
@@ -909,6 +904,42 @@ function vizProfileMode(){
  $('viz-role-c-label').hidden=!reaction;
  $('viz-profile-result').textContent='';
 }
+// A role can point to any registered Batch Job. OUT paths are always
+// resolved by the server against a queue ID; never accept an arbitrary path.
+async function vizLoadRoleFiles(role) {
+ const id=$('viz-role-'+role+'-job').value||$('viz-job').value;
+ const sel=$('viz-role-'+role),old=sel.value;
+ try{
+  let data;
+  if(id===$('viz-job').value&&visualizationModel.sources.length) {
+    data=visualizationModel;
+  }else{
+    const url='/api/visualization?session='+encodeURIComponent(desktopSession)+(id?'&id='+encodeURIComponent(id):'');
+    const response=await fetch(url);
+    if(!response.ok)throw Error('선택한 Job에 접근할 수 없습니다');
+    data=await response.json();
+  }
+  if(id!==($('viz-role-'+role+'-job').value||$('viz-job').value))return; // stale request
+  const names=(data.sources||[]).filter(x=>/\.out$/i.test(x.name)).map(x=>x.name);
+  sel.replaceChildren(...names.map(name=>new Option(name,name)));
+  if(names.includes(old))sel.value=old;
+  else if(role==='b'&&names.length>1)sel.value=names[1];
+  else if(role==='c'&&names.length>2)sel.value=names[2];
+  if(!names.length)$('viz-profile-result').textContent='선택 Job에서 읽을 OUT 파일이 없습니다';
+ }catch(e){sel.replaceChildren();$('viz-profile-result').textContent=e.message}
+}
+function vizRefreshRoleJobs(){
+ const jobs=batchQueueState?.jobs||[];
+ for(const role of ['a','b','c']){
+  const sel=$('viz-role-'+role+'-job'),before=sel.value;
+  const names=['',...jobs.map(j=>j.id)];
+  if(sel.options.length!==names.length||names.some((id,i)=>sel.options[i]?.value!==id)){
+   sel.replaceChildren(new Option('현재 선택한 Job',''),...jobs.map(j=>new Option(j.label||j.id,j.id)));
+   if(names.includes(before))sel.value=before;
+  }
+ }
+}
+for(const role of ['a','b','c'])$('viz-role-'+role+'-job').onchange=()=>void vizLoadRoleFiles(role);
 $('viz-profile-kind').onchange=vizProfileMode;vizProfileMode();
 $('viz-profile-run').onclick=async()=>{
  try{
@@ -917,8 +948,10 @@ $('viz-profile-run').onclick=async()=>{
   const sources=reaction?
    {Reactant:$('viz-role-a').value,TS:$('viz-role-b').value,Product:$('viz-role-c').value}:
    {S0:$('viz-role-a').value,T1:$('viz-role-b').value};
+  const roleNames=reaction?{a:'Reactant',b:'TS',c:'Product'}:{a:'S0',b:'T1'};
+  const jobs=Object.fromEntries(Object.entries(roleNames).map(([key,name])=>[name,$('viz-role-'+key+'-job').value]));
   const res=await desktopAPI('visualization/profile',{
-   jobId:$('viz-job').value,kind:reaction?'reaction':'adiabatic',
+   jobId:$('viz-job').value,jobs,kind:reaction?'reaction':'adiabatic',
    energy:$('viz-profile-energy').value,sources,confirmed:true
   });
   visualizationModel.profile=res;
@@ -936,13 +969,14 @@ $('viz-profile-run').onclick=async()=>{
 };
 for(const b of document.querySelectorAll('[data-viz-tab]'))b.onclick=()=>{for(const x of document.querySelectorAll('[data-viz-tab]'))x.setAttribute('aria-selected',x===b?'true':'false');for(const name of ['summary','graph','table','raw'])$('viz-'+name).hidden=name!==b.dataset.vizTab};
 for(const id of ['viz-source','viz-kind','viz-unit','viz-reference','viz-selected','viz-atom','viz-pop','viz-overlay'])$(id).onchange=vizRender;
+$('viz-job').onchange=()=>{for(const role of ['a','b','c'])if(!$('viz-role-'+role+'-job').value)void vizLoadRoleFiles(role)};
 $('viz-load').onclick=async()=>{try{const r=await fetch('/api/visualization?session='+encodeURIComponent(desktopSession)+($('viz-job').value?'&id='+encodeURIComponent($('viz-job').value):''));if(!r.ok)throw Error((await r.json()).error||'결과를 읽지 못했습니다');vizSetModel(await r.json())}catch(e){$('viz-message').textContent=e.message}};
 $('viz-file').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{vizSetModel(await desktopAPI('visualization',{name:f.name,output:await f.text(),input:''}))}catch(e){$('viz-message').textContent=e.message}};
 $('viz-csv').onclick=()=>{const esc=v=>'"'+((/^[=+@-]/.test(String(v??''))&&!Number.isFinite(Number(v)))?"'":'')+String(v??'Unavailable').replaceAll('"','""')+'"';download('ORCA_visualization.csv',[['Point',vizSeries().xlabel,vizSeries().ylabel,'Status','Source','Line','XYZ'],...visualizationRows.map(p=>[p.label??p.step,p.x,p.y,p.status,p.source,p.line,p.xyz])].map(r=>r.map(esc).join(',')).join('\r\n'),'text/csv;charset=utf-8')};
 $('viz-svg').onclick=()=>{const s=$('viz-graph').querySelector('svg');if(s)download('ORCA_visualization.svg',new XMLSerializer().serializeToString(s),'image/svg+xml')};
 $('viz-png').onclick=()=>{const s=$('viz-graph').querySelector('svg');if(!s)return;const img=new Image(),url=URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(s)],{type:'image/svg+xml'}));img.onload=()=>{const c=document.createElement('canvas');c.width=1440;c.height=720;c.getContext('2d').drawImage(img,0,0,c.width,c.height);c.toBlob(b=>{if(b)download('ORCA_visualization.png',b,'image/png')});URL.revokeObjectURL(url)};img.src=url};
 $('desktop-app-panel').after($('viz-panel'));
-setInterval(()=>{const select=$('viz-job'),saved=select.value,jobs=batchQueueState?.jobs||[];if(select.options.length!==jobs.length+1){select.replaceChildren(new Option('현재 단일 Job',''),...jobs.map(j=>new Option(j.label||j.id,j.id)));select.value=saved}},2500);
+setInterval(()=>{const select=$('viz-job'),saved=select.value,jobs=batchQueueState?.jobs||[];if(select.options.length!==jobs.length+1){select.replaceChildren(new Option('현재 단일 Job',''),...jobs.map(j=>new Option(j.label||j.id,j.id)));select.value=saved}vizRefreshRoleJobs()},2500);
 </script>
 
 </body>
