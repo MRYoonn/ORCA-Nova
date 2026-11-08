@@ -297,6 +297,25 @@ func (q *JobQueue) prepareLocked(e *QueueEntry, cfg Config) error {
 	}
 	return nil
 }
+// pauseForQuit persists pending jobs without starting them on the next launch.
+// Running workers must be stopped explicitly before exiting the native UI.
+func (q *JobQueue) pauseForQuit() error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	for _, e := range q.Jobs {
+		if e.worker != nil {
+			return fmt.Errorf("실행 중인 Queue 작업을 먼저 중단하세요")
+		}
+	}
+	previous := q.Paused
+	q.Paused = true
+	if err := q.saveLocked(); err != nil {
+		q.Paused = previous
+		return err
+	}
+	return nil
+}
+
 func (q *JobQueue) action(id, action string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -354,13 +373,12 @@ func (q *JobQueue) action(id, action string) error {
 			if e.Job != nil {
 				// Retry in a new folder; copy completed stages and all their artifacts. Never truncate old results.
 				old := e.Job
+				// Validate original XYZ and INP files as well: reusing edited
+				// geometries would invalidate the completed stages on retry.
 				for _, f := range e.Request.Files {
-					if !strings.EqualFold(filepath.Ext(f.Name), ".inp") {
-						continue
-					}
 					b, err := os.ReadFile(filepath.Join(old.Folder, f.Name))
 					if err != nil || string(b) != f.Content {
-						return fmt.Errorf("원본 INP가 변경됐습니다. 수정된 계산은 새 Job으로 등록하세요: %s", f.Name)
+						return fmt.Errorf("원본 XYZ/INP가 변경됐습니다. 수정된 계산은 새 Job으로 등록하세요: %s", f.Name)
 					}
 				}
 				e.Job = nil
@@ -376,17 +394,55 @@ func (q *JobQueue) action(id, action string) error {
 					e.Job = old
 					return err
 				}
+				// Copy only artifacts from completed stages. Failed stages
+				// may leave stale GBW/HESS/CIS files that ORCA can reuse.
+				// The new directory already contains validated original inputs.
+				inputs := map[string]bool{}
+				completed := map[string]bool{}
+				for _, f := range e.Request.Files {
+					inputs[strings.ToLower(f.Name)] = true
+				}
+				for _, name := range old.CompletedStages {
+					completed[strings.ToLower(name)] = true
+				}
 				for _, f := range entries {
-					if f.IsDir() || f.Type()&os.ModeSymlink != 0 {
+					if f.IsDir() || f.Type()&os.ModeSymlink != 0 || !safeName(f.Name()) {
 						continue
 					}
-					src := filepath.Join(old.Folder, f.Name())
-					b, err := os.ReadFile(src)
+					name := strings.ToLower(f.Name())
+					if inputs[name] {
+						continue
+					}
+					// Longest-stem match prevents "step_2" from accidentally
+					// taking files belonging to "step_2_extra".
+					match, longest := -1, -1
+					for i, st := range e.Request.Stages {
+						stem := strings.ToLower(strings.TrimSuffix(st.Input, filepath.Ext(st.Input)))
+						if len(stem) > longest && (strings.HasPrefix(name, stem+".") || strings.HasPrefix(name, stem+"_")) {
+							match, longest = i, len(stem)
+						}
+					}
+					if match < 0 || !completed[strings.ToLower(e.Request.Stages[match].Input)] {
+						continue
+					}
+					src, dst := filepath.Join(old.Folder, f.Name()), filepath.Join(e.Job.Folder, f.Name())
+					from, err := os.Open(src)
 					if err != nil {
 						return err
 					}
-					if err = os.WriteFile(filepath.Join(e.Job.Folder, f.Name()), b, 0600); err != nil {
+					to, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY|os.O_EXCL, 0600)
+					if err != nil {
+						from.Close()
 						return err
+					}
+					_, copyErr := io.Copy(to, from)
+					closeErr := to.Close()
+					from.Close()
+					if copyErr != nil {
+						return copyErr
+					}
+					if closeErr != nil {
+						return closeErr
 					}
 				}
 				e.Job.CompletedStages = append([]string(nil), old.CompletedStages...)
