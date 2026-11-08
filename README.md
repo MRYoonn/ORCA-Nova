@@ -31,7 +31,7 @@ The default job directory is `Documents/ORCA Nova Jobs`; preferences live in `%A
 - **Native Windows frontend:** .NET Framework 4.8 WinForms and Microsoft.Web.WebView2.
 - **CI:** `.github/workflows/windows-build.yml` builds/test artifacts on every push to `main` and manually (`workflow_dispatch`).
 - **Release:** `.github/workflows/release.yml` packages a versioned ZIP and checksums on `v*` tag push or **Actions > Release Windows Portable > Run workflow** on `main`.
-- **First pilot release:** Choose `release_tag: v1.4.0` and leave `prerelease: true` while Windows/ORCA validation is incomplete. Prereleases do not appear in the stable auto-updater. For a verified stable Release, select `prerelease: false` for a *new* version tag.
+- **First pilot release:** Choose `release_tag: v1.5.0` and leave `prerelease: true` while Windows/ORCA validation is incomplete. Prereleases do not appear in the stable auto-updater. For a verified stable Release, select `prerelease: false` for a *new* version tag.
 - **Update source:** `https://github.com/MRYoonn/ORCA-Nova/releases/latest`.
 
 To build the Go backend locally, run `go test ./...` then `go build .`. The Windows native host and icon packaging are built by GitHub Actions on Windows.
