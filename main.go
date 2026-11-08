@@ -45,17 +45,21 @@ type RunRequest struct {
 	Stages []Stage   `json:"stages"`
 }
 type Job struct {
-	ID         string `json:"id"`
-	Folder     string `json:"folder"`
-	State      string `json:"state"`
-	StageIndex int    `json:"stageIndex"`
-	StageCount int    `json:"stageCount"`
-	StageName  string `json:"stageName"`
-	Started    string `json:"started"`
-	Finished   string `json:"finished,omitempty"`
-	Message    string `json:"message"`
-	OutFile    string `json:"outFile,omitempty"`
-	LastLog    string `json:"lastLog,omitempty"`
+	ID           string `json:"id"`
+	Folder       string `json:"folder"`
+	State        string `json:"state"`
+	StageIndex   int    `json:"stageIndex"`
+	StageCount   int    `json:"stageCount"`
+	StageName    string `json:"stageName"`
+	Started      string `json:"started"`
+	Finished     string `json:"finished,omitempty"`
+	Message      string `json:"message"`
+	OutFile      string `json:"outFile,omitempty"`
+	LastLog      string `json:"lastLog,omitempty"`
+	ReportFile   string `json:"reportFile,omitempty"`
+	stageStarted time.Time
+	stageKey     string
+	stageKeys    []string
 }
 type App struct {
 	mu      sync.Mutex
@@ -66,6 +70,7 @@ type App struct {
 	token   string
 	updates *updater
 	cfgPath string
+	history *durationHistory
 }
 
 func configPath() string {
@@ -103,6 +108,7 @@ func newApp() *App {
 	}
 	a.token = hex.EncodeToString(b)
 	a.updates = newUpdater()
+	a.history = newDurationHistory(a.cfgPath)
 	return a
 }
 func (a *App) saveConfig() error {
@@ -175,7 +181,12 @@ func (a *App) route(w http.ResponseWriter, r *http.Request) {
 		if job != nil && job.OutFile != "" {
 			job.LastLog = tail(job.OutFile, 19000)
 		}
-		respond(w, 200, map[string]interface{}{"config": cfg, "job": job, "platform": runtime.GOOS, "version": appVersion, "update": a.updates.snapshot()})
+		var eta *etaView
+		if job != nil {
+			v := a.currentETA(job)
+			eta = &v
+		}
+		respond(w, 200, map[string]interface{}{"config": cfg, "job": job, "eta": eta, "platform": runtime.GOOS, "version": appVersion, "update": a.updates.snapshot()})
 	case "/api/update/check":
 		if r.Method != http.MethodPost {
 			fail(w, 405, "Method not allowed")
@@ -232,10 +243,17 @@ func (a *App) route(w http.ResponseWriter, r *http.Request) {
 		}
 		respond(w, 200, map[string]bool{"ok": true})
 	case "/api/preflight":
-		if r.Method != http.MethodPost { fail(w, 405, "Method not allowed"); return }
+		if r.Method != http.MethodPost {
+			fail(w, 405, "Method not allowed")
+			return
+		}
 		var req RunRequest
-		if err:=json.NewDecoder(io.LimitReader(r.Body,12<<20)).Decode(&req);err!=nil { fail(w,400,"입력 데이터 오류: "+err.Error());return }
-		respond(w,200,preflight(req))
+		if err := json.NewDecoder(io.LimitReader(r.Body, 12<<20)).Decode(&req); err != nil {
+			fail(w, 400, "입력 데이터 해석 실패: "+err.Error())
+			return
+		}
+		report := preflight(req)
+		respond(w, 200, report)
 	case "/api/run":
 		if r.Method != http.MethodPost {
 			fail(w, 405, "Method not allowed")
@@ -258,6 +276,60 @@ func (a *App) route(w http.ResponseWriter, r *http.Request) {
 			killTree(p.Pid)
 		}
 		respond(w, 200, map[string]bool{"ok": true})
+	case "/api/report":
+		if r.Method != http.MethodGet {
+			fail(w, 405, "Method not allowed")
+			return
+		}
+		a.mu.Lock()
+		var report string
+		if a.job != nil {
+			report = a.job.ReportFile
+		}
+		a.mu.Unlock()
+		if report == "" {
+			fail(w, 404, "아직 분석 보고서가 없어요.")
+			return
+		}
+		content, err := os.ReadFile(report)
+		if err != nil {
+			fail(w, 404, "보고서를 찾을 수 없어요.")
+			return
+		}
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.Header().Set("Content-Disposition", "attachment; filename=ORCA_Nova_Analysis.txt")
+		w.Header().Set("Cache-Control", "no-store")
+		w.Write(content)
+	case "/api/analyze":
+		if r.Method != http.MethodPost {
+			fail(w, 405, "Method not allowed")
+			return
+		}
+		var payload struct {
+			Name   string `json:"name"`
+			Output string `json:"output"`
+			Input  string `json:"input"`
+		}
+		if err := json.NewDecoder(io.LimitReader(r.Body, 64<<20)).Decode(&payload); err != nil {
+			fail(w, 400, "OUT 데이터를 읽지 못했어요: "+err.Error())
+			return
+		}
+		if len(payload.Output) == 0 || len(payload.Output) > 60<<20 {
+			fail(w, 400, "OUT 파일은 60MB 이하여야 합니다.")
+			return
+		}
+		name := filepath.Base(payload.Name)
+		if !strings.EqualFold(filepath.Ext(name), ".out") {
+			fail(w, 400, ".out 파일을 선택해 주세요.")
+			return
+		}
+		analyzed, err := ParseOrcaOutput(strings.NewReader(payload.Output), name, payload.Input)
+		if err != nil {
+			fail(w, 400, err.Error())
+			return
+		}
+		report := formatAnalysis(analyzed, Stage{Name: "가져온 OUT 파일", Input: name})
+		respond(w, 200, map[string]string{"report": report})
 	case "/api/reveal":
 		if r.Method != http.MethodPost {
 			fail(w, 405, "Method not allowed")
@@ -325,7 +397,10 @@ func (a *App) start(w http.ResponseWriter, r *http.Request) {
 		fail(w, 400, "입력 데이터를 읽지 못했어요: "+err.Error())
 		return
 	}
-	if report:=preflight(req); !report.OK { fail(w,400,"계산 전 검사 실패: "+strings.Join(report.Errors," / "));return }
+	if report := preflight(req); !report.OK {
+		fail(w, 400, "계산 전 검사 실패: "+strings.Join(report.Errors, " / "))
+		return
+	}
 	if len(req.Files) == 0 || len(req.Files) > 80 || len(req.Stages) == 0 || len(req.Stages) > 30 {
 		fail(w, 400, "실행 파일 또는 계산 단계 개수가 올바르지 않아요.")
 		return
@@ -398,6 +473,10 @@ func (a *App) start(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	job := &Job{ID: time.Now().Format("20060102_150405"), Folder: folder, State: "running", StageCount: len(req.Stages), StageName: req.Stages[0].Name, Started: time.Now().Format(time.RFC3339), Message: "계산 준비 중"}
+	initialAtoms := xyzAtomCount(filepath.Join(folder, req.Stages[0].Source))
+	for _, stage := range req.Stages {
+		job.stageKeys = append(job.stageKeys, signatureForStage(folder, stage, initialAtoms))
+	}
 	a.mu.Lock()
 	a.job = job
 	a.cancel = cancel
@@ -432,6 +511,14 @@ func (a *App) failure(j *Job, msg string, outputPath string) {
 	a.updateJob(j, func(j *Job) { j.State = "failed"; j.Message = msg; j.Finished = time.Now().Format(time.RFC3339) })
 }
 func (a *App) runJob(ctx context.Context, orcaExe string, req RunRequest, j *Job) {
+	defer func() {
+		path, err := writeAnalysisReports(j.Folder, req)
+		if err == nil {
+			a.updateJob(j, func(j *Job) { j.ReportFile = path })
+		} else {
+			a.updateJob(j, func(j *Job) { j.Message += " (보고서 저장 실패: " + err.Error() + ")" })
+		}
+	}()
 	defer func() { a.mu.Lock(); a.process = nil; a.cancel = nil; a.mu.Unlock() }()
 	for i, stage := range req.Stages {
 		if ctx.Err() != nil {
@@ -448,6 +535,10 @@ func (a *App) runJob(ctx context.Context, orcaExe string, req RunRequest, j *Job
 			j.StageIndex = i
 			j.StageName = stage.Name
 			j.OutFile = outPath
+			j.stageStarted = time.Now()
+			if i < len(j.stageKeys) {
+				j.stageKey = j.stageKeys[i]
+			}
 			j.Message = fmt.Sprintf("%d/%d 단계 실행 중", i+1, len(req.Stages))
 		})
 		if _, err := os.Stat(filepath.Join(j.Folder, stage.Source)); err != nil {
@@ -496,6 +587,12 @@ func (a *App) runJob(ctx context.Context, orcaExe string, req RunRequest, j *Job
 		if stage.Opt && !optimized {
 			a.failure(j, "Geometry Optimization 수렴 문구가 없어요.", outPath)
 			return
+		}
+		if i < len(j.stageKeys) {
+			a.history.observe(j.stageKeys[i], time.Since(j.stageStarted).Seconds())
+		}
+		if path, err := writeAnalysisReports(j.Folder, req); err == nil {
+			a.updateJob(j, func(j *Job) { j.ReportFile = path })
 		}
 	}
 	a.updateJob(j, func(j *Job) {
