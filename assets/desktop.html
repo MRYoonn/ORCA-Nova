@@ -824,8 +824,22 @@ setInterval(batchPoll,2300);batchPoll();
 <b>계산 결과 · 실제 OUT / PES 데이터</b>
 <div class="viz-controls"><select id="viz-job" aria-label="결과 Job"><option value="">현재 단일 Job</option></select><button class="btn small" id="viz-load">결과 자동 탐색</button><label class="btn small" for="viz-file">OUT / Scan DAT 불러오기</label><input type="file" id="viz-file" accept=".out,.dat" hidden><select id="viz-source" aria-label="결과 파일"></select></div>
 <div class="viz-tabs" role="tablist"><button class="btn small" data-viz-tab="summary" aria-selected="true">결과 요약</button><button class="btn small" data-viz-tab="graph">그래프</button><button class="btn small" data-viz-tab="table">데이터 표</button><button class="btn small" data-viz-tab="raw">원본 OUT</button></div>
-<div class="viz-controls"><select id="viz-kind" aria-label="그래프 종류"><option value="pes">Bond Distance–Energy / Relaxed PES</option><option value="optimization">Optimization Cycle Energy</option><option value="gradient">Geometry Gradient</option><option value="scf">SCF Iteration Energy</option><option value="scfDelta">SCF Energy Change</option><option value="roots">TD-DFT Excitation Energy</option><option value="uv">UV-Vis Stick Spectrum</option><option value="frequency">Vibrational Frequency</option><option value="ir">IR Stick Spectrum</option><option value="spin">Atomic Spin Population</option><option value="scanSpin">Scan Spin Population</option><option value="states">Electronic Energy Levels</option><option value="gibbs">Gibbs Free Energy</option><option value="enthalpy">Enthalpy</option><option value="zpe">Zero-Point Energy</option></select>
+<div class="viz-controls"><select id="viz-kind" aria-label="그래프 종류"><option value="pes">Bond Distance–Energy / Relaxed PES</option><option value="optimization">Optimization Cycle Energy</option><option value="gradient">Geometry Gradient</option><option value="scf">SCF Iteration Energy</option><option value="scfDelta">SCF Energy Change</option><option value="roots">TD-DFT Excitation Energy</option><option value="uv">UV-Vis Stick Spectrum</option><option value="frequency">Vibrational Frequency</option><option value="ir">IR Stick Spectrum</option><option value="spin">Atomic Spin Population</option><option value="scanSpin">Scan Spin Population</option><option value="profile">검증된 State / Reaction Profile</option><option value="states">Electronic Energy Levels</option><option value="gibbs">Gibbs Free Energy</option><option value="enthalpy">Enthalpy</option><option value="zpe">Zero-Point Energy</option></select>
 <select id="viz-unit" aria-label="Energy unit"><option value="Eh">Raw Electronic Energy (Eh)</option><option value="kJ/mol">Relative Energy (kJ/mol)</option><option value="kcal/mol">Relative Energy (kcal/mol)</option><option value="eV">Relative Energy (eV)</option></select><select id="viz-reference" aria-label="에너지 기준"><option value="minimum">최저 에너지 기준</option><option value="first">첫 지점 기준</option><option value="selected">선택 지점 기준</option></select><label>선택 Step <input type="number" id="viz-selected" min="1" value="1" style="width:60px"></label><label>원자 index <input type="number" id="viz-atom" min="0" value="4" style="width:60px"></label><select id="viz-pop" aria-label="Spin population scheme"><option>Mulliken</option><option>Loewdin</option><option>Hirshfeld</option></select><label><input type="checkbox" id="viz-overlay"> PES 겹쳐 보기 (각 곡선 독립 기준)</label></div>
+<details id="viz-profile-box" class="viz-note" style="border:1px solid #35506a;border-radius:8px;padding:9px">
+<summary style="cursor:pointer;color:#d9e7f6">Adiabatic S₀/T₁ Gap · Reaction Profile (원본 OUT 지정)</summary>
+<div class="viz-controls">
+<label>계산 종류 <select id="viz-profile-kind"><option value="adiabatic">S₀–T₁ Adiabatic</option><option value="reaction">Reaction R–TS–P</option></select></label>
+<label>Energy <select id="viz-profile-energy"><option value="Electronic">Electronic (Eh)</option><option value="Gibbs">Gibbs (Eh)</option></select></label>
+<label id="viz-role-a-label">S₀ <select id="viz-role-a"></select></label>
+<label id="viz-role-b-label">T₁ <select id="viz-role-b"></select></label>
+<label id="viz-role-c-label" hidden>Product <select id="viz-role-c"></select></label>
+</div>
+<label style="display:block;margin:8px 0"><input type="checkbox" id="viz-profile-confirm"> 파일의 분자 조성·반응식, 계산 수준, 에너지 기준을 직접 대조했습니다.</label>
+<button class="btn small" id="viz-profile-run">선택한 OUT로 에너지 프로파일 계산</button>
+<pre class="viz-note" id="viz-profile-result" style="margin:8px 0 0;white-space:pre-wrap"></pre>
+<div class="viz-note">두 구조를 자동으로 동일 분자라고 추측하지 않습니다. Triplet(UKS) 상태 정체성과 TS의 IRC 확인은 별도 검증 사항입니다. Multi-molecule 반응의 합산 에너지는 지원하지 않습니다.</div>
+</details>
 <div class="viz-controls"><button class="btn small" id="viz-csv">CSV</button><button class="btn small" id="viz-svg">SVG</button><button class="btn small" id="viz-png">PNG</button></div><div id="viz-message" class="viz-note" role="status">실제 결과 파일을 선택하세요. 데이터가 없으면 그래프를 생성하지 않습니다.</div>
 <div id="viz-summary" class="viz-view"></div><div id="viz-graph" class="viz-view" hidden></div><div id="viz-table" class="viz-view" hidden></div><pre id="viz-raw" class="viz-view" hidden></pre><pre id="viz-point" class="viz-note"></pre>
 <div class="viz-note">ORCA atom index는 0부터 시작합니다. 화학적 위치 C5/C6와의 연결은 직접 확인하세요. Spin Population만으로 친핵성·선택성을 판단할 수 없습니다. Vertical TD-DFT Root와 UKS Triplet Optimization은 다릅니다. Adiabatic 값이나 상태 교차·EnT·메커니즘을 추정하지 않습니다.</div>
@@ -837,10 +851,21 @@ function vizAnalysis(s){return s.analysis||s.Analysis||{}}
 function vizFinite(n){return typeof n==='number'&&Number.isFinite(n)}
 function vizEnergy(p){return p.energyEh??p.energy??p.y}
 function vizCoordinateLabel(s){const inp=s.input||'';if(/%geom[\s\S]*?\bscan\b[\s\S]*?\bB\s+\d+\s+\d+/i.test(inp))return 'Bond Distance (Å)';if(/%geom[\s\S]*?\bscan\b[\s\S]*?\b[AD]\s+\d+\s+\d+/i.test(inp))return 'Scan Angle (degrees)';return 'Scan Coordinate (unit: original INP; Unavailable)'}
-function vizSetModel(d){visualizationModel=d;const el=$('viz-source');el.replaceChildren();for(const [i,s]of(d.sources||[]).entries()){const o=document.createElement('option');o.value=i;o.textContent=s.name;el.append(o)}vizRender()}
+function vizSetModel(d){visualizationModel=d;visualizationModel.profile=null;const el=$('viz-source');el.replaceChildren();for(const [i,s]of(d.sources||[]).entries()){const o=document.createElement('option');o.value=i;o.textContent=s.name;el.append(o)}
+ const files=(d.sources||[]).filter(x=>/\.out$/i.test(x.name)).map(x=>x.name);
+ for(const id of ['viz-role-a','viz-role-b','viz-role-c']){
+  const sel=$(id),old=sel.value;sel.replaceChildren(...files.map(name=>new Option(name,name)));if(files.includes(old))sel.value=old;
+ }
+ if(files.length>1&&!$('viz-role-b').value)$('viz-role-b').value=files[1];
+ if(files.length>2&&!$('viz-role-c').value)$('viz-role-c').value=files[2];
+ vizRender()}
 function vizSeries(){
  const s=vizSource(),a=vizAnalysis(s),kind=$('viz-kind').value;let rows=[],xlabel='Index',ylabel='';
- if(kind==='pes'){rows=($('viz-overlay').checked?visualizationModel.sources:[s]).flatMap(v=>(v.pes||[]).map((p,i)=>({...p,x:p.coordinate,y:vizEnergy(p),group:v.name,label:v.name+' · Step '+(p.step??i+1)})));xlabel=vizCoordinateLabel(s);ylabel='Electronic Energy (Eh)'}
+ if(kind==='profile'){
+ const p=visualizationModel.profile||{},points=p.points||[];rows=points.map(x=>({x:x.x,y:x.y,label:x.label,source:x.source,status:'Verified inputs',rawEnergyEh:x.energyEh}));
+ xlabel=p.kind==='reaction'?'Reaction coordinate (R → TS → P)':'State (S₀ → T₁)';ylabel='Relative '+(p.energy||'Energy')+' (kJ/mol)';
+ }
+ else if(kind==='pes'){rows=($('viz-overlay').checked?visualizationModel.sources:[s]).flatMap(v=>(v.pes||[]).map((p,i)=>({...p,x:p.coordinate,y:vizEnergy(p),group:v.name,label:v.name+' · Step '+(p.step??i+1)})));xlabel=vizCoordinateLabel(s);ylabel='Electronic Energy (Eh)'}
  else if(['optimization','gradient','scf','scfDelta'].includes(kind)){rows=(s[kind==='scfDelta'?'scf':kind]||[]).map((p,i)=>({...p,x:p.x??p.cycle??p.iteration??i+1,y:p.y??p.energyEh??p.value}));xlabel=kind.startsWith('scf')?'SCF Iteration':'Optimization Cycle';ylabel=kind==='gradient'?'Gradient (Eh/bohr)':'Energy (Eh)';if(kind==='scfDelta')rows=rows.slice(1).map((p,i)=>({...p,y:p.y-rows[i].y}))}
  else if(kind==='roots'||kind==='uv'){rows=(a.Roots||[]).map((p,i)=>({x:kind==='uv'?p.WavelengthNM:p.Root,y:kind==='uv'?p.OscillatorStrength:p.EV,label:p.Kind+' Root '+p.Root,source:s.name,step:p.Root}));xlabel=kind==='uv'?'Wavelength (nm)':'TD-DFT Root';ylabel=kind==='uv'?'Oscillator Strength':'Vertical Excitation Energy (eV)'}
  else if(kind==='frequency'){rows=(a.Frequencies||[]).map((y,i)=>({x:i+1,y,status:y<0?'Imaginary Frequency':'Real Frequency',source:s.name}));xlabel='Vibrational Mode';ylabel='Frequency (cm⁻¹)'}
@@ -857,17 +882,49 @@ function vizDraw(series){
  function node(t,a,text){let e=document.createElementNS(ns,t);for(const[k,v]of Object.entries(a))e.setAttribute(k,v);if(text!==undefined)e.textContent=text;svg.append(e);return e}
  node('rect',{width:720,height:360,fill:'#111e2f'});let minX=Math.min(...valid.map(p=>p.x)),maxX=Math.max(...valid.map(p=>p.x)),minY=Math.min(...valid.map(p=>p.y)),maxY=Math.max(...valid.map(p=>p.y));if(minX===maxX)maxX++;if(minY===maxY)maxY++;let px=x=>75+(x-minX)/(maxX-minX)*610,py=y=>295-(y-minY)/(maxY-minY)*260;
  node('path',{d:'M75 25 V295 H685',fill:'none',stroke:'#96aec5'});for(let i=0;i<=4;i++){let y=minY+(maxY-minY)*i/4,x=minX+(maxX-minX)*i/4;node('text',{x:68,y:py(y)+4,fill:'#c9dcec','text-anchor':'end','font-size':10},y.toPrecision(6));node('text',{x:px(x),y:315,fill:'#c9dcec','text-anchor':'middle','font-size':10},x.toFixed(2))}node('text',{x:380,y:346,fill:'#c9dcec','text-anchor':'middle','font-size':12},series.xlabel);node('text',{x:80,y:17,fill:'#c9dcec','font-size':12},series.ylabel);
- const stick=['uv','ir','frequency','roots','states','gibbs','enthalpy','zpe'].includes($('viz-kind').value);let path='',gap=true,lastGroup=null;
+ const stick=['uv','ir','frequency','roots','states','gibbs','enthalpy','zpe','profile'].includes($('viz-kind').value);let path='',gap=true,lastGroup=null;
  for(const p of rows){if(!vizFinite(p.x)||!vizFinite(p.y)){gap=true;continue}const x=px(p.x),y=py(p.y),bad=/fail|interrupt/i.test(p.status||'');if(stick)node('path',{d:`M${x} 295 V${y}`,stroke:bad?'#ff9e91':'#82e0ca','stroke-width':2});else{path+=(gap||lastGroup!==p.group?'M':'L')+x+','+y+' ';gap=false;lastGroup=p.group;}const dot=node('circle',{cx:x,cy:y,r:5,fill:bad?'#ff9e91':'#82e0ca',tabindex:0,style:'cursor:pointer'});const title=document.createElementNS(ns,'title');title.textContent=JSON.stringify(p,null,2);dot.append(title);dot.onclick=()=>{$('viz-point').textContent=JSON.stringify(p,null,2)+(p.xyz?'\n저장된 XYZ: '+p.xyz:'\nXYZ: Unavailable');$('viz-selected').value=p.step||rows.indexOf(p)+1;if(p.xyz){const b=document.createElement('button');b.className='btn small';b.textContent='XYZ 구조 저장';b.onclick=async()=>{try{const r=await fetch('/api/visualization/xyz?session='+encodeURIComponent(desktopSession)+'&id='+encodeURIComponent($('viz-job').value)+'&file='+encodeURIComponent(p.xyz));if(!r.ok)throw Error('XYZ를 읽지 못했습니다');download(p.xyz,await r.text())}catch(e){$('viz-message').textContent=e.message}};$('viz-point').append(b)}};dot.onfocus=()=>{$('viz-point').textContent=JSON.stringify(p,null,2)}}
  if(!stick)node('path',{d:path.trim(),fill:'none',stroke:'#82e0ca','stroke-width':1.5,'pointer-events':'none'});host.append(svg);
 }
 function vizRender(){
  const s=vizSource(),a=vizAnalysis(s),series=vizSeries();visualizationRows=series.rows;
- $('viz-summary').textContent=JSON.stringify({source:s.name,status:a.Status,Method:a.Method,Geometry:a.Geometry,Charge:a.Charge,Multiplicity:a.Multiplicity,Electronic_Eh:a.Electronic,Gibbs_Eh:a.Gibbs,Enthalpy_Eh:a.Enthalpy,ZPE_Eh:a.ZPE,warnings:[...(visualizationModel.warnings||[]),...(s.warnings||[]),...(a.Warnings||[])]},null,2);
+ $('viz-summary').textContent=JSON.stringify({scientificProfile:visualizationModel.profile||null,source:s.name,status:a.Status,Method:a.Method,Geometry:a.Geometry,Charge:a.Charge,Multiplicity:a.Multiplicity,Electronic_Eh:a.Electronic,Gibbs_Eh:a.Gibbs,Enthalpy_Eh:a.Enthalpy,ZPE_Eh:a.ZPE,warnings:[...(visualizationModel.warnings||[]),...(s.warnings||[]),...(a.Warnings||[])]},null,2);
  $('viz-message').textContent=(s.name||'결과 파일 없음')+(($('viz-kind').value==='pes'&&!s.input)?' · Scan 좌표 단위를 원본 INP에서 확인하세요. DAT 좌표를 임의로 Å로 취급하지 않습니다.':'')+' · 원본 수치와 출처를 확인하세요. 서로 다른 Method/Geometry의 자동 차감은 과학적 비교를 보장하지 않습니다.';
  $('viz-raw').textContent=s.rawOutput||s.raw||'원본 OUT은 파일에서 직접 확인하세요. 현재 응답에는 원문이 없습니다.';
  vizDraw(series);const table=document.createElement('table'),head=document.createElement('tr');for(const x of ['Point',series.xlabel,series.ylabel,'Status','Source','Line','XYZ']){let th=document.createElement('th');th.textContent=x;head.append(th)}table.append(head);for(const p of series.rows){let tr=document.createElement('tr');for(const v of [p.label??p.step??'',p.x??'Unavailable',p.y??(p.status==='Failed'?'Failed':'Unavailable'),p.status||'Unavailable',p.source||s.name,p.line??'Unavailable',p.xyz||'Unavailable']){let td=document.createElement('td');td.textContent=v;tr.append(td)}table.append(tr)}$('viz-table').replaceChildren(table);
 }
+function vizProfileMode(){
+ const reaction=$('viz-profile-kind').value==='reaction';
+ $('viz-role-a-label').firstChild.textContent=reaction?'Reactant ':'S₀ ';
+ $('viz-role-b-label').firstChild.textContent=reaction?'TS ':'T₁ ';
+ $('viz-role-c-label').hidden=!reaction;
+ $('viz-profile-result').textContent='';
+}
+$('viz-profile-kind').onchange=vizProfileMode;vizProfileMode();
+$('viz-profile-run').onclick=async()=>{
+ try{
+  if(!$('viz-profile-confirm').checked)throw Error('먼저 분자 조성·계산 조건 확인란을 체크하세요.');
+  const reaction=$('viz-profile-kind').value==='reaction';
+  const sources=reaction?
+   {Reactant:$('viz-role-a').value,TS:$('viz-role-b').value,Product:$('viz-role-c').value}:
+   {S0:$('viz-role-a').value,T1:$('viz-role-b').value};
+  const res=await desktopAPI('visualization/profile',{
+   jobId:$('viz-job').value,kind:reaction?'reaction':'adiabatic',
+   energy:$('viz-profile-energy').value,sources,confirmed:true
+  });
+  visualizationModel.profile=res;
+  $('viz-kind').value='profile';
+  const value=reaction?'Activation barrier: '+res.barrierKJ.toFixed(4)+' kJ/mol; Reaction Δ: '+res.reactionKJ.toFixed(4)+' kJ/mol':
+   'Adiabatic T₁–S₀: '+res.gapKJ.toFixed(4)+' kJ/mol';
+  $('viz-profile-result').textContent=value+'\n'+(res.warnings||[]).join('\n');
+  vizRender();
+  for(const b of document.querySelectorAll('[data-viz-tab]'))b.setAttribute('aria-selected',b.dataset.vizTab==='graph'?'true':'false');
+  for(const name of ['summary','graph','table','raw'])$('viz-'+name).hidden=name!=='graph';
+ }catch(e){
+  visualizationModel.profile=null;
+  $('viz-profile-result').textContent='계산 불가: '+e.message;
+ }
+};
 for(const b of document.querySelectorAll('[data-viz-tab]'))b.onclick=()=>{for(const x of document.querySelectorAll('[data-viz-tab]'))x.setAttribute('aria-selected',x===b?'true':'false');for(const name of ['summary','graph','table','raw'])$('viz-'+name).hidden=name!==b.dataset.vizTab};
 for(const id of ['viz-source','viz-kind','viz-unit','viz-reference','viz-selected','viz-atom','viz-pop','viz-overlay'])$(id).onchange=vizRender;
 $('viz-load').onclick=async()=>{try{const r=await fetch('/api/visualization?session='+encodeURIComponent(desktopSession)+($('viz-job').value?'&id='+encodeURIComponent($('viz-job').value):''));if(!r.ok)throw Error((await r.json()).error||'결과를 읽지 못했습니다');vizSetModel(await r.json())}catch(e){$('viz-message').textContent=e.message}};
