@@ -2,14 +2,33 @@ name: Release Windows Portable
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'New release tag, e.g. v1.4.0'
+        type: string
+        required: true
+        default: 'v1.4.0'
+      prerelease:
+        description: 'Test release; excluded from automatic stable updates'
+        type: boolean
+        required: true
+        default: true
 permissions:
   contents: write
 jobs:
   release:
     runs-on: windows-latest
     timeout-minutes: 25
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v4
+      - name: Validate release tag and branch
+        shell: pwsh
+        run: |
+          if ($env:RELEASE_TAG -notmatch '^v[0-9]+\.[0-9]+\.[0-9]+$') { throw 'Version must look like v1.4.0.' }
+          if ('${{ github.event_name }}' -eq 'workflow_dispatch' -and '${{ github.ref_name }}' -ne 'main') { throw 'Run manual releases from main.' }
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
@@ -18,7 +37,7 @@ jobs:
       - name: Build versioned backend
         shell: pwsh
         run: |
-          $version='${{ github.ref_name }}'.TrimStart('v')
+          $version=$env:RELEASE_TAG.TrimStart('v')
           $env:CGO_ENABLED='0'
           New-Item -ItemType Directory -Force bin | Out-Null
           go build -trimpath -ldflags "-s -w -H windowsgui -X main.appVersion=$version" -o bin/ORCA_Nova_raw.exe .
@@ -53,4 +72,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create '${{ github.ref_name }}' ORCA_Nova_Portable_Windows.zip SHA256SUMS.txt --generate-notes --verify-tag
+          $cmd = @('release','create',$env:RELEASE_TAG,'ORCA_Nova_Portable_Windows.zip','SHA256SUMS.txt','--target',$env:GITHUB_SHA,'--generate-notes','--title',('ORCA Nova '+$env:RELEASE_TAG))
+          if ('${{ github.event_name }}' -eq 'workflow_dispatch' -and '${{ inputs.prerelease }}' -eq 'true') { $cmd += '--prerelease' }
+          gh @cmd
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
