@@ -9,6 +9,7 @@ ORCA Nova does not redistribute ORCA and is not affiliated with its developers.
 - DFT, TD-DFT, S0/S1/T1, geometry optimization, frequency, spin-density presets and multi-step workflows.
 - Korean help tooltips for calculations, functionals, basis sets, solvents and other options.
 - Select a locally installed `orca.exe`, run calculations, view `.out` logs, and inspect failure reports.
+- **계산 전 검사 (Preflight):** Check XYZ atom counts/coordinates, Charge/Multiplicity electron parity, source file references and upstream Optimization dependencies without running ORCA.
 - Native WebView2 host with an ORCA Nova icon, Windows portable distribution.
 - Check GitHub Releases for updates; install a new version only after user approval and SHA-256 check.
 
@@ -29,7 +30,8 @@ The default job directory is `Documents/ORCA Nova Jobs`; preferences live in `%A
 - **Backend:** Go 1.23; no third-party Go packages.
 - **Native Windows frontend:** .NET Framework 4.8 WinForms and Microsoft.Web.WebView2.
 - **CI:** `.github/workflows/windows-build.yml` builds/test artifacts on every push to `main` and manually (`workflow_dispatch`).
-- **Release:** `.github/workflows/release.yml` packages a versioned Windows ZIP and `SHA256SUMS.txt` when a `v*` tag is pushed.
+- **Release:** `.github/workflows/release.yml` packages a versioned ZIP and checksums on `v*` tag push or **Actions > Release Windows Portable > Run workflow** on `main`.
+- **First pilot release:** Choose `release_tag: v1.4.0` and leave `prerelease: true` while Windows/ORCA validation is incomplete. Prereleases do not appear in the stable auto-updater. For a verified stable Release, select `prerelease: false` for a *new* version tag.
 - **Update source:** `https://github.com/MRYoonn/ORCA-Nova/releases/latest`.
 
 To build the Go backend locally, run `go test ./...` then `go build .`. The Windows native host and icon packaging are built by GitHub Actions on Windows.
@@ -43,3 +45,9 @@ To build the Go backend locally, run `go test ./...` then `go build .`. The Wind
 
 ## Status
 Source migration from ORCA Studio to ORCA Nova. CI build and native taskbar icon require Windows-run verification before labeling a Release stable.
+
+## Next development milestones
+- P0: Real ORCA 6.x calculation smoke tests on Windows, state/Root validation, reliable rollback of portable updates.
+- P1: Resume interrupted multi-step workflows, job queue, failure analysis per stage.
+- P1: Parse OUT energies, optimized geometry, imaginary frequencies, spin population and spin contamination into a Korean results summary.
+- P2: Compare Vertical/Adiabatic S1/T1 gaps with clearly labeled methods and units; support multiple XYZ batch runs.
