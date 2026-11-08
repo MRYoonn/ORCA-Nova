@@ -434,3 +434,76 @@ func TestQueueRetryRejectsDiskEditedInputWithoutChangingReservation(t *testing.T
 		t.Fatal("rejected retry changed the original job or dispatched a worker")
 	}
 }
+
+func TestQueueQuitKeepsPendingJobsAndPausesDispatch(t *testing.T) {
+	q := mockQueue(t)
+	e := addEntry(t, q, smallReq("pending across quit"))
+	q.Paused = false
+	if err := q.pauseForQuit(); err != nil {
+		t.Fatal(err)
+	}
+	if !q.Paused || e.State != "Pending" || e.worker != nil {
+		t.Fatal("exit unexpectedly removed or executed pending job")
+	}
+	recovered := newJobQueue(q.app, q.path)
+	if len(recovered.Jobs) != 1 || recovered.Jobs[0].State != "Pending" || !recovered.Paused {
+		t.Fatal("pending job did not survive restart")
+	}
+}
+
+func TestQueueQuitRejectsRunningWorker(t *testing.T) {
+	q := mockQueue(t)
+	e := addEntry(t, q, smallReq("running"))
+	e.worker = &App{job: &Job{State: "running"}}
+	if err := q.pauseForQuit(); err == nil {
+		t.Fatal("app quit accepted an active worker")
+	}
+}
+
+func TestRetryDoesNotCopyFailedStageGBWOrHess(t *testing.T) {
+	q := mockQueue(t)
+	req := smallReq("stale restart")
+	e := addEntry(t, q, req)
+	q.mu.Lock()
+	err := q.prepareLocked(e, q.app.cfg)
+	q.mu.Unlock()
+	if err != nil {
+		t.Fatal(err)
+	}
+	old := e.Job.Folder
+	for _, pair := range [][2]string{
+		{"water_opt.xyz", waterXYZ},
+		{"water_opt.out", "ORCA TERMINATED NORMALLY"},
+		{"water_opt.gbw", "completed orbitals"},
+		{"triplet.gbw", "failed orbitals"},
+		{"triplet.hess", "failed hessian"},
+		{"triplet.out", "SCF NOT CONVERGED"},
+		{"FAILURE_ANALYSIS.txt", "failed"},
+	} {
+		if err := os.WriteFile(filepath.Join(old, pair[0]), []byte(pair[1]), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	e.Job.CompletedStages = []string{"water_opt.inp"}
+	e.State = "Failed"
+	if err := q.action(e.ID, "retry"); err != nil {
+		t.Fatal(err)
+	}
+	fresh := e.Job.Folder
+	if old == fresh || e.State != "Pending" {
+		t.Fatal("retry did not preserve old result and schedule a fresh attempt")
+	}
+	for _, name := range []string{"water.xyz", "water_opt.inp", "water_opt.xyz", "water_opt.out", "water_opt.gbw"} {
+		if _, err := os.Stat(filepath.Join(fresh, name)); err != nil {
+			t.Fatalf("required input/completed stage artifact %s missing: %v", name, err)
+		}
+	}
+	for _, name := range []string{"triplet.gbw", "triplet.hess", "triplet.out", "FAILURE_ANALYSIS.txt"} {
+		if _, err := os.Stat(filepath.Join(fresh, name)); !os.IsNotExist(err) {
+			t.Fatalf("stale failed artifact %s was reused: %v", name, err)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(old, "triplet.gbw")); err != nil {
+		t.Fatal("original failure artifacts were removed")
+	}
+}
