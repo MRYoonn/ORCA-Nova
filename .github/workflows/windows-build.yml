@@ -22,7 +22,7 @@ jobs:
           $result = $LASTEXITCODE
           $output | Tee-Object -FilePath GO_TEST_OUTPUT.txt
           if ($result -ne 0) {
-            $detail = (($output | Select-Object -Last 100) -join "`n").Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
+            $detail = (($output | Select-String -Pattern 'FAIL|\.go:\d+|panic:|fatal' | Select-Object -First 25) -join "`n").Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
             Write-Output "::error title=Windows Go test failure::$detail"
             $output | Set-Content BUILD_FAILURE_ANALYSIS.md
           }

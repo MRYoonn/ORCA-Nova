@@ -15,3 +15,5 @@ New compile/test failures and fixes are recorded below as they occur. Existing h
 ## Windows run 42496832164
 
 Code commit 76a2f0b: Windows workflow failed after 53 seconds (exit 1). The public page did not expose test logs; authenticated API requests remain blocked by 403. No cause is claimed from the exit code alone. Added CI capture of verbose Go test output and a bounded public error annotation to obtain the actual failing test without bypassing access controls. Local Linux 73 test/subtest cases and race suite passed. Follow-up run and fix recorded below.
+
+Run 42496996881 reproduced exit 1. Public diagnostics proved the new descendant cancellation and retry transaction tests passed on Windows. GitHub truncated the broad verbose annotation before the actual failing line, so the diagnostic annotation now selects only FAIL/panic/source-location lines. Full runner output remains captured. No assertions were disabled or success inferred.
