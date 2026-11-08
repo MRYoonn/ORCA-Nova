@@ -1,0 +1,63 @@
+name: Windows Portable Build
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Test Go backend
+        run: go test ./...
+      - name: Build Windows backend
+        shell: pwsh
+        run: |
+          $env:CGO_ENABLED = '0'
+          New-Item -ItemType Directory -Force bin | Out-Null
+          go build -trimpath -ldflags '-s -w -H windowsgui' -o bin/ORCA_Nova_raw.exe .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python embed_icon.py bin/ORCA_Nova_raw.exe assets/ORCA_Nova.ico bin/ORCA_Nova.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build native WebView2 host (taskbar icon)
+        shell: pwsh
+        run: |
+          dotnet restore native_host/ORCA_Nova_UI.csproj
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet build native_host/ORCA_Nova_UI.csproj --configuration Release --no-restore
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Package portable application
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item bin/ORCA_Nova.exe dist/
+          Copy-Item assets/ORCA_Nova.ico dist/
+          Get-ChildItem native_host/bin/Release/net48 | Copy-Item -Destination dist -Recurse -Force
+          if (-not (Test-Path dist/ORCA_Nova_UI.exe)) { throw 'native WebView2 host was not packaged' }
+          Compress-Archive -Path dist/* -DestinationPath ORCA_Nova_Portable_Windows.zip -Force
+          Get-FileHash ORCA_Nova_Portable_Windows.zip -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  ORCA_Nova_Portable_Windows.zip" } | Set-Content SHA256SUMS.txt
+      - name: Write build failure report
+        if: failure()
+        shell: pwsh
+        run: |
+          "ORCA Nova Windows build failed" | Set-Content BUILD_FAILURE_REPORT.txt
+          "run: $env:GITHUB_RUN_ID" | Add-Content BUILD_FAILURE_REPORT.txt
+          "sha: $env:GITHUB_SHA" | Add-Content BUILD_FAILURE_REPORT.txt
+          "Check GitHub Actions job step logs for the failing compiler or packaging command." | Add-Content BUILD_FAILURE_REPORT.txt
+      - name: Upload portable package and failure report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ORCA-Nova-Windows-Build
+          path: |
+            ORCA_Nova_Portable_Windows.zip
+            SHA256SUMS.txt
+            BUILD_FAILURE_REPORT.txt
+          if-no-files-found: warn

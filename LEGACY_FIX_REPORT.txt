@@ -1,0 +1,37 @@
+ORCA Nova v1.1 | XYZ 파일 동기화 오류 수정 보고서
+====================================================
+증상
+- Windows ORCA Runner 하단에서 ace.xyz 선택 후 '1개 추가 XYZ'로 나타남.
+- 그러나 '현재 INP 실행' 시 '먼저 Avogadro의 XYZ 파일을 불러와 주세요' 오류.
+
+원인
+- 이전 v1.0의 하단 '추가 XYZ 선택'은 desktopXYZ 맵에만 파일을 등록함.
+- INP 생성기와 실행기 기본 파일 상태(xyzOriginal / loadedXYZ)는 갱신되지 않음.
+- 실행 전 desktopRunData()는 xyzOriginal 존재 여부를 먼저 검사했기 때문에 실행이 차단됨.
+
+수정
+1. 하단 버튼을 'XYZ 선택 / 추가'로 명확하게 변경.
+2. 기본 XYZ가 없는 상태에서 하단으로 선택한 첫 XYZ를 기본 분자로 자동 등록.
+3. 좌측 XYZ 불러오기/하단 XYZ 선택을 같은 applyPrimaryXYZ() 경로로 동기화.
+4. Runner에 '기본 XYZ: 파일명 (원자 수) · 추가 XYZ N개'를 분리 표시.
+5. 기존 사용자 세션 등에서 기본 XYZ가 없고 추가 맵만 있다면 실행 요청 전에 자동 복구.
+6. 동일 파일 재선택, 중복 기본 파일 처리, 잘못된 XYZ 입력 검사.
+
+검증 결과 (Chromium UI 자동 테스트)
+- 하단에서 ace.xyz만 선택 → 좌측 INP에 ace.xyz 반영: PASS
+- 하단만 선택하고 '현재 INP 실행'용 요청 데이터 생성: PASS
+- Workflow W2 두 단계의 XYZ 참조와 추가 파일 검사: PASS
+- 좌측 XYZ 변경 시 하단 기본 XYZ 동기화: PASS
+- 잘못된 XYZ 파일 등록 방지: PASS
+- 브라우저 JavaScript 예외: 없음
+- Windows 64-bit PE EXE 재빌드 및 다중 해상도 범고래 ICO 임베드: PASS
+
+제한사항
+- 실제 사용자의 Windows PC에서 설치된 ORCA를 통한 계산 완료 검증은 수행하지 못함.
+- ORCA 버전, 설치 경로, MPI, 파라미터 및 작업 폴더 권한은 로컬 PC 확인 필요.
+
+사용 방법
+- 기존 ORCA Nova 실행 후 [앱 종료] 버튼을 누르고 새 v1.1 EXE를 실행.
+- 기존 v1.0 EXE는 삭제하거나 보관해도 설정/작업 폴더 내용에는 영향 없음.
+- [XYZ 선택 / 추가]로 ace.xyz를 선택하면 '기본 XYZ: ace.xyz'로 표기됨.
+- INP Editor의 '* xyzfile charge multiplicity ace.xyz'를 확인한 후 실행.

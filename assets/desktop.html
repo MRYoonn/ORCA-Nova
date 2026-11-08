@@ -550,7 +550,7 @@ async function desktopUpdateCheck(){
  try{const d=await desktopAPI('update/check',{});desktopUpdateShow(d)}catch(e){status.textContent='업데이트 확인 실패: '+e.message}finally{b.disabled=false}
 }
 function desktopUpdateShow(d){
- if(!d)return;document.getElementById('update-version').textContent='v'+(d.current||'1.2.0');
+ if(!d)return;document.getElementById('update-version').textContent='v'+(d.current||'1.3.0');
  document.getElementById('update-status').textContent=d.message||'확인 전';
  document.getElementById('update-install').hidden=!d.available;
 }
