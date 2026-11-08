@@ -28,6 +28,21 @@ func TestMain(m *testing.M) {
 				os.Exit(0)
 			}
 		}
+		if strings.Contains(s, "MOCK_BLOCK") {
+			// Deterministic integration fixture: keep the child ORCA process
+			// alive until the test explicitly allows the retried job to finish.
+			deadline := time.Now().Add(8 * time.Second)
+			for {
+				if _, err := os.Stat(filepath.Join("..", "allow_continue")); err == nil {
+					break
+				}
+				if time.Now().After(deadline) {
+					fmt.Println("MOCK BLOCK TIMEOUT")
+					os.Exit(34)
+				}
+				time.Sleep(25 * time.Millisecond)
+			}
+		}
 		if strings.Contains(s, "MOCK_SLOW") {
 			time.Sleep(10 * time.Second)
 		}
@@ -505,5 +520,102 @@ func TestRetryDoesNotCopyFailedStageGBWOrHess(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(old, "triplet.gbw")); err != nil {
 		t.Fatal("original failure artifacts were removed")
+	}
+}
+
+func TestBatchFourJobsParallelCancelRetryReports(t *testing.T) {
+	if runtime.NumCPU() < 2 {
+		t.Skip("parallel scenario requires two CPUs")
+	}
+	q := mockQueue(t)
+	q.Limits = QueueLimits{Concurrency: 2, CPU: 2, RAMMB: 1024}
+	for _, name := range []string{"A", "B", "C", "D"} {
+		req := smallReq(name)
+		if name == "B" {
+			req.Files[1].Content += "\n# MOCK_BLOCK\n"
+		}
+		addEntry(t, q, req)
+	}
+	if err := q.action("", "resume"); err != nil {
+		t.Fatal(err)
+	}
+	waitQueue(t, q, func(es []*QueueEntry) bool {
+		return es[0].State == "Running" && es[1].State == "Running" &&
+			es[2].State == "Pending" && es[3].State == "Pending"
+	})
+	q.mu.Lock()
+	b := q.Jobs[1]
+	old := b.Job.Folder
+	q.mu.Unlock()
+
+	// Ensure that the actual ORCA substitute was started before cancelling.
+	startDeadline := time.Now().Add(5 * time.Second)
+	for {
+		if _, err := os.Stat(filepath.Join(old, "started")); err == nil {
+			break
+		}
+		if time.Now().After(startDeadline) {
+			t.Fatal("mock ORCA child process never started")
+		}
+		time.Sleep(15 * time.Millisecond)
+	}
+	if err := q.action(b.ID, "cancel"); err != nil {
+		t.Fatal(err)
+	}
+	waitQueue(t, q, func(es []*QueueEntry) bool {
+		return es[1].State == "Interrupted"
+	})
+	waitQueue(t, q, func(es []*QueueEntry) bool {
+		return es[0].State == "Completed" && es[2].State == "Completed" &&
+			es[3].State == "Completed" && es[1].State == "Interrupted"
+	})
+	if err := os.WriteFile(filepath.Join(q.app.cfg.WorkRoot, "allow_continue"), []byte("yes"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := q.action(b.ID, "retry"); err != nil {
+		t.Fatal(err)
+	}
+	waitQueue(t, q, func(es []*QueueEntry) bool {
+		for _, e := range es {
+			if e.State != "Completed" {
+				return false
+			}
+		}
+		return true
+	})
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	if b.Job.Folder == old {
+		t.Fatal("cancelled job retried in original folder")
+	}
+	if len(q.Jobs) != 4 {
+		t.Fatalf("expected four jobs, got %d", len(q.Jobs))
+	}
+	dirs := map[string]bool{}
+	for _, e := range q.Jobs {
+		if dirs[e.Job.Folder] {
+			t.Fatal("two jobs share a calculation folder")
+		}
+		dirs[e.Job.Folder] = true
+		if len(e.Job.CompletedStages) != len(e.Request.Stages) {
+			t.Fatalf("%s: missing completed workflow stages", e.Label)
+		}
+		for _, name := range []string{"analysis.txt", "results.json"} {
+			if _, err := os.Stat(filepath.Join(e.Job.Folder, name)); err != nil {
+				t.Fatalf("%s: report %s: %v", e.Label, name, err)
+			}
+		}
+	}
+	for _, name := range []string{"batch_results.csv", "batch_summary.txt"} {
+		b, err := os.ReadFile(filepath.Join(q.app.cfg.WorkRoot, name))
+		if err != nil {
+			t.Fatalf("batch result %s not written: %v", name, err)
+		}
+		if len(b) == 0 || !strings.Contains(string(b), "B") {
+			t.Fatalf("batch result %s is empty or missing molecule B", name)
+		}
+	}
+	if _, err := os.Stat(old); err != nil {
+		t.Fatal("cancelled original job directory was lost:", err)
 	}
 }
