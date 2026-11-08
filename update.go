@@ -175,7 +175,7 @@ func (u *updater) getFile(url string, max int64) ([]byte, error) {
 	if !strings.HasPrefix(url, "https://github.com/"+updateRepository+"/releases/download/") && !strings.HasPrefix(url, "https://objects.githubusercontent.com/") {
 		return nil, errors.New("신뢰할 수 없는 GitHub Release 다운로드 URL")
 	}
-	client := &http.Client{Timeout: 4 * time.Minute, CheckRedirect: func(req *http.Request, via []*http.Request) error {
+	client := &http.Client{Timeout: 4 * time.Minute, Transport: u.client.Transport, CheckRedirect: func(req *http.Request, via []*http.Request) error {
 		if len(via) > 8 {
 			return errors.New("redirect excess")
 		}
@@ -256,9 +256,8 @@ func (u *updater) prepare() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	got := sha256.Sum256(zipData)
-	if hex.EncodeToString(got[:]) != want {
-		return "", errors.New("SHA-256 검사 실패: 다운로드를 중단했어요")
+	if err = verifyReleaseDigest(zipData, want); err != nil {
+		return "", err
 	}
 	dst, err := os.Executable()
 	if err != nil {
@@ -276,69 +275,9 @@ func (u *updater) prepare() (string, error) {
 	if err = os.WriteFile(zipPath, zipData, 0600); err != nil {
 		return "", err
 	}
-	zr, err := zip.OpenReader(zipPath)
-	if err != nil {
-		return "", err
-	}
-	defer zr.Close()
 	stageDir := filepath.Join(tmpDir, "stage")
-	if err = os.MkdirAll(stageDir, 0700); err != nil {
+	if err = stageReleaseArchive(zipPath, stageDir); err != nil {
 		return "", err
-	}
-	foundExe := false
-	var total uint64
-	for _, z := range zr.File {
-		name := filepath.Clean(filepath.FromSlash(z.Name))
-		if name == "." || filepath.IsAbs(name) || name == ".." || strings.HasPrefix(name, ".."+string(os.PathSeparator)) || strings.Contains(name, ":") {
-			return "", errors.New("invalid ZIP entry path")
-		}
-		if z.FileInfo().IsDir() {
-			continue
-		}
-		// No scripts, user files, or arbitrary executables are allowed inside the auto-update payload.
-		lower := strings.ToLower(filepath.Base(name))
-		ext := strings.ToLower(filepath.Ext(name))
-		if !(lower == "orca_nova.exe" || lower == "orca_nova_ui.exe" || lower == "orca_nova.ico" || ext == ".dll" || ext == ".config") {
-			return "", errors.New("unexpected release file: " + name)
-		}
-		if lower == "orca_nova.exe" {
-			foundExe = true
-		}
-		if z.UncompressedSize64 > 100*1024*1024 {
-			return "", errors.New("release file too large")
-		}
-		total += z.UncompressedSize64
-		if total > 350*1024*1024 {
-			return "", errors.New("release payload too large")
-		}
-		target := filepath.Join(stageDir, name)
-		if err = os.MkdirAll(filepath.Dir(target), 0700); err != nil {
-			return "", err
-		}
-		f, err := z.Open()
-		if err != nil {
-			return "", err
-		}
-		out, err := os.OpenFile(target, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
-		if err != nil {
-			f.Close()
-			return "", err
-		}
-		n, copyErr := io.Copy(out, io.LimitReader(f, 100*1024*1024+1))
-		closeErr := out.Close()
-		f.Close()
-		if copyErr != nil {
-			return "", copyErr
-		}
-		if closeErr != nil {
-			return "", closeErr
-		}
-		if n > 100*1024*1024 {
-			return "", errors.New("release file too large")
-		}
-	}
-	if !foundExe {
-		return "", errors.New("release ZIP missing ORCA_Nova.exe")
 	}
 	script := filepath.Join(tmpDir, "apply_update.ps1")
 	if err = os.WriteFile(script, []byte(updateScript), 0600); err != nil {
@@ -375,3 +314,80 @@ try {
   ('Updated: '+(Get-Date)) | Set-Content -LiteralPath $Log -Encoding UTF8
 }catch{('ERROR: '+$_.Exception.Message) | Set-Content -LiteralPath $Log -Encoding UTF8}
 `
+
+// stageReleaseArchive validates portable payload paths and types before installation.
+func stageReleaseArchive(zipPath, stageDir string) error {
+	zr, err := zip.OpenReader(zipPath)
+	if err != nil {
+		return err
+	}
+	defer zr.Close()
+	if err = os.MkdirAll(stageDir, 0700); err != nil {
+		return err
+	}
+	foundExe := false
+	var total uint64
+	for _, z := range zr.File {
+		name := filepath.Clean(filepath.FromSlash(z.Name))
+		if name == "." || filepath.IsAbs(name) || name == ".." || strings.HasPrefix(name, ".."+string(os.PathSeparator)) || strings.Contains(name, ":") {
+			return errors.New("invalid ZIP entry path")
+		}
+		if z.FileInfo().IsDir() {
+			continue
+		}
+		// No scripts, user files, or arbitrary executables are allowed inside the auto-update payload.
+		lower := strings.ToLower(filepath.Base(name))
+		ext := strings.ToLower(filepath.Ext(name))
+		if !(lower == "orca_nova.exe" || lower == "orca_nova_ui.exe" || lower == "orca_nova.ico" || ext == ".dll" || ext == ".config") {
+			return errors.New("unexpected release file: " + name)
+		}
+		if strings.EqualFold(name, "ORCA_Nova.exe") {
+			foundExe = true
+		}
+		if z.UncompressedSize64 > 100*1024*1024 {
+			return errors.New("release file too large")
+		}
+		total += z.UncompressedSize64
+		if total > 350*1024*1024 {
+			return errors.New("release payload too large")
+		}
+		target := filepath.Join(stageDir, name)
+		if err = os.MkdirAll(filepath.Dir(target), 0700); err != nil {
+			return err
+		}
+		f, err := z.Open()
+		if err != nil {
+			return err
+		}
+		out, err := os.OpenFile(target, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
+		if err != nil {
+			f.Close()
+			return err
+		}
+		n, copyErr := io.Copy(out, io.LimitReader(f, 100*1024*1024+1))
+		closeErr := out.Close()
+		f.Close()
+		if copyErr != nil {
+			return copyErr
+		}
+		if closeErr != nil {
+			return closeErr
+		}
+		if n > 100*1024*1024 {
+			return errors.New("release file too large")
+		}
+	}
+	if !foundExe {
+		return errors.New("release ZIP missing ORCA_Nova.exe")
+	}
+
+	return nil
+}
+
+func verifyReleaseDigest(data []byte, want string) error {
+	got := sha256.Sum256(data)
+	if hex.EncodeToString(got[:]) != want {
+		return errors.New("SHA-256 검사 실패: 다운로드를 중단했어요")
+	}
+	return nil
+}
