@@ -373,10 +373,6 @@ func (a *App) route(w http.ResponseWriter, r *http.Request) {
 		revealFolder(j.Folder)
 		respond(w, 200, map[string]bool{"ok": true})
 	case "/api/quit":
-		if a.queueBusy() {
-			fail(w, 409, "Queue 작업을 먼저 중단하세요.")
-			return
-		}
 		if r.Method != http.MethodPost {
 			fail(w, 405, "Method not allowed")
 			return
@@ -387,6 +383,12 @@ func (a *App) route(w http.ResponseWriter, r *http.Request) {
 		if running {
 			fail(w, 409, "계산이 실행 중입니다. 먼저 중단하세요.")
 			return
+		}
+		if a.queue != nil {
+			if err := a.queue.pauseForQuit(); err != nil {
+				fail(w, 409, "Queue 종료 보류: "+err.Error())
+				return
+			}
 		}
 		respond(w, 200, map[string]bool{"ok": true})
 		go func() { time.Sleep(200 * time.Millisecond); os.Exit(0) }()
