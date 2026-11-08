@@ -6,6 +6,8 @@ import (
     "math"
     "net/http"
     "strings"
+    "path/filepath"
+    "sort"
 )
 
 // Profiles never infer molecular identity or reaction-state roles from filenames.
@@ -159,6 +161,26 @@ func (a *App) profileFolder(id string) (string,error) {
  return "",fmt.Errorf("Batch Job %q을 찾지 못했습니다",id)
 }
 
+// xyzFormula reads the exact composition, not merely atom count or total Z.
+// This catches iso-electronic but different-element geometries before a gap
+// can be presented as physically comparable.
+func xyzFormula(raw string)(string,error){
+ count,_,err:=parseXYZAtoms(raw);if err!=nil{return "",err}
+ lines:=strings.Split(strings.ReplaceAll(raw,"\r\n","\n"),"\n")
+ atoms:=map[string]int{}
+ for i:=0;i<count;i++ {
+  fields:=strings.Fields(lines[i+2])
+  symbol:=strings.ToUpper(fields[0][:1])+strings.ToLower(fields[0][1:])
+  atoms[symbol]++
+ }
+ names:=make([]string,0,len(atoms))
+ for sym:=range atoms {names=append(names,sym)}
+ sort.Strings(names)
+ var parts []string
+ for _,sym:=range names {parts=append(parts,fmt.Sprintf("%s%d",sym,atoms[sym]))}
+ return strings.Join(parts,""),nil
+}
+
 // resolveProfileSources joins each explicit role to a known job and an actual
 // OUT file. Reused filenames are accepted across different jobs, but a file
 // from the same job cannot masquerade as both reactant and TS.
@@ -176,6 +198,7 @@ func (a *App) resolveProfileSources(req ScientificProfileRequest) (ScientificPro
  sources:=map[string]OrcaAnalysis{}
  seen:=map[string]bool{}
  loaded:=map[string]Visualization{}
+ formulas:=map[string]string{}
  for _,role:=range roles {
   file:=req.Sources[role]
   if !safeName(file)||!strings.EqualFold(filepathExt(file),".out") {
@@ -203,11 +226,32 @@ func (a *App) resolveProfileSources(req ScientificProfileRequest) (ScientificPro
     key:=label+"/"+file
     resolved.Sources[role]=key
     sources[key]=src.Analysis
+    // Verify composition against actual local XYZ when available. If an XYZ
+    // is unavailable, the request still requires explicit user confirmation.
+    geo:=src.Analysis.Geometry
+    if safeName(geo)&&strings.EqualFold(filepath.Ext(geo),".xyz"){
+     data,readErr:=readPlotFile(filepath.Join(folder,geo),4<<20)
+     if readErr==nil {
+      formula,formulaErr:=xyzFormula(string(data))
+      if formulaErr!=nil {return req,nil,fmt.Errorf("%s: XYZ 조성을 확인할 수 없습니다: %w",role,formulaErr)}
+      formulas[role]=formula
+     }
+    }
     found=true
     break
    }
   }
   if !found {return req,nil,fmt.Errorf("%s: 선택 Job에서 OUT %q을 찾지 못했습니다",role,file)}
+ }
+ // Formula equality is a necessary (not sufficient) guard for the 1:1
+ // structure profiles supported here; IRC and state identity still need review.
+ var expected string
+ for _,role:=range roles{
+  formula:=formulas[role]
+  if formula==""{continue}
+  if expected==""{expected=formula}else if formula!=expected {
+   return req,nil,fmt.Errorf("구조의 원소 조성이 서로 다릅니다 (%s: %s, 기대 %s)",role,formula,expected)
+  }
  }
  return resolved,sources,nil
 }
