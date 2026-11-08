@@ -111,13 +111,13 @@
 <div id="desktop-app-panel" class="desktop-app-panel">
  <div class="desktop-app-head"><div><b>Windows ORCA Runner</b> <span class="runner-chip">로컬 실행</span><p>ORCA 설치 경로를 한 번 지정하면 INP 생성 → 계산 실행 → OUT 저장까지 할 수 있어요.</p></div><span class="help-icon" tabindex="0" data-title="ORCA Runner" data-help="ORCA 자체는 별도 설치가 필요해요. 이 프로그램은 ORCA를 설치하거나 DFT 계산을 대신하지 않고, 설치된 orca.exe를 실행해요. 계산 중에는 프로그램을 종료하지 마세요.">?</span></div>
  <div class="runner-settings"><label>ORCA.exe 위치 <span class="help-icon" tabindex="0" data-title="ORCA 실행 파일" data-help="예: C:\ORCA\orca.exe. 실행에 사용할 ORCA 설치 폴더의 실제 orca.exe 경로를 입력하세요. Windows에 설치된 ORCA 버전의 MPI 환경이 필요할 수 있어요.">?</span><input id="desktop-orca-path" placeholder="C:\ORCA\orca.exe" spellcheck="false"></label><label>작업 폴더 <span class="help-icon" tabindex="0" data-title="Job Working Directory" data-help="계산 단계별 INP, XYZ, OUT 파일과 실패 보고서를 자동 저장할 폴더예요. 계산마다 새 하위 폴더를 만들어요.">?</span><input id="desktop-work-root" placeholder="C:\Users\...\Documents\ORCA Nova Jobs" spellcheck="false"></label></div>
- <div class="runner-actions"><button id="desktop-save-config" class="btn small ghost">설정 저장</button><button id="desktop-preflight" class="btn small ghost" data-help="ORCA 실행 없이 XYZ 원자수·좌표, Charge/Multiplicity, Workflow 단계 연결을 미리 확인해요.">🔎 계산 전 검사</button><button id="desktop-run" class="btn primary">▶ 현재 INP 실행</button><button id="desktop-run-wf" class="btn small">▶ 전체 Workflow 실행</button><button id="desktop-stop" class="btn small danger">■ 계산 중단</button></div>
- <div class="runner-more"><label class="btn small ghost" for="desktop-extra-xyz" data-help="여기에서 XYZ를 선택해도 돼요. 기본 XYZ가 없다면 첫 파일을 기본 분자로 등록하고, 나머지는 반응물·생성물 등 추가 XYZ로 등록해요.">+ XYZ 선택 / 추가 <span class="help-icon">?</span></label><input id="desktop-extra-xyz" type="file" accept=".xyz" multiple hidden><span id="desktop-extra-info">기본 XYZ 없음 · 추가 XYZ 0개</span><span class="spacer"></span><button class="btn small ghost" id="desktop-reveal">📁 결과 폴더</button><button class="btn small ghost" id="desktop-quit">앱 종료</button></div>
+ <div class="runner-actions"><button id="desktop-save-config" class="btn small ghost">설정 저장</button><button id="desktop-preflight" class="btn small ghost" data-help="실제 ORCA를 실행하지 않고 XYZ 원자수·좌표, INP의 Charge/Multiplicity, Workflow 연결을 먼저 검사해요. 계산 정확성 자체를 보장하지는 않아요.">🔎 계산 전 검사</button><button id="desktop-run" class="btn primary">▶ 현재 INP 실행</button><button id="desktop-run-wf" class="btn small">▶ 전체 Workflow 실행</button><button id="desktop-stop" class="btn small danger">■ 계산 중단</button></div>
+ <div class="runner-more"><label class="btn small ghost" for="desktop-extra-xyz" data-help="여기에서 XYZ를 선택해도 돼요. 기본 XYZ가 없다면 첫 파일을 기본 분자로 등록하고, 나머지는 반응물·생성물 등 추가 XYZ로 등록해요.">+ XYZ 선택 / 추가 <span class="help-icon">?</span></label><input id="desktop-extra-xyz" type="file" accept=".xyz" multiple hidden><span id="desktop-extra-info">기본 XYZ 없음 · 추가 XYZ 0개</span><span class="spacer"></span><button class="btn small ghost" id="desktop-report" disabled data-help="ORCA 계산 종료 후 Electronic Energy, Enthalpy, Gibbs Free Energy, S₁/T₁, Spin Population 등의 텍스트 해석 파일을 받아요. 중간 단계도 자동 저장해요.">📄 해석 TXT 저장</button><label class="btn small ghost" for="desktop-open-out" data-help="예전에 ORCA에서 계산한 .out 파일도 텍스트 해석 보고서로 변환할 수 있어요. ORCA 설치 없이 분석할 수 있어요.">OUT 분석 <span class="help-icon">?</span></label><input id="desktop-open-out" type="file" accept=".out,.log,text/plain" hidden><button class="btn small ghost" id="desktop-reveal">📁 결과 폴더</button><button class="btn small ghost" id="desktop-quit">앱 종료</button></div>
  <div class="updater-panel" role="group" aria-label="자동 업데이트">
  <div class="updater-heading"><span>↻ GitHub 자동업데이트 <span class="help-icon" tabindex="0" data-title="자동업데이트" data-help="앱이 시작될 때 GitHub Releases를 확인해요. 새로운 버전이 있으면 다운로드와 SHA-256 검증을 거쳐 앱을 종료한 후 교체해요. ORCA 계산 중에는 업데이트되지 않아요.">?</span></span><span id="update-version">v1.3.0</span></div>
  <div class="updater-actions"><span id="update-status">업데이트 확인 전</span><button class="btn small ghost" id="update-check">업데이트 확인</button><button class="btn small primary" id="update-install" hidden>업데이트 설치</button></div>
 </div>
-<div id="desktop-status" class="runner-status">상태: 시작 중</div><pre class="runner-log" id="desktop-live-log">ORCA 실행 시 실제 OUT 로그가 여기에 표시됩니다.</pre>
+<div id="desktop-status" class="runner-status">상태: 시작 중</div><div id="desktop-eta" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin:0 0 10px;padding:10px 12px;border:1px solid #2c435d;border-radius:10px;background:#142235;color:#bad3e8;font-size:11px" aria-live="off"><div>⏱ 경과 시간<br><strong id="eta-elapsed" style="color:#f1f6ff;font-size:13px">—</strong></div><div>현재 단계 예상 남은 시간<br><strong id="eta-stage" style="color:#b5e9dc;font-size:12px">추정 중</strong></div><div>Workflow 예상 남은 시간<br><strong id="eta-workflow" style="color:#b5e9dc;font-size:12px">추정 중</strong></div><div style="grid-column:1/-1;color:#84a4bf;font-size:10px" id="eta-note">최초 계산은 비교할 기록이 없어 예측이 어려울 수 있어요. Geometry Optimization cycle은 완료 퍼센트가 아니에요.</div></div><pre class="runner-log" id="desktop-live-log">ORCA 실행 시 실제 OUT 로그가 여기에 표시됩니다.</pre><details style="margin-top:10px"><summary style="cursor:pointer;color:#a7c9f8">계산 결과 해석 미리보기</summary><pre class="runner-log" id="desktop-report-preview" style="max-height:330px;white-space:pre-wrap;margin-top:8px">계산 완료 후 TXT 보고서를 확인할 수 있어요.</pre></details>
  </div>
 
 <div class="app-heading"><div><div class="eyebrow">INPUT PREVIEW · EDITABLE</div><h2><span id="inp-header">molecule_A4.inp</span></h2><p>자동 생성 후 직접 수정할 수 있어요. <span class="muted">변경사항은 저장 시 반영됩니다.</span></p></div><span class="file-tag" id="stage-label">01 / 01</span></div>
@@ -510,7 +510,7 @@ async function desktopRun(workflow){
   const req=desktopRunData(workflow);
   const checked=await desktopAPI('preflight',req);
   if(!checked.ok)throw Error('계산 전 검사 실패: '+checked.errors.join(' / '));
-  if(checked.warnings?.length&&!confirm('계산 전 검사 주의 사항:\n'+checked.warnings.join('\n')+'\n그래도 실행할까요?')){desktopMessage('주의 사항 확인 후 다시 실행하세요.');return}
+  if(checked.warnings?.length&&!confirm('계산 전 검사에서 주의 사항이 나왔어요.\n\n'+checked.warnings.join('\n')+'\n\n그래도 실행할까요?')){desktopMessage('검사 주의 사항 확인 후 다시 실행하세요.');return}
   if(workflow&&editorDirty&&!confirm('현재 단계에서 수동 수정한 INP만 반영돼요. 다른 단계는 설정값에서 자동 생성됩니다. 실행할까요?'))return;
   desktopMessage('ORCA 실행 요청 중...');
   const result=await desktopAPI('run',req);desktopMessage('실행 중 — 결과 폴더: '+result.folder);
@@ -519,13 +519,21 @@ async function desktopRun(workflow){
 }
 async function desktopPoll(){try{
  const d=await desktopAPI('status');lastDesktopState=d;
+ if(d.eta){
+  const e=d.eta;
+  const pretty=s=>{s=Number(s)||0;const h=Math.floor(s/3600),m=Math.floor(s%3600/60),sec=s%60;return(h?h+'시간 ':'')+(m?m+'분 ':'')+sec+'초'};
+  document.getElementById('eta-elapsed').textContent=pretty(e.elapsedSeconds);
+  document.getElementById('eta-stage').textContent=e.stageEta||'추정 중';
+  document.getElementById('eta-workflow').textContent=e.workflowEta||'추정 중';
+  document.getElementById('eta-note').textContent=(e.optimizationCycle?'Geometry Optimization cycle '+e.optimizationCycle+' · ':'')+(e.estimateBasis||'')+' · Opt cycle은 진행률(%)이 아니에요.';
+ }
  if(d.config){const p=document.getElementById('desktop-orca-path'),w=document.getElementById('desktop-work-root');if(document.activeElement!==p)p.value=d.config.orcaExe||'';if(document.activeElement!==w)w.value=d.config.workRoot||''}
  if(d.job){const j=d.job;let label={running:'실행 중',completed:'정상 종료',failed:'실패',stopped:'중단'}[j.state]||j.state;
  desktopMessage(label+' · '+(j.stageIndex+1)+'/'+j.stageCount+' · '+j.stageName+' — '+j.message,j.state==='failed');
  if(j.lastLog)document.getElementById('desktop-live-log').textContent=j.lastLog;
  else document.getElementById('desktop-live-log').textContent=j.message+'\n'+j.folder;
- const run=j.state!=='running';document.getElementById('desktop-run').disabled=!run;document.getElementById('desktop-run-wf').disabled=!run;document.getElementById('desktop-stop').disabled=run;
- }else{desktopMessage('대기 중 · ORCA 설치 경로를 설정한 뒤 실행할 수 있어요.');document.getElementById('desktop-stop').disabled=true;}
+ document.getElementById('desktop-report').disabled=!j.reportFile;const run=j.state!=='running';document.getElementById('desktop-run').disabled=!run;document.getElementById('desktop-run-wf').disabled=!run;document.getElementById('desktop-stop').disabled=run;
+ }else{desktopMessage('대기 중 · ORCA 설치 경로를 설정한 뒤 실행할 수 있어요.');document.getElementById('desktop-stop').disabled=true;document.getElementById('desktop-report').disabled=true;}
  }catch(e){desktopMessage('로컬 실행 서비스 연결 오류: '+e.message,true)}
 }
 document.getElementById('desktop-save-config').addEventListener('click',async()=>{try{await desktopConfig();toast('설정을 저장했어요.');desktopMessage('설정 저장 완료')}catch(e){desktopMessage('설정 저장 실패: '+e.message,true)}});
@@ -533,17 +541,39 @@ document.getElementById('desktop-preflight').addEventListener('click',async()=>{
  try{
   const req=desktopRunData(calc(active).kind==='workflow');
   const report=await desktopAPI('preflight',req);
-  const lines=[report.ok?'✓ 계산 전 검사 통과':'✕ 계산 전 검사 실패', '계산 단계: '+(report.stages?.length||0)+'개'];
-  for(const st of report.stages||[])lines.push('- '+st.name+': '+(st.atoms||'?')+' atoms · Charge '+st.charge+' · Multiplicity '+st.multiplicity+' · electrons '+(st.electrons||'?'));
-  for(const x of report.errors||[])lines.push('오류: '+x);
-  for(const x of report.warnings||[])lines.push('주의: '+x);
-  lines.push('주의: SCF 수렴, TD-DFT Root와 최종 상태는 계산 후 별도 검토가 필요합니다.');
+  const lines=[report.ok?'✓ 계산 전 검사 통과':'✕ 계산 전 검사 실패',`계산 단계: ${report.stages?.length||0}개`];
+  for(const st of report.stages||[])lines.push(`- ${st.name}: ${st.atoms||'?'} atoms · Charge ${st.charge} · Multiplicity ${st.multiplicity} · electrons ${st.electrons||'?'}`);
+  for(const msg of report.errors||[])lines.push('오류: '+msg);
+  for(const msg of report.warnings||[])lines.push('주의: '+msg);
+  lines.push('참고: TD-DFT Root 추적, Method의 타당성 및 수렴 상태는 실제 계산 후 별도 검토해야 합니다.');
   document.getElementById('desktop-live-log').textContent=lines.join('\n');
-  desktopMessage(report.ok?'입력 검사 완료 · 로그를 확인하세요.':'입력 검사에서 오류 발견',!report.ok);
+  desktopMessage(report.ok?'입력 검사가 끝났어요. 아래 결과를 확인하세요.':'입력 검사에서 오류를 발견했어요.',!report.ok);
  }catch(e){desktopMessage('입력 검사 실패: '+e.message,true)}
 });
 document.getElementById('desktop-run').addEventListener('click',()=>desktopRun(false));
 document.getElementById('desktop-run-wf').addEventListener('click',()=>desktopRun(true));
+async function desktopReadAnalysis(){
+ const response=await fetch('/api/report?session='+encodeURIComponent(desktopSession));
+ if(!response.ok)throw Error('아직 저장된 보고서가 없어요.');
+ return await response.text();
+}
+document.getElementById('desktop-report').addEventListener('click',async()=>{
+ try{const t=await desktopReadAnalysis();download('ORCA_Nova_Analysis.txt',t);document.getElementById('desktop-report-preview').textContent=t;toast('해석 TXT를 저장했어요.');}
+ catch(e){desktopMessage('보고서 다운로드 실패: '+e.message,true)}
+});
+document.getElementById('desktop-open-out').addEventListener('change',async ev=>{
+ const file=ev.target.files?.[0];if(!file)return;
+ try{
+  if(file.size>60*1024*1024)throw Error('60MB 이하의 OUT 파일을 선택해 주세요.');
+  desktopMessage('OUT 파일을 분석하고 있어요...');
+  const result=await desktopAPI('analyze',{name:file.name,output:await file.text(),input:''});
+  const t=result.report;
+  download(file.name.replace(/\.(?:out|log)$/i,'')+'_analysis.txt',t);
+  document.getElementById('desktop-report-preview').textContent=t;
+  desktopMessage('OUT 분석 TXT를 저장했어요: '+file.name);
+ }catch(e){desktopMessage('OUT 분석 실패: '+e.message,true)}
+ ev.target.value='';
+});
 document.getElementById('desktop-stop').addEventListener('click',async()=>{if(!confirm('진행 중인 ORCA 계산을 중단할까요?'))return;try{await desktopAPI('stop',{});desktopMessage('중단 요청 완료')}catch(e){desktopMessage(e.message,true)}});
 document.getElementById('desktop-reveal').addEventListener('click',async()=>{try{await desktopAPI('reveal',{})}catch(e){desktopMessage(e.message,true)}});
 document.getElementById('desktop-quit').addEventListener('click',async()=>{if(lastDesktopState?.job?.state==='running'){toast('진행 중인 계산을 중단한 뒤 종료하세요.');return}try{await desktopAPI('quit',{});window.close();document.body.innerHTML='<div style="font:18px sans-serif;color:white;background:#111;padding:40px">ORCA Nova가 종료됐어요. 이 창을 닫아주세요.</div>';}catch(e){desktopMessage(e.message,true)}});
