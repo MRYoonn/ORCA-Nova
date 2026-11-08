@@ -21,7 +21,7 @@ import (
 	"time"
 )
 
-var appVersion = "1.4.0"
+var appVersion = "1.5.0"
 
 const updateRepository = "MRYoonn/ORCA-Nova"
 const releaseZipName = "ORCA_Nova_Portable_Windows.zip"
