@@ -25,6 +25,57 @@ namespace ORCANovaUI {
     }
 
     public sealed class MainWindow : Form {
+        // Make the native WinForms frame visually consistent with the dark HTML UI.
+        // DWM immersive-dark mode supports Windows 10; custom caption colors require Windows 11.
+        [DllImport("dwmapi.dll", ExactSpelling=true)]
+        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int valueSize);
+
+        private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+        private const int DWMWA_USE_IMMERSIVE_DARK_MODE_LEGACY = 19;
+        private const int DWMWA_BORDER_COLOR = 34;
+        private const int DWMWA_CAPTION_COLOR = 35;
+        private const int DWMWA_TEXT_COLOR = 36;
+
+        private static int ToColorRef(Color color) =>
+            color.R | (color.G << 8) | (color.B << 16);
+
+        protected override void OnHandleCreated(EventArgs e) {
+            base.OnHandleCreated(e);
+            ApplyDarkTitleBar();
+        }
+
+        protected override void OnShown(EventArgs e) {
+            base.OnShown(e);
+            ApplyDarkTitleBar();
+        }
+
+        private void ApplyDarkTitleBar() {
+            if (!IsHandleCreated) return;
+            try {
+                int enabled = 1;
+                int result = DwmSetWindowAttribute(Handle, DWMWA_USE_IMMERSIVE_DARK_MODE,
+                    ref enabled, sizeof(int));
+                if (result != 0) {
+                    // Older Windows 10 releases used attribute 19 instead of 20.
+                    DwmSetWindowAttribute(Handle, DWMWA_USE_IMMERSIVE_DARK_MODE_LEGACY,
+                        ref enabled, sizeof(int));
+                }
+
+                // Windows 11: paint the actual native caption to match the app.
+                // Unsupported attributes safely return an HRESULT on Windows 10.
+                int caption = ToColorRef(Color.FromArgb(14, 20, 30));
+                int textColor = ToColorRef(Color.FromArgb(237, 244, 255));
+                int border = ToColorRef(Color.FromArgb(38, 53, 73));
+                DwmSetWindowAttribute(Handle, DWMWA_CAPTION_COLOR, ref caption, sizeof(int));
+                DwmSetWindowAttribute(Handle, DWMWA_TEXT_COLOR, ref textColor, sizeof(int));
+                DwmSetWindowAttribute(Handle, DWMWA_BORDER_COLOR, ref border, sizeof(int));
+            } catch (DllNotFoundException) {
+                // Still launch ORCA Nova if DWM is unavailable.
+            } catch (EntryPointNotFoundException) {
+                // Older Windows builds may not provide this API.
+            }
+        }
+
         private readonly string localUrl;
         private readonly WebView2 web = new WebView2();
         private bool closingAllowed = false;
