@@ -12,6 +12,7 @@ import (
 // The user explicitly assigns calculated structures and confirms stoichiometry.
 type ScientificProfileRequest struct {
     JobID string `json:"jobId"`
+    Jobs map[string]string `json:"jobs,omitempty"` // role -> existing queue Job ID, never a filesystem path
     Kind string `json:"kind"` // adiabatic or reaction
     Energy string `json:"energy"` // Electronic or Gibbs
     Sources map[string]string `json:"sources"`
@@ -140,34 +141,86 @@ func scientificProfile(req ScientificProfileRequest, sources map[string]OrcaAnal
     }
     return result,nil
 }
+// profileFolder resolves IDs against this application's own queue; it never
+// accepts caller-supplied filesystem paths. An empty ID uses the active job.
+func (a *App) profileFolder(id string) (string,error) {
+ if id=="" {
+  a.mu.Lock()
+  defer a.mu.Unlock()
+  if a.job==nil||a.job.Folder=="" {return "",fmt.Errorf("현재 단일 Job 계산 결과가 없습니다")}
+  return a.job.Folder,nil
+ }
+ if a.queue==nil{return "",fmt.Errorf("등록된 Batch Job이 없습니다")}
+ a.queue.mu.Lock()
+ defer a.queue.mu.Unlock()
+ for _,entry:=range a.queue.Jobs {
+  if entry!=nil&&entry.ID==id&&entry.Job!=nil&&entry.Job.Folder!="" {return entry.Job.Folder,nil}
+ }
+ return "",fmt.Errorf("Batch Job %q을 찾지 못했습니다",id)
+}
+
+// resolveProfileSources joins each explicit role to a known job and an actual
+// OUT file. Reused filenames are accepted across different jobs, but a file
+// from the same job cannot masquerade as both reactant and TS.
+func (a *App) resolveProfileSources(req ScientificProfileRequest) (ScientificProfileRequest,map[string]OrcaAnalysis,error) {
+ roles:=[]string{"S0","T1"}
+ if req.Kind=="reaction" {roles=[]string{"Reactant","TS","Product"}}
+ if len(req.Jobs)>len(roles)||len(req.Sources)>len(roles) {
+  return req,nil,fmt.Errorf("요청한 결과 파일 또는 Job 역할이 너무 많습니다")
+ }
+ roleSet:=map[string]bool{}
+ for _,role:=range roles {roleSet[role]=true}
+ for role:=range req.Jobs {if !roleSet[role] {return req,nil,fmt.Errorf("알 수 없는 Job 역할: %s",role)}}
+ resolved:=req
+ resolved.Sources=map[string]string{}
+ sources:=map[string]OrcaAnalysis{}
+ seen:=map[string]bool{}
+ loaded:=map[string]Visualization{}
+ for _,role:=range roles {
+  file:=req.Sources[role]
+  if !safeName(file)||!strings.EqualFold(filepathExt(file),".out") {
+   return req,nil,fmt.Errorf("%s: Job 결과의 안전한 OUT 파일 이름을 지정하세요",role)
+  }
+  id:=req.Jobs[role]
+  if id=="" {id=req.JobID}
+  folder,err:=a.profileFolder(id)
+  if err!=nil {return req,nil,fmt.Errorf("%s: %w",role,err)}
+  sameFile:=folder+"\x00"+strings.ToLower(file)
+  if seen[sameFile] {return req,nil,fmt.Errorf("%s: 같은 Job의 같은 OUT을 중복 배정했습니다",role)}
+  seen[sameFile]=true
+  viz,ok:=loaded[folder]
+  if !ok {
+   viz,err=loadVisualization(folder)
+   if err!=nil {return req,nil,fmt.Errorf("%s: 결과 폴더를 읽지 못했습니다: %w",role,err)}
+   loaded[folder]=viz
+  }
+  found:=false
+  for _,src:=range viz.Sources {
+   if src.Name==file&&strings.EqualFold(filepathExt(src.Name),".out") {
+    // The opaque source key carries only a registered job ID and a filename.
+    label:=id
+    if label=="" {label="single"}
+    key:=label+"/"+file
+    resolved.Sources[role]=key
+    sources[key]=src.Analysis
+    found=true
+    break
+   }
+  }
+  if !found {return req,nil,fmt.Errorf("%s: 선택 Job에서 OUT %q을 찾지 못했습니다",role,file)}
+ }
+ return resolved,sources,nil
+}
 func (a *App) scientificProfileRoute(w http.ResponseWriter,r *http.Request) {
-    if r.Method!=http.MethodPost {fail(w,405,"POST만 지원합니다");return}
-    var req ScientificProfileRequest
-    if json.NewDecoder(http.MaxBytesReader(w,r.Body,16<<10)).Decode(&req)!=nil {
-        fail(w,400,"Profile 요청 JSON을 읽지 못했습니다");return
-    }
-    if len(req.Sources)>3 {fail(w,400,"최대 3개 결과만 비교할 수 있습니다");return}
-    folder:=""
-    if req.JobID!=""&&a.queue!=nil {
-        a.queue.mu.Lock()
-        for _,e:=range a.queue.Jobs {
-            if e.ID==req.JobID&&e.Job!=nil {folder=e.Job.Folder;break}
-        }
-        a.queue.mu.Unlock()
-    }else if req.JobID=="" {
-        a.mu.Lock()
-        if a.job!=nil {folder=a.job.Folder}
-        a.mu.Unlock()
-    }
-    if folder=="" {fail(w,404,"선택된 Job 폴더가 없습니다");return}
-    v,err:=loadVisualization(folder)
-    if err!=nil {fail(w,400,err.Error());return}
-    src:=map[string]OrcaAnalysis{}
-    for _,s:=range v.Sources {
-        if strings.EqualFold(filepathExt(s.Name),".out") {src[s.Name]=s.Analysis}
-    }
-    res,err:=scientificProfile(req,src)
-    if err!=nil {fail(w,422,err.Error());return}
-    respond(w,200,res)
+ if r.Method!=http.MethodPost {fail(w,405,"POST만 지원합니다");return}
+ var req ScientificProfileRequest
+ if json.NewDecoder(http.MaxBytesReader(w,r.Body,16<<10)).Decode(&req)!=nil {
+  fail(w,400,"Profile 요청 JSON을 읽지 못했습니다");return
+ }
+ resolved,sources,err:=a.resolveProfileSources(req)
+ if err!=nil {fail(w,422,err.Error());return}
+ result,err:=scientificProfile(resolved,sources)
+ if err!=nil {fail(w,422,err.Error());return}
+ respond(w,200,result)
 }
 func filepathExt(s string)string {idx:=strings.LastIndex(s,".");if idx<0{return ""};return s[idx:]}
