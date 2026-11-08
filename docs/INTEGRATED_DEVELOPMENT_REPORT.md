@@ -40,3 +40,18 @@ Local validation: `go test -count=1 ./...` passed 73 test/subtest cases; `go tes
 Automatic Adiabatic S1/T1 and Singlet–Triplet Gap derivation across separately assigned states, verified reaction role assignment/barrier profiles, per-scan-step atomic population extraction, and cross-Job S0/T1 scan overlay with a scientifically validated common reference are not complete. Current visualizations expose measured series with provenance and warnings, not invented state assignments or conclusions. Optimization/SCF tables and generic labeled scan formats are supported; unrecognized ORCA variants need real Golden fixtures.
 
 Glorius SI templates remain blocked on verified public sources; no literature preset is fabricated. Windows native UI execution, real ORCA/MPI cleanup and scientific validation, and full automatic updater installation/restart/rollback remain unrun. Neither a stable Release nor environment publication is performed.
+
+## Final evidence and commits
+
+- `76a2f0b`: visualization integration, regression tests and initial report.
+- `d309a33`, `052754d`: Windows test diagnostics, preserving actual failures rather than guessing.
+- `83fdd89`: rooted ZIP path rejection fix for Windows.
+- Final documentation commit records these outcomes without altering application code.
+
+PR creation attempted with base `feat/batch-job-queue`; `api.github.com/graphql` returned Forbidden. No PR was created. Creation URL: https://github.com/MRYoonn/ORCA-Nova/compare/feat/batch-job-queue...feat/orca-nova-integrated-visualization?expand=1 . This depends on PR #12 until it merges. No merge is claimed.
+
+Windows source commit `83fdd89` SUCCESS: https://github.com/MRYoonn/ORCA-Nova/actions/runs/42497246326 (1m29s). Go tests, vet, Windows backend/icon, WebView2 native host and Portable ZIP packaging completed. Download the `ORCA-Nova-Windows-Build` artifact from that run; it contains `ORCA_Nova_Portable_Windows.zip` and `SHA256SUMS.txt`. Failed runs 42496832164 / 42496996881 / 42497110853 are retained and diagnosed in BUILD_FAILURE_ANALYSIS.md; their tiny failure artifacts are not portable builds.
+
+Browser validation passed: existing Batch UI fixtures, actual Go server + four XYZ / concurrency2 / failed-job retry / isolated TXT-JSON-CSV reports, visualization fixtures and actual CSV/SVG/PNG downloads (nonempty PNG signature), all inline JavaScript syntax. Local Linux full test and race suites passed; final ZIP path fix additionally passed focused updater race tests and vet, followed by the successful Windows full suite.
+
+Real ORCA scientific execution: NOT RUN. Real Windows GUI launch/MPI/automatic updater installation and restart: NOT RUN. No stable Release or environment publication.

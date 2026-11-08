@@ -21,3 +21,7 @@ Run 42496996881 reproduced exit 1. Public diagnostics proved the new descendant 
 ## Confirmed Windows defect and fix
 
 Run 42497110853 exposed `update_integration_test.go:128: unsafe payload accepted /absolute.dll`. Windows `filepath.IsAbs` does not reject drive-relative rooted paths the same way as Linux. Fixed archive validation to reject a leading slash or backslash in the original ZIP entry before platform path normalization. This preserves the safety assertion rather than skipping Windows coverage. Descendant cleanup, queue isolation, recovery and reports passed in the same Windows run. Local focused updater tests and follow-up Windows CI verify the correction below.
+
+## Successful revalidation
+
+Source fix commit 83fdd89 passed focused local updater race tests and vet. Windows run https://github.com/MRYoonn/ORCA-Nova/actions/runs/42497246326 completed SUCCESS in 1m29s, including full Go tests/vet, backend/icon, WebView2 host and complete portable packaging. Failed runs remain historical evidence; they are not reclassified as passing. Actual ORCA/MPI and real updater restart remain outside this validation.
