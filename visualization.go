@@ -309,6 +309,7 @@ func loadVisualization(folder string) (Visualization, error) {
 	return v, nil
 }
 func (a *App) visualizationRoute(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path == "/api/visualization/profile" { a.scientificProfileRoute(w, r); return }
 	if r.Method == http.MethodPost {
 		var x struct {
 			Name   string `json:"name"`
