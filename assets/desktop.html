@@ -718,21 +718,64 @@ function batchRenderMolecules(){
  const body=$('batch-molecules');body.replaceChildren();
  for(const m of batchMolecules){
   const row=document.createElement('tr');
-  row.innerHTML='<td><input type="checkbox" aria-label="Batch 포함"></td><td class="batch-molecule-name"></td><td><input class="control" type="number" step="1" aria-label="Charge"></td><td><input class="control" type="number" min="1" max="5" step="1" aria-label="Multiplicity"></td><td class="batch-inputs"></td>';
-  const controls=row.querySelectorAll('input');controls[0].checked=m.included;controls[0].onchange=()=>m.included=controls[0].checked;
+  row.innerHTML='<td><input type="checkbox" aria-label="목록 선택"></td><td><input type="checkbox" aria-label="Batch 실행 포함"></td><td class="batch-molecule-name"></td><td><input class="control" type="number" step="1" aria-label="Charge"></td><td><input class="control" type="number" min="1" max="5" step="1" aria-label="Multiplicity"></td><td class="batch-inputs"></td>';
+  const controls=row.querySelectorAll('input');
+  controls[0].checked=!!m.selected;controls[0].onchange=()=>{m.selected=controls[0].checked;batchUpdateSelection()};
+  controls[1].checked=m.included;controls[1].onchange=()=>{m.included=controls[1].checked;batchUpdateBudget()};
   row.querySelector('.batch-molecule-name').textContent=m.original+' · '+m.preset;
-  controls[1].value=m.charge;controls[2].value=m.mult;
-  for(const [control,key] of [[controls[1],'charge'],[controls[2],'mult']])control.onchange=()=>{
-   const x=Number(control.value);if(!Number.isSafeInteger(x)||(key==='mult'&&(x<1||x>5))){batchMessage('Charge는 정수, Multiplicity는 1–5를 입력하세요.',true);control.value=m[key];return;}
+  controls[2].value=m.charge;controls[3].value=m.mult;
+  for(const [control,key] of [[controls[2],'charge'],[controls[3],'mult']])control.onchange=()=>{
+   const x=Number(control.value);
+   if(!Number.isSafeInteger(x)||(key==='mult'&&(x<1||x>5))){batchMessage('Charge는 정수, Multiplicity는 1–5를 입력하세요.',true);control.value=m[key];return;}
    if(m.custom&&!confirm('개별 편집한 INP를 현재 프리셋으로 다시 생성할까요?')){control.value=m[key];return;}
    m[key]=x;batchCapture(m);m.custom=false;batchRenderMolecules();
   };
   const inputs=row.querySelector('.batch-inputs');
-  for(const file of m.request?.files||[]){if(!file.name.toLowerCase().endsWith('.inp'))continue;
-   const detail=document.createElement('details'),summary=document.createElement('summary'),editor=document.createElement('textarea');summary.textContent=file.name+' · INP 편집';summary.style.cursor='pointer';editor.value=file.content;editor.spellcheck=false;editor.setAttribute('aria-label',file.name+' 편집');editor.oninput=()=>{file.content=editor.value;m.custom=true};detail.append(summary,editor);inputs.append(detail);
+  for(const file of m.request?.files||[]){
+   if(!file.name.toLowerCase().endsWith('.inp'))continue;
+   const detail=document.createElement('details'),summary=document.createElement('summary'),editor=document.createElement('textarea');
+   summary.textContent=file.name+' · INP 편집';summary.style.cursor='pointer';editor.value=file.content;
+   editor.spellcheck=false;editor.setAttribute('aria-label',file.name+' 편집');
+   editor.oninput=()=>{file.content=editor.value;m.custom=true;batchUpdateBudget()};
+   detail.append(summary,editor);inputs.append(detail);
   }
-  const del=document.createElement('button');del.className='btn small ghost';del.textContent='삭제';del.onclick=()=>{batchMolecules.splice(batchMolecules.indexOf(m),1);batchRenderMolecules()};inputs.append(del);body.append(row);
+  const del=document.createElement('button');del.className='btn small ghost';del.textContent='등록 삭제';
+  del.setAttribute('aria-label',m.name+' 등록 목록에서 삭제');
+  del.onclick=()=>{batchMolecules.splice(batchMolecules.indexOf(m),1);batchRenderMolecules();batchMessage(m.original+' 등록 해제 · 원본 파일 및 Queue 유지')};
+  inputs.append(del);body.append(row);
  }
+ batchUpdateSelection();batchUpdateBudget();
+}
+function batchUpdateSelection(){
+ const selected=batchMolecules.filter(m=>m.selected).length;
+ $('batch-selected-count').textContent=selected+'개 선택 · '+batchMolecules.length+'개 등록';
+ $('batch-remove-selected').disabled=!selected||batchRequestBusy||batchImporting;
+ $('batch-clear-all').disabled=!batchMolecules.length||batchRequestBusy||batchImporting;
+ $('batch-select-all').disabled=!batchMolecules.length;
+ $('batch-select-all').textContent=selected===batchMolecules.length&&selected?'선택 해제':'전체 선택';
+}
+function batchUpdateBudget(){
+ const included=batchMolecules.filter(m=>m.included),target=$('batch-budget-note');
+ if(!included.length){
+  target.textContent='실행할 XYZ를 등록한 뒤 각 INP의 CPU / MaxCore를 확인하세요.';
+  target.classList.remove('warning');return;
+ }
+ let maxCPU=1,maxRAM=0;
+ for(const m of included)for(const f of m.request?.files||[]){
+  if(!f.name.toLowerCase().endsWith('.inp'))continue;
+  const procs=f.content.match(/^\s*nprocs\s+(\d+)/im);
+  const pal=f.content.match(/\bPAL(\d+)\b/i);
+  const mem=f.content.match(/^\s*%maxcore\s+(\d+)/im);
+  const n=procs?Number(procs[1]):pal?Number(pal[1]):1;
+  const per=mem?Number(mem[1]):0;
+  if(n>maxCPU)maxCPU=n;
+  if(per>0)maxRAM=Math.max(maxRAM,Math.ceil(n*per*1.25));
+ }
+ const concurrency=Number($('batch-concurrency').value),cpu=Number($('batch-cpu').value),ram=Number($('batch-ram').value);
+ const requiredCPU=maxCPU*concurrency,requiredRAM=maxRAM*concurrency;
+ const ok=cpu>=requiredCPU&&ram>=requiredRAM&&maxRAM>0;
+ target.classList.toggle('warning',!ok);
+ target.textContent=included.length+'개 실행 대상 · 동시 '+concurrency+'개를 목표로 하면 최대 약 '+requiredCPU+' CPU / '+requiredRAM.toLocaleString()+' MB 예약 필요 (가장 큰 INP 요청치 기준). 현재 예산: '+cpu+' CPU / '+ram.toLocaleString()+' MB. '+(maxRAM===0?'%maxcore 입력을 확인하세요.':ok?'예산상 가능하나 실제 CPU·RAM을 반드시 확인하세요.':'자원 부족 시 Queue가 일부 Job을 대기시킵니다.');
 }
 async function batchImport(files){
  if(batchImporting)return;batchImporting=true;
@@ -814,6 +857,26 @@ async function batchPoll(){
   }
  }catch(e){batchMessage('Job Queue 연결 실패: '+e.message,true)}
 }
+$('batch-select-all').onclick=()=>{
+ const allSelected=batchMolecules.length>0&&batchMolecules.every(m=>m.selected);
+ for(const m of batchMolecules)m.selected=!allSelected;
+ batchRenderMolecules();
+};
+$('batch-remove-selected').onclick=()=>{
+ const n=batchMolecules.filter(m=>m.selected).length;
+ if(!n||batchRequestBusy||batchImporting)return;
+ if(!confirm(n+'개 XYZ를 등록 목록에서 삭제할까요? 원본 파일과 실행 Queue는 유지됩니다.'))return;
+ for(let i=batchMolecules.length-1;i>=0;i--)if(batchMolecules[i].selected)batchMolecules.splice(i,1);
+ batchRenderMolecules();batchMessage(n+'개 XYZ 등록 해제 · 원본/Queue 유지');
+};
+$('batch-clear-all').onclick=()=>{
+ if(!batchMolecules.length||batchRequestBusy||batchImporting)return;
+ if(!confirm('Batch 등록 '+batchMolecules.length+'개 XYZ를 모두 비울까요? 원본 파일과 실행 Queue는 유지됩니다.'))return;
+ batchMolecules.length=0;batchRenderMolecules();batchMessage('Batch 등록 목록을 비웠어요. 원본/Queue는 유지됩니다.');
+};
+$('batch-two-parallel').onclick=()=>{$('batch-concurrency').value='2';batchUpdateBudget()};
+$('batch-four-parallel').onclick=()=>{$('batch-concurrency').value='4';batchUpdateBudget()};
+for(const id of ['batch-concurrency','batch-cpu','batch-ram'])$(id).addEventListener('input',batchUpdateBudget);
 $('batch-files').onchange=async e=>{await batchImport([...e.target.files]);e.target.value=''};
 const batchDrop=$('batch-drop');batchDrop.ondragover=e=>{e.preventDefault();batchDrop.classList.add('over')};batchDrop.ondragleave=()=>batchDrop.classList.remove('over');batchDrop.ondrop=e=>{e.preventDefault();batchDrop.classList.remove('over');batchImport([...e.dataTransfer.files])};
 $('batch-apply').onclick=()=>{if(batchMolecules.some(m=>m.custom)&&!confirm('모든 분자의 개별 INP 편집을 현재 프리셋으로 다시 생성할까요?'))return;for(const m of batchMolecules){batchCapture(m);m.custom=false}batchRenderMolecules();batchMessage('현재 프리셋을 전체 분자에 적용했습니다. 각 단계의 Charge / Multiplicity와 자원 설정을 확인하세요.')};
