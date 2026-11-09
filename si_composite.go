@@ -76,7 +76,8 @@ func siSolventFromINP(inp string)string{
  m:=siSolvKeyword.FindStringSubmatch(inp)
  if len(m)>2{return strings.ToLower(m[1])+"("+strings.ToLower(strings.Join(strings.Fields(m[2]),""))+")"}
  // ORCA can specify solvent in %cpcm blocks; distinguish unknown from gas.
- if regexp.MustCompile(`(?i)\b%cpcm\b|\b%cpcm\s*`).MatchString(inp){return "CPCM(block-unknown)"}
+ if regexp.MustCompile(`(?i)%cpcm\b`).MatchString(inp){return "CPCM(block-unknown)"}
+ if regexp.MustCompile(`(?i)%smd\b|\bSMD\b|\bCPCM\b`).MatchString(inp){return "solvation(unspecified)"}
  return "none"
 }
 func chargeMultiplicity(inp string)(int,int,error){
@@ -100,7 +101,7 @@ func calculateSIComposite(req SICompositeRequest)(SICompositeResult,error){
  res.Charge=q1;res.Multiplicity=m1
  s1:=siSolventFromINP(req.LowINP);s2:=siSolventFromINP(req.HighINP)
  if s1!=s2{return res,fmt.Errorf("Opt/SP의 Solvation Model·Solvent 설정이 다릅니다 (%s / %s)",s1,s2)}
- if s1=="CPCM(block-unknown)" {return res,fmt.Errorf("%%cpcm 블록은 용매 모델을 명확히 구분하기 어려워 자동 결합에서 제외합니다")}
+ if s1=="CPCM(block-unknown)"||s1=="solvation(unspecified)" {return res,fmt.Errorf("용매가 명시되지 않은 Solvation Model은 혼합수준 Gibbs 자동 결합에서 제외합니다")}
  opt,err:=ParseOrcaOutput(strings.NewReader(req.LowOUT),"low.out",req.LowINP)
  if err!=nil{return res,fmt.Errorf("Opt OUT 파싱 실패: %w",err)}
  sp,err:=ParseOrcaOutput(strings.NewReader(req.HighOUT),"high.out",req.HighINP)
