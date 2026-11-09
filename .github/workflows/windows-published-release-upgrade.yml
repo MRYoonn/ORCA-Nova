@@ -1,0 +1,45 @@
+name: Windows Real Published Release Upgrade Regression
+on:
+  push:
+    branches: ['test/windows-rc2-portable-live-acceptance']
+  pull_request:
+    paths:
+      - 'update_published_releases_test.go'
+      - '.github/workflows/windows-published-release-upgrade.yml'
+      - 'update.go'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  published-upgrade:
+    runs-on: windows-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Download and checksum both published release versions
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          foreach($version in @('v1.5.1','v1.6.0-rc.2')){
+            New-Item -ItemType Directory -Force -Path (Join-Path 'downloads' $version) | Out-Null
+            $base="https://github.com/MRYoonn/ORCA-Nova/releases/download/$version"
+            $zip=Join-Path (Join-Path 'downloads' $version) 'ORCA_Nova_Portable_Windows.zip'
+            $sums=Join-Path (Join-Path 'downloads' $version) 'SHA256SUMS.txt'
+            Invoke-WebRequest -Uri ($base+'/ORCA_Nova_Portable_Windows.zip') -OutFile $zip -UseBasicParsing
+            Invoke-WebRequest -Uri ($base+'/SHA256SUMS.txt') -OutFile $sums -UseBasicParsing
+            $digest=(Get-Content -LiteralPath $sums -Raw)
+            $match=[regex]::Match($digest,'(?im)^([a-f0-9]{64})\s+\*?ORCA_Nova_Portable_Windows\.zip\s*$')
+            if(-not $match.Success){throw "No verified checksum for $version"}
+            $actual=(Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash
+            if($actual.ToLowerInvariant() -ne $match.Groups[1].Value.ToLowerInvariant()){throw "ZIP checksum mismatch: $version"}
+          }
+      - name: Apply actual stable-to-RC ZIP file replacement and rollback (isolated)
+        shell: pwsh
+        run: |
+          $env:ORCA_PREVIOUS_RELEASE_ZIP=(Resolve-Path 'downloads/v1.5.1/ORCA_Nova_Portable_Windows.zip').Path
+          $env:ORCA_CANDIDATE_RELEASE_ZIP=(Resolve-Path 'downloads/v1.6.0-rc.2/ORCA_Nova_Portable_Windows.zip').Path
+          go test -run '^TestWindowsPublishedVersionSwapAndRollback$' -count=1 -v ./...
+          if ($LASTEXITCODE -ne 0) { throw 'Published ZIP update transaction regression failed' }
