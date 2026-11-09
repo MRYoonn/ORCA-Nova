@@ -25,3 +25,16 @@ Pre-release candidate only. Real ORCA 6.1.1 Golden output parsing has been valid
 
 ## Post-publication record
 After GitHub Release Actions completes, verify actual public assets `ORCA_Nova_Portable_Windows.zip`, `SHA256SUMS.txt`, published version, prerelease flag, Windows CI and stable latest release. Append evidence as a separate follow-up commit if needed; do not silently rewrite a published tag.
+
+## Published RC.2 evidence (2026-11-09)
+
+- Approved release-request PR #21 successfully merged on `main` at `9a358c0bd4b18fb755e657decbcee188ed59764e`.
+- GitHub Release tag `v1.6.0-rc.2` **published**, with `prerelease=true`, `draft=false`:
+  https://github.com/MRYoonn/ORCA-Nova/releases/tag/v1.6.0-rc.2
+- Windows Release workflow SUCCESS: https://github.com/MRYoonn/ORCA-Nova/actions/runs/42576023541
+- Independent remote asset-audit workflow SUCCESS: https://github.com/MRYoonn/ORCA-Nova/actions/runs/42576539608
+- Audit downloaded BOTH actual published assets to GitHub's isolated Ubuntu runner; `sha256sum -c` and ZIP CRC test passed. 10 archive entries; Backend and native UI EXE at root, no redistributed `orca.exe`, no traversal path detected.
+- Published `ORCA_Nova_Portable_Windows.zip`: **3,655,341 bytes**; SHA-256 `aede7bdc3979f5bfa130c7454627946e4b70e284ee209f5a182bf8775d56ba6d`.
+- `SHA256SUMS.txt` matched exactly. The GitHub Releases latest **stable** tag remains `v1.5.1`, not RC.1 or RC.2.
+- RC.1 tag and original assets were not altered. No stable release was created.
+- Live licensed ORCA/MPI calculations and actual end-user Windows auto-update remain unverified. The release continues to be a **Pre-release**.
