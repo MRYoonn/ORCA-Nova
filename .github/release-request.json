@@ -1,8 +1,8 @@
 {
-  "tag": "v1.6.0-rc.3",
+  "tag": "v1.6.0-rc.4",
   "prerelease": true,
   "source": "approved-main-merge",
-  "summary": "XYZ primary/extra registration delete, Batch selection/bulk clear, single-to-Batch transfer and 2/4 parallel CPU-RAM estimation, with passing Chromium UI tests; keep stable channel v1.5.1 and live ORCA/MPI validation gate",
+  "summary": "Offline XYZ 3D preview for primary, additional and Batch molecules, rotatable geometry and zero-based ORCA atom indices, manual C5/C6 marking, Chromium and Windows build validated; no real licensed ORCA/MPI user-PC validation",
   "release_type": "verification-prerelease",
   "stable_release_blocked": true
 }
