@@ -283,7 +283,7 @@ func (u *updater) prepare() (string, error) {
 		return "", err
 	}
 	script := filepath.Join(tmpDir, "apply_update.ps1")
-	if err = os.WriteFile(script, []byte(updateScript), 0600); err != nil {
+	if err = os.WriteFile(script, powershellScriptBytes(updateScript), 0600); err != nil {
 		return "", err
 	}
 	cmd := exec.Command("powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script, "-CurrentPid", strconv.Itoa(os.Getpid()), "-StageDir", stageDir, "-TargetDir", filepath.Dir(dst), "-Launch", dst, "-Log", filepath.Join(tmpDir, "UPDATE_LOG.txt"))
@@ -291,6 +291,13 @@ func (u *updater) prepare() (string, error) {
 		return "", err
 	}
 	return tmpDir, nil
+}
+
+// Windows PowerShell 5.1 assumes ANSI for .ps1 files without a BOM.
+// All update scripts must be written as UTF-8 with BOM to preserve Korean
+// diagnostics and avoid malformed PowerShell string literals.
+func powershellScriptBytes(s string) []byte {
+    return append([]byte{0xef, 0xbb, 0xbf}, []byte(s)...)
 }
 
 const updateScript = `param([int]$CurrentPid,[string]$StageDir,[string]$TargetDir,[string]$Launch,[string]$Log)
