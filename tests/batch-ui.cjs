@@ -2,10 +2,11 @@ const {chromium}=require('playwright');
 const fs=require('fs'),assert=require('assert');
 (async()=>{const browser=await chromium.launch({headless:true,...(process.env.CHROMIUM_PATH?{executablePath:process.env.CHROMIUM_PATH}:{}),args:['--no-sandbox']});try{
  const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
- let submitted=null,compareMode=false;await page.route('http://orca.test/**',async route=>{
+ let submitted=null,compareMode=false,txtRequests=0;await page.route('http://orca.test/**',async route=>{
  const u=new URL(route.request().url());if(u.pathname==='/')return route.fulfill({contentType:'text/html',body:fs.readFileSync(require('path').join(__dirname,'../assets/desktop.html'),'utf8')});
+ if(u.pathname==='/api/queue/export'&&u.searchParams.get('format')==='txt'){txtRequests++;return route.fulfill({contentType:'text/plain',body:'ORCA Nova | Batch Research Summary\n'})}
  if(u.pathname==='/api/queue'&&route.request().method()==='POST'){submitted=route.request().postDataJSON();return route.fulfill({json:{ok:true}})}
- if(u.pathname==='/api/queue')return route.fulfill({json:{jobs:compareMode?[{id:'j1',label:'Test molecule',state:'Completed',request:{stages:[{name:'S0 Opt',input:'first.inp',source:'mol1.xyz',opt:true}]}}]:[],paused:false,batchEta:'약 2분 ~ 약 5분'}});
+ if(u.pathname==='/api/queue')return route.fulfill({json:{jobs:compareMode?[{id:'j1',label:'Test molecule',state:'Completed',request:{stages:[{name:'S0 Opt',input:'first.inp',source:'mol1.xyz',opt:true}]}}]:[],paused:false,limits:{concurrency:2,cpu:4,ramMB:8192},batchEta:'약 2분 ~ 약 5분'}});
  if(u.pathname==='/api/queue/results')return route.fulfill({json:{Stages:[{Stage:{name:'S0 Opt',source:'mol1.xyz'},Analysis:{Status:'Completed',Method:'PBE0 def2-SVP',Geometry:'mol1.xyz',Electronic:-100.123,Roots:[{Kind:'S',Root:1,EV:3.14},{Kind:'T',Root:1,EV:2.71}],Populations:{Mulliken:[{Index:4,Element:'C',Spin:0.125},{Index:5,Element:'N',Spin:-0.25}]}}},{Stage:{name:'Unrun stage',source:'first.xyz'},Analysis:{Status:'Not calculated'}}]}});
  if(u.pathname==='/api/queue/preflight')return route.fulfill({json:{ok:true,reports:[]}});
  if(u.pathname==='/api/status')return route.fulfill({json:{config:{orcaExe:'/tmp/orca',workRoot:'/tmp/jobs'}}});
@@ -35,6 +36,20 @@ const fs=require('fs'),assert=require('assert');
  const csv=await page.evaluate(()=>batchComparisonCSV());assert(csv.includes('PBE0 def2-SVP'));assert(csv.includes('mol1.xyz'));assert(csv.includes('3.14'));assert(!comparison.includes('C5'));
  await page.locator('#batch-atom-a').fill('999');await page.locator('#batch-compare-refresh').click();await page.waitForFunction(()=>batchComparisonRows[0][8]==='Unavailable');
  await page.evaluate(()=>batchPoll());assert((await page.locator('#batch-queue-info').innerText()).includes('약 2분 ~ 약 5분'));
+ assert((await page.locator('#batch-queue-info').innerText()).includes('예약 0/4 CPU, 0/8192 MB RAM'));
+ assert(await page.locator('#batch-txt').isVisible(),'full Batch TXT export should be reachable');
+ await page.locator('#batch-txt').click();
+ assert.equal(txtRequests,1,'TXT export must request the dedicated authenticated format');
+ assert(await page.locator('.preset-pill[data-class="recommended"]').count()>0);
+ assert(await page.locator('.preset-pill[data-class="preset"]').count()>0);
+ const badgeTitle=await page.locator('.preset-pill[data-class="recommended"]').first().getAttribute('title');
+ assert(badgeTitle.includes('계산법 검증이나 논문 재현이 아닙니다'));
+ const methodTypography=await page.evaluate(()=>({
+  functional:getComputedStyle(document.querySelector('#picker-functional .picker-button')).fontSize,
+  basis:getComputedStyle(document.querySelector('#picker-basis .picker-button')).fontSize
+ }));
+ assert.equal(methodTypography.functional,'13px');
+ assert.equal(methodTypography.basis,'13px');
 
  // New UI: two/four parallel presets reveal resource budget restrictions.
  await page.locator('#batch-two-parallel').click();
