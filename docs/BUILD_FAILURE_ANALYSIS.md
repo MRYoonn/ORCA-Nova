@@ -29,3 +29,7 @@ Source fix commit 83fdd89 passed focused local updater race tests and vet. Windo
 ## v1.6.0 RC release review
 
 Fresh GitHub API and both requested DOI/PMC retrieval attempts returned 403; actual Golden numerical validation and reviewed PR merge operations remain blocked. Windows ORCA/MPI and real updater replacement/relaunch are unrun. Scientific review fixed ignored solvent/input blocks, missing XYZ composition admission, and TDDFT inputs being admitted to UKS/ground-state comparisons. Version review fixed RC→same-version stable upgrade detection. Focused race regressions pass; full results are in RELEASE_REGRESSION.md and RELEASE_VALIDATION_REPORT.md. Stable release is deliberately blocked; the explicitly authorized fallback is a prerelease with Korean limitations and --latest=false.
+
+## RC publication outcome (2026-11-09 KST)
+
+Source 9df25b5 passed full local Go test/race/vet/build. Windows Release run 42536452100 succeeded and published v1.6.0-rc.1 as Pre-release. Published ZIP was independently downloaded, CRC checked and matched against SHA256SUMS.txt (abbf9c8d3b4a9179a9d4d787a4e452b86db5979de5839b4124ff5b0712b18bd9). Stable latest remains v1.5.1. Stabilization PR creation remains blocked by GraphQL Forbidden; no PR merges or actual Windows/ORCA scientific verification are claimed. Required remaining gates are enumerated in RELEASE_VALIDATION_REPORT.md.
