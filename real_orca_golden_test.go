@@ -48,5 +48,4 @@ func TestRealOrca611WaterGolden(t *testing.T) {
   visual:=parseVisualization("water.out",string(out),string(inp))
   if len(visual.Optimization)<2 {t.Fatalf("real Opt should contain several energy cycles: %d",len(visual.Optimization))}
  })}
- }
 }
