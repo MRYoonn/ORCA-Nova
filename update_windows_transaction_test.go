@@ -25,7 +25,7 @@ func updateTestApply(t *testing.T,stage,target,launch string)(string,error) {
  t.Helper()
  ps:=filepath.Join(t.TempDir(),"apply.ps1")
  log:=filepath.Join(t.TempDir(),"update.log")
- if err:=os.WriteFile(ps,[]byte(updateScript),0600);err!=nil{t.Fatal(err)}
+ if err:=os.WriteFile(ps,powershellScriptBytes(updateScript),0600);err!=nil{t.Fatal(err)}
  cmd:=exec.Command("powershell.exe","-NoProfile","-ExecutionPolicy","Bypass","-File",ps,
   "-CurrentPid","2147483646","-StageDir",stage,"-TargetDir",target,"-Launch",launch,"-Log",log)
  out,err:=cmd.CombinedOutput()
