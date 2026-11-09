@@ -1,0 +1,22 @@
+name: Audit v1.6.0-rc.6 Public Release
+on:
+  push:
+    branches: ['main', 'audit/rc6-public-assets-20261110']
+    paths:
+      - '.github/workflows/audit-v1.6.0-rc.6.yml'
+      - 'tests/audit-public-rc-release.sh'
+  pull_request:
+    paths:
+      - '.github/workflows/audit-v1.6.0-rc.6.yml'
+      - 'tests/audit-public-rc-release.sh'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify-public-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify public rc.6 ZIP SHA256, CRC, paths and latest stable
+        run: bash tests/audit-public-rc-release.sh v1.6.0-rc.6 c481a6e71b1a19ab213a4a222fd20502084d8fc9 v1.5.1
