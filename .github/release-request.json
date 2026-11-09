@@ -1,8 +1,8 @@
 {
-  "tag": "v1.6.0-rc.7",
+  "tag": "v1.6.0-rc.8",
   "prerelease": true,
   "source": "approved-main-merge",
-  "summary": "Batch stage-aware research CSV/TXT with kcal/mol vertical roots and source provenance; CPU/RAM reservation UI and clearer picker labels; 2/4-way mock process/Win cancellation, Windows EXE API smoke, real ORCA 6.1.1 public-output golden, published stable-to-rc swap/rollback CI pass. Licensed research-PC ORCA/MPI remains unverified, stable channel stays v1.5.1.",
+  "summary": "Offline PDF/text SI Method Analyzer, DOI/page evidence, per-level Opt/SP candidates, conservative INP mismatch and opt-in application, geometry/charge/mult/solvent/freq checked composite Gibbs absolute energy. Three curated public SI method snippets and Playwright/Go/Windows CI passed; original Glorius full SI and licensed research-PC ORCA/MPI remain unverified; stable v1.5.1 unchanged.",
   "release_type": "verification-prerelease",
   "stable_release_blocked": true
 }
