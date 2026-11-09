@@ -1,0 +1,38 @@
+name: Windows Published Portable Live Acceptance
+on:
+  push:
+    branches: ['test/windows-rc2-portable-live-acceptance']
+  pull_request:
+    paths:
+      - 'tests/Windows-Portable-LiveAcceptance.ps1'
+      - '.github/workflows/windows-rc-live-acceptance.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  published-portable:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download actual published RC 2 portable assets
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          $base='https://github.com/MRYoonn/ORCA-Nova/releases/download/v1.6.0-rc.2'
+          Invoke-WebRequest -Uri ($base+'/ORCA_Nova_Portable_Windows.zip') -OutFile 'ORCA_Nova_Portable_Windows.zip' -UseBasicParsing
+          Invoke-WebRequest -Uri ($base+'/SHA256SUMS.txt') -OutFile 'SHA256SUMS.txt' -UseBasicParsing
+          if (-not (Test-Path 'ORCA_Nova_Portable_Windows.zip')) { throw 'Released portable ZIP missing' }
+      - name: Run real packaged EXE in isolated Windows session (no ORCA binary)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File 'tests/Windows-Portable-LiveAcceptance.ps1' -PortableZip 'ORCA_Nova_Portable_Windows.zip' -ChecksumFile 'SHA256SUMS.txt' -ExpectedVersion '1.6.0-rc.2' -ReportPath 'WINDOWS_LIVE_ACCEPTANCE.json'
+          if ($LASTEXITCODE -ne 0) { throw 'Windows packaged EXE live smoke test failed' }
+      - name: Upload acceptance summary (no private input or session token)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ORCA-Nova-Windows-Live-Acceptance
+          path: WINDOWS_LIVE_ACCEPTANCE.json
+          if-no-files-found: warn
