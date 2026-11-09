@@ -680,8 +680,8 @@ setInterval(()=>{if(lastDesktopState?.update)desktopUpdateShow(lastDesktopState.
 <p>분자마다 독립된 폴더에서 Workflow를 실행합니다. 왼쪽에서 계산 프리셋과 CPU / MaxCore를 설정한 뒤 적용하세요. 기존 결과는 새 실행 폴더에 보관됩니다.</p>
 <div class="batch-drop" id="batch-drop">XYZ / INP 파일 여러 개를 여기에 놓으세요.
 <div class="batch-controls"><label class="btn small ghost" for="batch-files">＋ XYZ / INP 여러 개 불러오기</label><input id="batch-files" type="file" multiple accept=".xyz,.inp" hidden><button class="btn small ghost" id="batch-apply" data-help="현재 왼쪽 계산 프리셋과 옵션을 모든 분자에 다시 적용합니다. 개별 INP 편집 내용은 바뀌므로 확인 후 적용하세요.">현재 프리셋을 모두 적용 <span class="help-icon">?</span></button></div></div>
-<div class="batch-note">Charge / Multiplicity는 분자별 기준 상태입니다. Workflow에서 정해진 S₀ / T₁ 등의 상태는 각 INP에 표시됩니다. INP 펼치기에서 분자별 Method, CPU, MaxCore와 단계별 상태를 직접 수정할 수 있습니다. INP를 불러오려면 참조 XYZ도 함께 등록하세요.</div>
-<div class="batch-table-wrap"><table class="batch-table"><thead><tr><th>선택</th><th>실행</th><th>Molecule / Workflow</th><th>Charge</th><th>Multiplicity</th><th>개별 입력 / 삭제</th></tr></thead><tbody id="batch-molecules"></tbody></table></div>
+<div class="batch-note">분자마다 <b>계산 프리셋</b>을 따로 선택할 수 있어요. 각 행의 선택은 다른 분자나 왼쪽 기본 설정을 변경하지 않습니다. Imported INP나 직접 수정한 INP를 프리셋으로 덮어쓸 때는 확인합니다. Charge / Multiplicity, CPU, MaxCore와 선행 XYZ 연결을 실행 전에 확인하세요.</div>
+<div class="batch-table-wrap"><table class="batch-table"><thead><tr><th>선택</th><th>실행</th><th>Molecule / 계산 프리셋</th><th>Charge</th><th>Multiplicity</th><th>개별 입력 / 삭제</th></tr></thead><tbody id="batch-molecules"></tbody></table></div>
 <div class="batch-selection-bar"><button id="batch-select-all" class="btn small ghost">전체 선택</button><button id="batch-remove-selected" class="btn small ghost" disabled>선택 XYZ 삭제</button><button id="batch-clear-all" class="btn small ghost">등록 목록 비우기</button><span id="batch-selected-count" class="batch-selected-count">0개 선택 · 0개 등록</span></div>
 <div class="batch-note">목록 삭제는 이미 제출된 Job Queue나 계산 결과 폴더를 삭제하지 않습니다.</div>
 <div class="batch-controls">
@@ -714,8 +714,9 @@ function batchLimits(){
  return {concurrency:n('batch-concurrency'),cpu:n('batch-cpu'),ramMB:n('batch-ram')};
 }
 function batchCapture(m){
- const saved={loadedXYZ,xyzOriginal,xyzAtomCount,activeStage,charge:$('charge').value,mult:$('mult').value};
+ const saved={loadedXYZ,xyzOriginal,xyzAtomCount,activeStage,active,charge:$('charge').value,mult:$('mult').value};
  try{
+  active=m.presetId||active;
   loadedXYZ=m.name;xyzOriginal=m.xyz;xyzAtomCount=parseXYZ(m.xyz);activeStage=0;$('charge').value=m.charge;$('mult').value=m.mult;
   const files=new Map([[m.name,m.xyz]]),jobs=[];
   // Each molecule is independent; a generated geometry can only refer to an
@@ -727,7 +728,7 @@ function batchCapture(m){
   }
   for(const st of jobs){if(files.has(st.source)||jobs.some(j=>j.input.replace(/\.inp$/i,'.xyz')===st.source))continue;const other=batchMolecules.find(v=>v.name===st.source);if(other)files.set(other.name,other.xyz);}
   m.request={label:filenameStem(m.name)+'_'+active,files:[...files].map(([name,content])=>({name,content})),stages:jobs};m.preset=calc(active).name;
- }finally{loadedXYZ=saved.loadedXYZ;xyzOriginal=saved.xyzOriginal;xyzAtomCount=saved.xyzAtomCount;activeStage=saved.activeStage;$('charge').value=saved.charge;$('mult').value=saved.mult;}
+ }finally{loadedXYZ=saved.loadedXYZ;xyzOriginal=saved.xyzOriginal;xyzAtomCount=saved.xyzAtomCount;activeStage=saved.activeStage;active=saved.active;$('charge').value=saved.charge;$('mult').value=saved.mult;}
 }
 function batchRenderMolecules(){
  const body=$('batch-molecules');body.replaceChildren();
@@ -737,7 +738,36 @@ function batchRenderMolecules(){
   const controls=row.querySelectorAll('input');
   controls[0].checked=!!m.selected;controls[0].onchange=()=>{m.selected=controls[0].checked;batchUpdateSelection()};
   controls[1].checked=m.included;controls[1].onchange=()=>{m.included=controls[1].checked;batchUpdateBudget()};
-  row.querySelector('.batch-molecule-name').textContent=m.original+' · '+m.preset;
+  const nameCell=row.querySelector('.batch-molecule-name');
+  const nameLabel=document.createElement('div');nameLabel.className='batch-molecule-label';
+  nameLabel.textContent=m.original+(m.custom?' · INP 개별 수정됨':'');
+  const preset=document.createElement('select');preset.className='control batch-preset-select';
+  preset.setAttribute('aria-label',m.original+' 계산 프리셋');
+  preset.setAttribute('data-help','이 XYZ에만 적용할 계산을 선택합니다. 기존 개별 INP를 덮어쓸 때 확인합니다. Import한 INP는 직접 변경하지 않는 한 그대로 유지됩니다.');
+  if(!m.presetId){const legacy=new Option('Imported INP · 직접 편집','__imported__');legacy.disabled=true;preset.add(legacy);}
+  for(const group of GROUPS){
+   const optgroup=document.createElement('optgroup');optgroup.label=group.name;
+   for(const item of group.items){
+    if(item.hidden)continue;
+    optgroup.append(new Option(item.id+' · '+item.name,item.id));
+   }
+   if(optgroup.children.length)preset.append(optgroup);
+  }
+  preset.value=m.presetId||'__imported__';
+  preset.onchange=()=>{
+   const id=preset.value;
+   if(!DATA.some(c=>c.id===id))return;
+   if(m.custom&&!confirm('이 분자의 편집된 INP를 '+id+' 프리셋으로 덮어쓸까요? 기존 수정 내용이 사라집니다.')){
+    preset.value=m.presetId||'__imported__';return;
+   }
+   m.presetId=id;
+   batchCapture(m);m.custom=false;batchRenderMolecules();
+   batchMessage(m.original+'에 '+id+' 프리셋 적용 · 다른 분자/기존 Queue 변경 없음. Preflight를 확인하세요.');
+  };
+  nameCell.append(nameLabel,preset);
+  const presetHint=document.createElement('small');presetHint.className='batch-preset-hint';
+  presetHint.textContent=m.custom?'현재 INP를 직접 수정한 상태입니다.':(m.presetId?'단계 '+(m.request?.stages?.length||0)+'개 · 이 분자에만 적용':'원본 INP 유지');
+  nameCell.append(presetHint);
   controls[2].value=m.charge;controls[3].value=m.mult;
   for(const [control,key] of [[controls[2],'charge'],[controls[3],'mult']])control.onchange=()=>{
    const x=Number(control.value);
@@ -802,7 +832,7 @@ async function batchImport(files){
   for(const f of data.filter(x=>/\.xyz$/i.test(x.name))){
    if(!parseXYZ(f.text)){notes.push(f.name+': XYZ 형식을 확인하세요.');continue;}
    const name=filenameStem(f.name)+'.xyz';if(batchMolecules.some(m=>m.name.toLowerCase()===name.toLowerCase())){notes.push(f.name+': 같은 이름의 분자가 있어 건너뛰었습니다.');continue;}
-   const m={original:f.name,name,xyz:f.text,charge:num('charge',0),mult:num('mult',1),included:true,custom:false};batchMolecules.push(m);batchCapture(m);
+   const m={original:f.name,name,xyz:f.text,charge:num('charge',0),mult:num('mult',1),included:true,custom:false,presetId:active};batchMolecules.push(m);batchCapture(m);
   }
   const grouped=new Map(), imported=[];
   for(const f of data.filter(x=>/\.inp$/i.test(x.name))){
@@ -827,7 +857,7 @@ async function batchImport(files){
   for(const f of imported){const m=resolveInput(f);if(!m)notes.push(f.name+': '+f.source+' 또는 이를 생성할 선행 INP를 함께 등록하세요.');}
   for(const f of ordered){const m=owners.get(f);if(!grouped.has(m))grouped.set(m,[]);grouped.get(m).push(f);}
   for(const [m,inputs] of grouped){
-   m.charge=inputs[0].charge;m.mult=inputs[0].mult;m.preset='Imported INP';m.custom=true;
+   m.charge=inputs[0].charge;m.mult=inputs[0].mult;m.preset='Imported INP';m.presetId=null;m.custom=true;
    m.request={label:filenameStem(m.name)+'_import',files:[{name:m.name,content:m.xyz},...inputs.map(f=>({name:f.name,content:f.content}))],stages:inputs.map(f=>({name:f.name,input:f.name,source:f.source,opt:/^\s*!.*\b(?:Opt|OptTS)\b/im.test(f.content)}))};
   }
   batchRenderMolecules();batchMessage(batchMolecules.length+'개 분자 등록 · 모든 INP를 검토한 뒤 전체 Preflight를 실행하세요.'+(notes.length?'\n'+notes.join('\n'):''),notes.length>0);
@@ -895,7 +925,7 @@ $('batch-four-parallel').onclick=()=>{$('batch-concurrency').value='4';batchUpda
 for(const id of ['batch-concurrency','batch-cpu','batch-ram'])$(id).addEventListener('input',batchUpdateBudget);
 $('batch-files').onchange=async e=>{await batchImport([...e.target.files]);e.target.value=''};
 const batchDrop=$('batch-drop');batchDrop.ondragover=e=>{e.preventDefault();batchDrop.classList.add('over')};batchDrop.ondragleave=()=>batchDrop.classList.remove('over');batchDrop.ondrop=e=>{e.preventDefault();batchDrop.classList.remove('over');batchImport([...e.dataTransfer.files])};
-$('batch-apply').onclick=()=>{if(batchMolecules.some(m=>m.custom)&&!confirm('모든 분자의 개별 INP 편집을 현재 프리셋으로 다시 생성할까요?'))return;for(const m of batchMolecules){batchCapture(m);m.custom=false}batchRenderMolecules();batchMessage('현재 프리셋을 전체 분자에 적용했습니다. 각 단계의 Charge / Multiplicity와 자원 설정을 확인하세요.')};
+$('batch-apply').onclick=()=>{if(batchMolecules.some(m=>m.custom)&&!confirm('모든 분자의 개별 INP 편집을 현재 프리셋으로 다시 생성할까요?'))return;for(const m of batchMolecules){m.presetId=active;batchCapture(m);m.custom=false}batchRenderMolecules();batchMessage('현재 프리셋을 전체 분자에 적용했습니다. 각 단계의 Charge / Multiplicity와 자원 설정을 확인하세요.')};
 $('batch-check').onclick=()=>batchSubmit(false);$('batch-start').onclick=()=>batchSubmit(true);
 $('batch-pause').onclick=()=>batchAction('pause');$('batch-resume').onclick=()=>batchAction('resume');$('batch-stop').onclick=()=>{if(confirm('진행 중인 모든 Job을 중단하고 대기 작업도 중단할까요?'))batchAction('stopAll')};
 $('batch-csv').onclick=async()=>{try{const r=await fetch('/api/queue/export?session='+encodeURIComponent(desktopSession));if(!r.ok)throw Error('CSV를 읽지 못했습니다.');download('batch_results.csv',await r.text(),'text/csv;charset=utf-8')}catch(e){batchMessage(e.message,true)}};
@@ -947,6 +977,34 @@ setInterval(batchPoll,2300);batchPoll();
 </script>
 
 <style>
+/* Hierarchical scientific result summary, readable instead of raw JSON. */
+#viz-summary{max-height:none;white-space:normal;overflow:visible;font-size:12px;line-height:1.5}
+.viz-report{display:grid;gap:13px}
+.viz-report-head{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start;justify-content:space-between;background:#17283c;border:1px solid #304b66;border-radius:10px;padding:14px}
+.viz-report-head h3{margin:0;font-size:16px;color:#ecf5ff}
+.viz-report-sub{color:#a7bfd8;font-size:11px;margin-top:4px;overflow-wrap:anywhere}
+.viz-report-state{font-size:12px;font-weight:700;border-radius:7px;padding:6px 10px;background:#26374b;color:#d6e5f6}
+.viz-report-state.ok{color:#8fe9c9;background:#173f3c}.viz-report-state.bad{color:#ffb2b6;background:#4b272d}
+.viz-report-chips{display:flex;flex-wrap:wrap;gap:6px}
+.viz-report-chips span{background:#20334a;border:1px solid #304e6b;border-radius:6px;padding:4px 8px;font-size:11px}
+.viz-report-section{border:1px solid #30445c;border-radius:10px;padding:13px;background:#101b2b}
+.viz-report-section h4{font-size:13px;margin:0 0 10px;color:#e9f2ff}
+.viz-report-energies{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:9px}
+.viz-report-energy{background:#1b2b40;border-radius:8px;padding:12px 10px}
+.viz-report-energy span{display:block;color:#a6bfd8;font-size:11px;margin-bottom:5px}
+.viz-report-energy strong{font-size:14px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.viz-report-note{color:#a6c1d7;font-size:11px;margin-top:8px;line-height:1.6}
+.viz-report-table{width:100%;border-collapse:collapse;min-width:380px;font-variant-numeric:tabular-nums}
+.viz-report-table th{background:#1a3049;color:#bbd6f0}
+.viz-report-table td,.viz-report-table th{padding:7px 9px;border-bottom:1px solid #294059;text-align:left}
+.viz-report-scroll{overflow:auto;max-height:280px}
+.viz-report-details{border:1px solid #30445c;border-radius:9px;padding:10px 12px}
+.viz-report-details summary{cursor:pointer;font-weight:600}
+.viz-report-details pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px;max-height:240px;overflow:auto}
+.batch-preset-select{display:block;margin-top:5px;width:100%;max-width:260px;min-width:170px;padding:5px}
+.batch-molecule-label{font-weight:650;overflow-wrap:anywhere}
+.batch-preset-hint{display:block;color:#9fb6cd;margin-top:4px;font-size:10px}
+
 #functional,#basis{font-size:14px;line-height:1.65;min-height:40px;color:#e4edf7;background:#17283d}#functional option,#basis option{padding:8px;background:#17283d;color:#e4edf7}.viz-panel{border:1px solid #35506a;border-radius:12px;padding:14px;margin:15px 0;background:#111e2f;color:#c9dcec}.viz-controls{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;align-items:center}.viz-controls select,.viz-controls input{max-width:210px;background:#17283d;color:#daeafa;border:1px solid #42617c;padding:7px;border-radius:5px}.viz-tabs{display:flex;gap:5px;flex-wrap:wrap}.viz-tabs button[aria-selected=true]{border-color:#83ddca;color:#83ddca}.viz-view{max-height:480px;overflow:auto;white-space:pre-wrap;font-size:12px;line-height:1.7}.viz-view svg{width:100%;min-width:430px;max-height:400px}.viz-view table{border-collapse:collapse;width:100%}.viz-view td,.viz-view th{padding:6px;border-bottom:1px solid #304359;text-align:left}.viz-note{font-size:11px;color:#a8c0d7;white-space:pre-wrap}.viz-panel svg text{font-family:Arial,sans-serif}
 </style>
 <section class="viz-panel" id="viz-panel" aria-label="계산 결과 시각화">
@@ -1017,9 +1075,97 @@ function vizDraw(series){
  for(const p of rows){if(!vizFinite(p.x)||!vizFinite(p.y)){gap=true;continue}const x=px(p.x),y=py(p.y),bad=/fail|interrupt/i.test(p.status||'');if(stick)node('path',{d:`M${x} 295 V${y}`,stroke:bad?'#ff9e91':'#82e0ca','stroke-width':2});else{path+=(gap||lastGroup!==p.group?'M':'L')+x+','+y+' ';gap=false;lastGroup=p.group;}const dot=node('circle',{cx:x,cy:y,r:5,fill:bad?'#ff9e91':'#82e0ca',tabindex:0,style:'cursor:pointer'});const title=document.createElementNS(ns,'title');title.textContent=JSON.stringify(p,null,2);dot.append(title);dot.onclick=()=>{$('viz-point').textContent=JSON.stringify(p,null,2)+(p.xyz?'\n저장된 XYZ: '+p.xyz:'\nXYZ: Unavailable');$('viz-selected').value=p.step||rows.indexOf(p)+1;if(p.xyz){const b=document.createElement('button');b.className='btn small';b.textContent='XYZ 구조 저장';b.onclick=async()=>{try{const r=await fetch('/api/visualization/xyz?session='+encodeURIComponent(desktopSession)+'&id='+encodeURIComponent($('viz-job').value)+'&file='+encodeURIComponent(p.xyz));if(!r.ok)throw Error('XYZ를 읽지 못했습니다');download(p.xyz,await r.text())}catch(e){$('viz-message').textContent=e.message}};$('viz-point').append(b)}};dot.onfocus=()=>{$('viz-point').textContent=JSON.stringify(p,null,2)}}
  if(!stick)node('path',{d:path.trim(),fill:'none',stroke:'#82e0ca','stroke-width':1.5,'pointer-events':'none'});host.append(svg);
 }
+
+function vizSummaryNumber(value,digits=8){
+ return typeof value==='number'&&Number.isFinite(value)?value.toFixed(digits):'Not calculated';
+}
+function vizRenderSummary(){
+ const s=vizSource(),a=vizAnalysis(s),host=$('viz-summary');host.replaceChildren();
+ const node=(tag,cls,content,parent=host)=>{
+  const e=document.createElement(tag);if(cls)e.className=cls;if(content!==undefined)e.textContent=String(content);parent.append(e);return e;
+ };
+ const report=node('div','viz-report');
+ const head=node('div','viz-report-head',undefined,report),info=node('div','',undefined,head);
+ node('h3','',s.name||'결과를 불러오지 않았어요',info);
+ node('div','viz-report-sub','Source: '+(s.name||'Unavailable')+' · Geometry: '+(a.Geometry||'Not available'),info);
+ const complete=a.Status==='Completed'&&a.Normal===true;
+ const failed=a.Status==='Failed';
+ node('span','viz-report-state '+(complete?'ok':failed?'bad':''),complete?'✓ 계산 정상 종료':failed?'계산 실패 / 미완료':(a.Status||'Not calculated')+' · 종료 확인 필요',head);
+ if(!s.name){node('p','viz-report-note','OUT 파일을 선택하면 종료 상태와 실제 추출값이 여기에 표시됩니다.',report);return;}
+ const chips=node('div','viz-report-chips',undefined,report);
+ const addChip=t=>node('span','',t,chips);
+ addChip('ORCA 종료: '+(a.Normal===true?'정상 종료 확인':'미확인'));
+ addChip('SCF: '+(a.SCFConverged===true?'수렴':a.SCFConverged===false?'미수렴 / 확인 불가':'Not calculated'));
+ if(a.Optimized===true||/\bOpt\b|OptTS/i.test(a.Method||''))addChip('Geometry Opt: '+(a.Optimized===true?'수렴':'수렴 확인 불가'));
+ addChip('Multiplicity: '+(Number.isInteger(a.Multiplicity)&&a.Multiplicity>0?a.Multiplicity:'Not calculated'));
+ addChip('Charge: '+(Number.isInteger(a.Multiplicity)&&a.Multiplicity>0?a.Charge:'Not calculated'));
+ if(Number.isInteger(a.ImaginaryCount))addChip('Imaginary Frequencies: '+a.ImaginaryCount);
+ const method=node('div','viz-report-note','Method / Settings: '+(a.Method||'Not available'),report);
+ const energies=node('section','viz-report-section',undefined,report);
+ node('h4','','핵심 에너지 · 원본 절대값',energies);
+ const grid=node('div','viz-report-energies',undefined,energies);
+ for(const [name,value] of [['Electronic Energy',a.Electronic],['Gibbs Free Energy (G)',a.Gibbs],['Enthalpy (H)',a.Enthalpy],['Zero Point Energy (ZPE)',a.ZPE]]){
+  const card=node('div','viz-report-energy',undefined,grid);node('span','',name,card);
+  node('strong','',value===null||value===undefined?'Not calculated':vizSummaryNumber(value)+' Eh',card);
+ }
+ node('div','viz-report-note','Eh = Hartree. 절대 에너지 자체는 반응 에너지·EnT 가능성·S₀–T₁ Gap을 의미하지 않습니다. 비교 전 Method, Geometry, 전자상태, Thermal correction을 검증하세요.',energies);
+ if(typeof a.S2==='number'&&Number.isFinite(a.S2)){
+  const spin=node('section','viz-report-section',undefined,report);node('h4','','Spin 확인',spin);
+  node('div','','⟨S²⟩ = '+a.S2.toFixed(5)+' · 목표 Multiplicity의 이상적 값 및 Spin contamination은 별도 검토',spin);
+ }
+ const roots=Array.isArray(a.Roots)?a.Roots:[];
+ const section=node('section','viz-report-section',undefined,report);
+ node('h4','','여기 상태 · TD-DFT Vertical Excitation',section);
+ if(!roots.length)node('div','viz-report-note','Not calculated · OUT에 TD-DFT Root 데이터가 없습니다.',section);
+ else{
+  const scroll=node('div','viz-report-scroll',undefined,section),table=node('table','viz-report-table',undefined,scroll),header=node('tr','',undefined,table);
+  for(const v of ['State / Root','Excitation (eV)','Wavelength (nm)','Oscillator strength'])node('th','',v,header);
+  for(const root of roots){
+   const tr=node('tr','',undefined,table);
+   for(const v of [String(root.Kind||'Unknown')+' '+root.Root,vizSummaryNumber(root.EV,4),vizSummaryNumber(root.WavelengthNM,1),vizSummaryNumber(root.OscillatorStrength,5)])node('td','',v,tr);
+  }
+  node('div','viz-report-note','여기서 표시한 값은 S₀ 구조의 Vertical Excitation이며 최적화된 T₁의 Adiabatic Energy가 아닙니다.',section);
+ }
+ const pop=a.Populations&&typeof a.Populations==='object'?a.Populations:{};
+ const schemes=Object.keys(pop).filter(k=>Array.isArray(pop[k])&&pop[k].some(x=>typeof x.Spin==='number'&&Number.isFinite(x.Spin)));
+ const atomSection=node('section','viz-report-section',undefined,report);node('h4','','Atomic Spin Population · ORCA 원자 번호',atomSection);
+ if(!schemes.length)node('div','viz-report-note','Not calculated · 원자별 Spin 값이 없습니다. Spin Density cube와 Atomic Spin Population은 다른 출력입니다.',atomSection);
+ else{
+  const scheme=schemes.includes('Mulliken')?'Mulliken':schemes[0];
+  node('div','viz-report-note','표시 분석법: '+scheme+' · |Spin| 큰 순서 (절댓값으로 정렬, 부호 유지) · ORCA 0-based index',atomSection);
+  const rows=pop[scheme].filter(x=>typeof x.Spin==='number'&&Number.isFinite(x.Spin)).slice().sort((x,y)=>Math.abs(y.Spin)-Math.abs(x.Spin));
+  const scroll=node('div','viz-report-scroll',undefined,atomSection),table=node('table','viz-report-table',undefined,scroll),header=node('tr','',undefined,table);
+  for(const val of ['Atom index (0-based)','Element','Spin population'])node('th','',val,header);
+  for(const x of rows.slice(0,12)){const tr=node('tr','',undefined,table);for(const val of [x.Index,x.Element,vizSummaryNumber(x.Spin,5)])node('td','',val,tr);}
+  if(rows.length>12)node('div','viz-report-note','상위 12개만 표시 · 전체 값은 원본 OUT 및 상세 데이터에서 확인',atomSection);
+  node('div','viz-report-note','C5/C6 화학적 위치는 자동 판정하지 않습니다. Spin Population만으로 라디칼 반응의 극성·선택성이 결정되지는 않습니다.',atomSection);
+ }
+ const warnings=[...(visualizationModel.warnings||[]),...(s.warnings||[]),...(a.Warnings||[])];
+ if(warnings.length){
+  const block=node('details','viz-report-details',undefined,report);node('summary','','주의사항 · '+warnings.length+'개',block);
+  const list=node('ul','',undefined,block);
+  for(const w of [...new Set(warnings)])node('li','',w,list);
+ }
+ const details=node('details','viz-report-details',undefined,report);
+ node('summary','','원본 분석 JSON 보기 · 고급',details);
+ node('pre','',JSON.stringify({source:s.name,scientificProfile:visualizationModel.profile||null,analysis:a,warnings},null,2),details);
+ const copy=node('button','btn small ghost','요약 텍스트 복사',report);copy.type='button';
+ copy.onclick=()=>copyText([
+  'Source: '+s.name,'Status: '+(a.Status||'Not calculated'),'Normal termination: '+(a.Normal===true),
+  'SCF converged: '+(a.SCFConverged===true),'Method: '+(a.Method||'Not calculated'),
+  'Geometry: '+(a.Geometry||'Not calculated'),
+  'Electronic Energy (Eh): '+vizSummaryNumber(a.Electronic),
+  'Gibbs Free Energy (Eh): '+vizSummaryNumber(a.Gibbs),
+  'Enthalpy (Eh): '+vizSummaryNumber(a.Enthalpy),
+  'ZPE (Eh): '+vizSummaryNumber(a.ZPE),
+  'S2: '+vizSummaryNumber(a.S2,5),
+  'TDDFT roots (vertical eV): '+roots.map(x=>String(x.Kind)+' '+x.Root+'='+vizSummaryNumber(x.EV,4)).join(', ')
+ ].join('\n'));
+}
+
 function vizRender(){
  const s=vizSource(),a=vizAnalysis(s),series=vizSeries();visualizationRows=series.rows;
- $('viz-summary').textContent=JSON.stringify({scientificProfile:visualizationModel.profile||null,source:s.name,status:a.Status,Method:a.Method,Geometry:a.Geometry,Charge:a.Charge,Multiplicity:a.Multiplicity,Electronic_Eh:a.Electronic,Gibbs_Eh:a.Gibbs,Enthalpy_Eh:a.Enthalpy,ZPE_Eh:a.ZPE,warnings:[...(visualizationModel.warnings||[]),...(s.warnings||[]),...(a.Warnings||[])]},null,2);
+ vizRenderSummary();
  $('viz-message').textContent=(s.name||'결과 파일 없음')+(($('viz-kind').value==='pes'&&!s.input)?' · Scan 좌표 단위를 원본 INP에서 확인하세요. DAT 좌표를 임의로 Å로 취급하지 않습니다.':'')+' · 원본 수치와 출처를 확인하세요. 서로 다른 Method/Geometry의 자동 차감은 과학적 비교를 보장하지 않습니다.';
  $('viz-raw').textContent=s.rawOutput||s.raw||'원본 OUT은 파일에서 직접 확인하세요. 현재 응답에는 원문이 없습니다.';
  vizDraw(series);const table=document.createElement('table'),head=document.createElement('tr');for(const x of ['Point',series.xlabel,series.ylabel,'Status','Source','Line','XYZ']){let th=document.createElement('th');th.textContent=x;head.append(th)}table.append(head);for(const p of series.rows){let tr=document.createElement('tr');for(const v of [p.label??p.step??'',p.x??'Unavailable',p.y??(p.status==='Failed'?'Failed':'Unavailable'),p.status||'Unavailable',p.source||s.name,p.line??'Unavailable',p.xyz||'Unavailable']){let td=document.createElement('td');td.textContent=v;tr.append(td)}table.append(tr)}$('viz-table').replaceChildren(table);
