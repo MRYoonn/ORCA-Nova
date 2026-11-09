@@ -51,6 +51,7 @@ type SIResult struct {
  Pages int `json:"pages"`
  Evidence []SIEvidence `json:"evidence"`
  Fields []SIField `json:"fields"`
+ Levels []SILevel `json:"levels"`
  Differences []SIDifference `json:"differences"`
  Warnings []string `json:"warnings"`
  Confirmed bool `json:"confirmed"`
@@ -173,6 +174,7 @@ func analyzeSI(doc SIDocument)(SIResult,error){
   result.Warnings=append(result.Warnings,"텍스트 붙여넣기 모드: 실제 PDF 페이지 번호는 확인할 수 없으므로 Page 1은 입력한 텍스트 영역을 의미합니다.")
  }
  result.Pages=len(pages)
+ result.Levels=extractSILevels(pages)
  found:=make(map[string]map[string]bool)
  for _,key:=range siOrder {found[key]=make(map[string]bool)}
  for _,p:=range pages {
