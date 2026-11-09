@@ -572,9 +572,19 @@ func (a *App) queueRoute(w http.ResponseWriter, r *http.Request) {
 		q.mu.Lock()
 		defer q.mu.Unlock()
 		q.snapshotLocked()
-		w.Header().Set("Content-Type", "text/csv; charset=utf-8")
-		w.Header().Set("Content-Disposition", "attachment; filename=batch_results.csv")
-		q.exportLocked(w)
+		w.Header().Set("Cache-Control", "no-store")
+		switch r.URL.Query().Get("format") {
+		case "", "csv":
+			w.Header().Set("Content-Type", "text/csv; charset=utf-8")
+			w.Header().Set("Content-Disposition", "attachment; filename=batch_results.csv")
+			q.exportLocked(w)
+		case "txt":
+			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			w.Header().Set("Content-Disposition", "attachment; filename=batch_summary.txt")
+			q.exportHumanTextLocked(w)
+		default:
+			fail(w, 400, "지원하는 보고서 형식은 csv 또는 txt입니다")
+		}
 	case "/api/queue", "/api/queue/preflight":
 		if r.Method == "GET" && r.URL.Path == "/api/queue" {
 			q.mu.Lock()
