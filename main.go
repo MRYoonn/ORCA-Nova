@@ -45,32 +45,36 @@ type RunRequest struct {
 	Stages []Stage   `json:"stages"`
 }
 type Job struct {
-	ID           string `json:"id"`
-	Folder       string `json:"folder"`
-	State        string `json:"state"`
-	StageIndex   int    `json:"stageIndex"`
-	StageCount   int    `json:"stageCount"`
-	StageName    string `json:"stageName"`
-	Started      string `json:"started"`
-	Finished     string `json:"finished,omitempty"`
-	Message      string `json:"message"`
-	OutFile      string `json:"outFile,omitempty"`
-	LastLog      string `json:"lastLog,omitempty"`
-	ReportFile   string `json:"reportFile,omitempty"`
-	stageStarted time.Time
-	stageKey     string
-	stageKeys    []string
+	ID              string   `json:"id"`
+	Folder          string   `json:"folder"`
+	State           string   `json:"state"`
+	StageIndex      int      `json:"stageIndex"`
+	StageCount      int      `json:"stageCount"`
+	StageName       string   `json:"stageName"`
+	Started         string   `json:"started"`
+	Finished        string   `json:"finished,omitempty"`
+	Message         string   `json:"message"`
+	OutFile         string   `json:"outFile,omitempty"`
+	LastLog         string   `json:"lastLog,omitempty"`
+	ReportFile      string   `json:"reportFile,omitempty"`
+	CompletedStages []string `json:"completedStages,omitempty"`
+	stageStarted    time.Time
+	stageKey        string
+	stageKeys       []string
 }
 type App struct {
-	mu      sync.Mutex
-	cfg     Config
-	job     *Job
-	cancel  context.CancelFunc
-	process *os.Process
-	token   string
-	updates *updater
-	cfgPath string
-	history *durationHistory
+	updating bool
+	queue    *JobQueue
+	onChange func()
+	mu       sync.Mutex
+	cfg      Config
+	job      *Job
+	cancel   context.CancelFunc
+	process  *os.Process
+	token    string
+	updates  *updater
+	cfgPath  string
+	history  *durationHistory
 }
 
 func configPath() string {
@@ -109,6 +113,7 @@ func newApp() *App {
 	a.token = hex.EncodeToString(b)
 	a.updates = newUpdater()
 	a.history = newDurationHistory(a.cfgPath)
+	a.queue = newJobQueue(a, filepath.Join(filepath.Dir(a.cfgPath), "job_queue.json"))
 	return a
 }
 func (a *App) saveConfig() error {
@@ -146,6 +151,10 @@ func (a *App) guard(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 func (a *App) route(w http.ResponseWriter, r *http.Request) {
+	if strings.HasPrefix(r.URL.Path, "/api/queue") {
+		a.queueRoute(w, r)
+		return
+	}
 	switch r.URL.Path {
 	case "/":
 		if r.Method != http.MethodGet {
@@ -194,6 +203,14 @@ func (a *App) route(w http.ResponseWriter, r *http.Request) {
 		}
 		respond(w, 200, a.updates.check())
 	case "/api/update/install":
+		if a.queue != nil {
+			a.queue.mu.Lock()
+			defer a.queue.mu.Unlock()
+			if a.queue.activeLocked() {
+				fail(w, 409, "Queue에 실행·대기 작업이 있습니다. 먼저 중단하세요.")
+				return
+			}
+		}
 		if r.Method != http.MethodPost {
 			fail(w, 405, "Method not allowed")
 			return
@@ -205,8 +222,19 @@ func (a *App) route(w http.ResponseWriter, r *http.Request) {
 			fail(w, 409, "계산 중에는 업데이트할 수 없어요. 먼저 계산을 완료하거나 중단하세요.")
 			return
 		}
+		a.mu.Lock()
+		if a.updating {
+			a.mu.Unlock()
+			fail(w, 409, "업데이트 적용 중입니다")
+			return
+		}
+		a.updating = true
+		a.mu.Unlock()
 		folder, err := a.updates.prepare()
 		if err != nil {
+			a.mu.Lock()
+			a.updating = false
+			a.mu.Unlock()
 			fail(w, 500, "업데이트 준비 실패: "+err.Error())
 			return
 		}
@@ -356,6 +384,12 @@ func (a *App) route(w http.ResponseWriter, r *http.Request) {
 			fail(w, 409, "계산이 실행 중입니다. 먼저 중단하세요.")
 			return
 		}
+		if a.queue != nil {
+			if err := a.queue.pauseForQuit(); err != nil {
+				fail(w, 409, "Queue 종료 보류: "+err.Error())
+				return
+			}
+		}
 		respond(w, 200, map[string]bool{"ok": true})
 		go func() { time.Sleep(200 * time.Millisecond); os.Exit(0) }()
 	default:
@@ -392,6 +426,14 @@ func safeLabel(s string) string {
 	return ret
 }
 func (a *App) start(w http.ResponseWriter, r *http.Request) {
+	if a.queue != nil {
+		a.queue.mu.Lock()
+		defer a.queue.mu.Unlock()
+		if a.queue.activeLocked() {
+			fail(w, 409, "Queue 작업을 먼저 완료하거나 취소하세요.")
+			return
+		}
+	}
 	var req RunRequest
 	if err := json.NewDecoder(io.LimitReader(r.Body, 12<<20)).Decode(&req); err != nil {
 		fail(w, 400, "입력 데이터를 읽지 못했어요: "+err.Error())
@@ -435,7 +477,12 @@ func (a *App) start(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	cfg := a.cfg
+	updating := a.updating
 	a.mu.Unlock()
+	if updating {
+		fail(w, 409, "업데이트 적용 중입니다")
+		return
+	}
 	if cfg.ORCAExe == "" {
 		fail(w, 400, "먼저 ORCA 실행 파일 경로를 저장하세요.")
 		return
@@ -485,7 +532,14 @@ func (a *App) start(w http.ResponseWriter, r *http.Request) {
 	respond(w, 200, map[string]interface{}{"ok": true, "folder": folder})
 	go a.runJob(ctx, cfg.ORCAExe, req, job)
 }
-func (a *App) updateJob(j *Job, fn func(*Job)) { a.mu.Lock(); fn(j); a.mu.Unlock() }
+func (a *App) updateJob(j *Job, fn func(*Job)) {
+	a.mu.Lock()
+	fn(j)
+	a.mu.Unlock()
+	if a.onChange != nil {
+		a.onChange()
+	}
+}
 func tail(path string, limit int) string {
 	f, err := os.Open(path)
 	if err != nil {
@@ -521,9 +575,22 @@ func (a *App) runJob(ctx context.Context, orcaExe string, req RunRequest, j *Job
 	}()
 	defer func() { a.mu.Lock(); a.process = nil; a.cancel = nil; a.mu.Unlock() }()
 	for i, stage := range req.Stages {
+		done := false
+		for _, name := range j.CompletedStages {
+			if name == stage.Input {
+				done = true
+			}
+		}
+		if done {
+			if err := validateStage(j.Folder, stage); err != nil {
+				a.failure(j, "완료 단계 재검증 실패: "+err.Error(), "")
+				return
+			}
+			continue
+		}
 		if ctx.Err() != nil {
 			a.updateJob(j, func(j *Job) {
-				j.State = "stopped"
+				j.State = "interrupted"
 				j.Message = "사용자 중단"
 				j.Finished = time.Now().Format(time.RFC3339)
 			})
@@ -552,10 +619,21 @@ func (a *App) runJob(ctx context.Context, orcaExe string, req RunRequest, j *Job
 		}
 		cmd := exec.CommandContext(ctx, orcaExe, stage.Input)
 		cmd.Dir = j.Folder
+		configureProcess(cmd)
+		cmd.Cancel = func() error { killTree(cmd.Process.Pid); return cmd.Process.Kill() }
+		cmd.WaitDelay = 5 * time.Second
 		cmd.Stdout = out
 		cmd.Stderr = out
 		if err := cmd.Start(); err != nil {
 			out.Close()
+			if ctx.Err() != nil {
+				a.updateJob(j, func(j *Job) {
+					j.State = "interrupted"
+					j.Message = "사용자 중단"
+					j.Finished = time.Now().Format(time.RFC3339)
+				})
+				return
+			}
 			a.failure(j, "ORCA 실행 시작 실패: "+err.Error(), outPath)
 			return
 		}
@@ -569,7 +647,7 @@ func (a *App) runJob(ctx context.Context, orcaExe string, req RunRequest, j *Job
 		a.mu.Unlock()
 		if ctx.Err() != nil {
 			a.updateJob(j, func(j *Job) {
-				j.State = "stopped"
+				j.State = "interrupted"
 				j.Message = "사용자 중단"
 				j.Finished = time.Now().Format(time.RFC3339)
 			})
@@ -588,6 +666,11 @@ func (a *App) runJob(ctx context.Context, orcaExe string, req RunRequest, j *Job
 			a.failure(j, "Geometry Optimization 수렴 문구가 없어요.", outPath)
 			return
 		}
+		if err := validateStage(j.Folder, stage); err != nil {
+			a.failure(j, err.Error(), outPath)
+			return
+		}
+		a.updateJob(j, func(j *Job) { j.CompletedStages = append(j.CompletedStages, stage.Input) })
 		if i < len(j.stageKeys) {
 			a.history.observe(j.stageKeys[i], time.Since(j.stageStarted).Seconds())
 		}
@@ -621,11 +704,7 @@ func checkOut(path string) (bool, bool, error) {
 	}
 	return normal, opt, scanner.Err()
 }
-func killTree(pid int) {
-	if runtime.GOOS == "windows" {
-		exec.Command("taskkill", "/T", "/F", "/PID", fmt.Sprint(pid)).Run()
-	}
-}
+
 func revealFolder(path string) {
 	if runtime.GOOS == "windows" {
 		exec.Command("explorer.exe", path).Start()

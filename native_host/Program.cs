@@ -122,7 +122,13 @@ namespace ORCANovaUI {
                     }
                     var quit = new Uri(localUrl).GetLeftPart(UriPartial.Authority) + "/api/quit?session=" + Uri.EscapeDataString(session);
                     client.DefaultRequestHeaders.Add("X-ORCA-Session",session);
-                    await client.PostAsync(quit, new StringContent("{}", System.Text.Encoding.UTF8, "application/json"));
+                    using (var reply = await client.PostAsync(quit, new StringContent("{}", System.Text.Encoding.UTF8, "application/json"))) {
+                        if (!reply.IsSuccessStatusCode) {
+                            MessageBox.Show("ORCA Nova가 종료를 거부했습니다. 실행 중인 계산을 중단하거나 완료해 주세요.", "ORCA Nova");
+                            cancelClose = true;
+                            return;
+                        }
+                    }
                 }
             } catch { /* allow closing when backend has already stopped during update */ }
             finally { closingInProgress = false; }

@@ -1,7 +1,7 @@
 name: Windows Portable Build
 on:
   push:
-    branches: [main]
+    branches: [main, 'feat/**']
   pull_request:
   workflow_dispatch:
 permissions:
@@ -15,8 +15,10 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - name: Test Go backend
-        run: go test ./...
+      - name: Test Go backend and Windows process cancellation
+        run: go test -count=1 ./...
+      - name: Vet Go backend
+        run: go vet ./...
       - name: Build Windows backend
         shell: pwsh
         run: |
