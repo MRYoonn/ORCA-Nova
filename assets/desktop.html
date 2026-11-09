@@ -75,6 +75,19 @@
 .updater-actions #update-status{font-size:10.5px;color:#97b0cb;flex:1}
 @media(max-width:990px){.runner-settings{grid-template-columns:1fr}}
 </style>
+
+<style>
+.xyz3d-dialog{width:min(760px,94vw);max-height:94vh;overflow:auto;padding:20px;border-radius:14px;border:1px solid #395571;background:#111c2c;color:#eaf3ff;box-shadow:0 18px 70px #000a}
+.xyz3d-dialog::backdrop{background:#030910b8}
+.xyz3d-head{display:flex;align-items:center;gap:10px;justify-content:space-between;margin-bottom:10px}
+.xyz3d-head strong{font-size:15px}.xyz3d-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0}
+.xyz3d-controls label{display:flex;align-items:center;gap:5px;font-size:12px}
+#xyz3d-canvas{display:block;width:100%;height:min(52vh,420px);min-height:270px;border:1px solid #2a425e;border-radius:11px;background:#0a1321;touch-action:none;cursor:grab}
+#xyz3d-canvas:active{cursor:grabbing}
+.xyz3d-note{font-size:11.5px;line-height:1.6;color:#a8bdd5;margin-top:8px}
+#xyz3d-selected{padding:9px 11px;border-radius:8px;background:#192b42;border:1px solid #354e6c;min-height:39px;font-size:12px;overflow-wrap:anywhere}
+@media(max-width:600px){.xyz3d-dialog{padding:12px}#xyz3d-canvas{min-height:230px}}
+</style>
 </head>
 <body>
 <div class="app">
@@ -92,7 +105,7 @@
     <div class="preset-context" id="preset-context"><strong>추천</strong> · Opt + Spin Density처럼 여러 계산을 하나의 INP에서 함께 요청할 수 있어요. 빠른 구조 탐색은 r2SCAN-3c로 시작하고, 최종 논문 값은 Method를 다시 검토하세요.</div>
     <div class="preset-help">ⓘ <b>빠른 계산 ≠ 더 정확한 계산.</b> 최종 보고용 에너지는 논문 SI의 Method, Basis Set, Solvent 등을 맞춰 재계산해야 해요.</div>
   </div>
-<div class="section"><div class="section-head"><span class="section-title">01 · Molecule</span><span class="section-desc">Avogadro → XYZ</span></div><div class="file-box" id="dropzone"><div style="min-width:0"><div class="file-meta" id="xyz-filename">molecule.xyz</div><div class="file-details" id="xyz-meta">XYZ 파일을 불러오면 여기에 표시돼요</div></div><button class="btn small" id="xyz-load" data-help="Avogadro에서 내보낸 .xyz 파일을 불러와요. 실제 파일 내용은 서버로 전송되지 않아요.">＋ XYZ 불러오기</button><button class="btn small ghost" id="xyz-remove" disabled data-help="기본 XYZ 등록만 해제합니다. 디스크 원본이나 완료된 계산 결과는 삭제하지 않습니다.">기본 XYZ 삭제</button></div><input id="xyz-file" type="file" accept=".xyz,text/plain" hidden><div class="hint" style="margin-top:7px">삭제는 프로그램 등록 목록에만 적용됩니다. 원본 XYZ·OUT 파일은 그대로 유지됩니다.</div></div>
+<div class="section"><div class="section-head"><span class="section-title">01 · Molecule</span><span class="section-desc">Avogadro → XYZ</span></div><div class="file-box" id="dropzone"><div style="min-width:0"><div class="file-meta" id="xyz-filename">molecule.xyz</div><div class="file-details" id="xyz-meta">XYZ 파일을 불러오면 여기에 표시돼요</div></div><button class="btn small" id="xyz-load" data-help="Avogadro에서 내보낸 .xyz 파일을 불러와요. 실제 파일 내용은 서버로 전송되지 않아요.">＋ XYZ 불러오기</button><button class="btn small ghost" id="xyz-remove" disabled data-help="기본 XYZ 등록만 해제합니다. 디스크 원본이나 완료된 계산 결과는 삭제하지 않습니다.">기본 XYZ 삭제</button><button class="btn small ghost" id="xyz3d-primary" disabled data-help="현재 기본 XYZ의 구조를 회전해 보고 ORCA 원자 인덱스(0부터 시작)를 확인합니다. C5/C6 표시는 직접 지정해야 합니다.">◈ XYZ 3D 미리보기</button></div><input id="xyz-file" type="file" accept=".xyz,text/plain" hidden><div class="hint" style="margin-top:7px">삭제는 프로그램 등록 목록에만 적용됩니다. 원본 XYZ·OUT 파일은 그대로 유지됩니다.</div></div>
 <div class="section"><div class="section-head"><span class="section-title">02 · Electronic Structure</span><span class="section-desc">Method &amp; Basis</span></div><div class="fieldset"><div class="two-cols"><div class="field"><label class="field-label" for="functional">Functional <span class="help-icon" tabindex="0" data-title="Functional" data-help="전자 에너지를 근사적으로 계산하는 이론의 종류예요. 논문 SI와 비교하려면 같은 Functional을 선택하세요.">?</span></label><select class="control" id="functional"><option>B3LYP</option><option>PBE0</option><option>TPSSh</option><option>BP86</option><option>M06-2X</option><option>wB97X-D3</option><option>r2SCAN-3c</option></select></div><div class="field"><label class="field-label" for="basis">Basis Set <span class="help-icon" tabindex="0" data-title="Basis Set" data-help="원자 주변의 전자 분포를 수학적으로 표현하는 데 사용하는 함수 집합이에요. 정확도와 계산 비용에 영향을 줘요.">?</span></label><select class="control" id="basis"><option>def2-TZVP</option><option>def2-SVP</option><option>def2-TZVPP</option><option>def2-QZVP</option><option>def2-QZVPPD</option></select></div></div><div class="two-cols"><div class="field"><label class="field-label" for="dispersion">Dispersion <span class="help-icon" tabindex="0" data-title="Dispersion" data-help="분자 내부나 분자 사이의 분산 상호작용을 보정해요. 일부 Functional에는 자체 보정이 들어있으므로 중복 적용을 피해야 해요.">?</span></label><select class="control" id="dispersion"><option>D4</option><option>D3BJ</option><option>D3ZERO</option><option>None</option></select></div><div class="field"><label class="field-label" for="scf">SCF Convergence <span class="help-icon" tabindex="0" data-title="SCF Convergence" data-help="전자 밀도 계산을 얼마나 엄격하게 수렴시킬지 정해요. TightSCF는 일반적인 정밀 계산에 많이 사용돼요.">?</span></label><select class="control" id="scf"><option>TightSCF</option><option>NormalSCF</option><option>VeryTightSCF</option></select></div></div></div></div>
   <div class="method-safety" id="method-safety" aria-live="polite" style="margin-top:10px">설정된 Functional과 Basis Set의 사용 조건을 확인해 주세요.</div>
 <div class="section"><div class="section-head"><span class="section-title">03 · Solvent</span><span class="section-desc">별도 선택</span></div><div class="fieldset"><div class="two-cols"><div class="field"><label class="field-label" for="solvmodel">Solvation Model <span class="help-icon" tabindex="0" data-title="Solvation Model" data-help="용매가 분자 에너지에 미치는 영향을 근사하는 계산 모델이에요. Gas phase는 용매를 고려하지 않아요.">?</span></label><select class="control" id="solvmodel"><option>SMD</option><option>CPCM</option><option>Gas phase</option></select></div><div class="field"><label class="field-label" for="solvent">Solvent <span class="help-icon" tabindex="0" data-title="Solvent" data-help="사용할 용매를 고르면 ORCA 입력에 맞는 이름으로 자동 반영해요. 모델별 지원 여부는 ORCA 버전에서 확인해야 해요.">?</span></label><select class="control" id="solvent"><option value="acetonitrile">Acetonitrile (ACN)</option><option value="dmf">Dimethylformamide (DMF)</option><option value="dmso">Dimethyl sulfoxide (DMSO)</option><option value="ch2cl2">Dichloromethane (DCM)</option><option value="thf">Tetrahydrofuran (THF)</option><option value="toluene">Toluene</option><option value="methanol">Methanol</option><option value="water">Water</option><option value="ethanol">Ethanol</option><option value="acetone">Acetone</option></select></div></div><div class="hint" id="solvent-note">SMD(acetonitrile) 키워드가 INP에 반영됩니다.</div></div></div>
@@ -485,6 +498,7 @@ function desktopXYZStatus(){
  const extras=[...desktopXYZ.keys()];
  $('desktop-extra-info').textContent=main+` · 추가 XYZ ${extras.length}개`;
  $('xyz-remove').disabled=!xyzOriginal;
+ $('xyz3d-primary').disabled=!xyzOriginal;
  $('desktop-to-batch').disabled=!xyzOriginal&&!extras.length;
  $('desktop-clear-xyz').disabled=!xyzOriginal&&!extras.length;
  const box=$('desktop-extra-list');box.replaceChildren();
@@ -494,7 +508,8 @@ function desktopXYZStatus(){
   const remove=document.createElement('button');remove.className='btn small ghost';remove.type='button';
   remove.textContent='삭제';remove.setAttribute('aria-label',name+' 추가 XYZ 등록 해제');
   remove.onclick=()=>{desktopXYZ.delete(name);desktopXYZStatus();toast(name+' · 추가 XYZ 등록 해제 (원본 파일 유지)')};
-  item.append(filename,remove);box.append(item);
+  const preview=document.createElement("button");preview.className="btn small ghost";preview.type="button";preview.textContent="3D";preview.setAttribute("aria-label",name+" 3D 미리보기");preview.onclick=()=>xyz3DOpen(name,desktopXYZ.get(name));
+  item.append(filename,preview,remove);box.append(item);
  }
 }
 async function desktopAPI(path, data){
@@ -742,7 +757,8 @@ function batchRenderMolecules(){
   const del=document.createElement('button');del.className='btn small ghost';del.textContent='등록 삭제';
   del.setAttribute('aria-label',m.name+' 등록 목록에서 삭제');
   del.onclick=()=>{batchMolecules.splice(batchMolecules.indexOf(m),1);batchRenderMolecules();batchMessage(m.original+' 등록 해제 · 원본 파일 및 Queue 유지')};
-  inputs.append(del);body.append(row);
+  const preview=document.createElement("button");preview.className="btn small ghost";preview.type="button";preview.textContent="3D 미리보기";preview.setAttribute("aria-label",m.original+" 3D 미리보기");preview.onclick=()=>xyz3DOpen(m.original,m.xyz);
+  inputs.append(preview,del);body.append(row);
  }
  batchUpdateSelection();batchUpdateBudget();
 }
@@ -1088,6 +1104,122 @@ $('viz-svg').onclick=()=>{const s=$('viz-graph').querySelector('svg');if(s)downl
 $('viz-png').onclick=()=>{const s=$('viz-graph').querySelector('svg');if(!s)return;const img=new Image(),url=URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(s)],{type:'image/svg+xml'}));img.onload=()=>{const c=document.createElement('canvas');c.width=1440;c.height=720;c.getContext('2d').drawImage(img,0,0,c.width,c.height);c.toBlob(b=>{if(b)download('ORCA_visualization.png',b,'image/png')});URL.revokeObjectURL(url)};img.src=url};
 $('desktop-app-panel').after($('viz-panel'));
 setInterval(()=>{const select=$('viz-job'),saved=select.value,jobs=batchQueueState?.jobs||[];if(select.options.length!==jobs.length+1){select.replaceChildren(new Option('현재 단일 Job',''),...jobs.map(j=>new Option(j.label||j.id,j.id)));select.value=saved}vizRefreshRoleJobs()},2500);
+</script>
+
+
+<dialog id="xyz3d-dialog" class="xyz3d-dialog" aria-labelledby="xyz3d-title">
+ <div class="xyz3d-head"><strong id="xyz3d-title">XYZ · 3D Structure</strong><button type="button" class="btn small ghost" id="xyz3d-close">닫기 ×</button></div>
+ <div id="xyz3d-info" class="xyz3d-note" role="status"></div>
+ <canvas id="xyz3d-canvas" aria-label="회전 가능한 XYZ 3D 구조. 원자를 클릭하면 ORCA 인덱스를 확인합니다."></canvas>
+ <div class="xyz3d-controls">
+  <label><input id="xyz3d-indices" type="checkbox" checked>원자 번호 표시 (ORCA 0-based)</label>
+  <button type="button" class="btn small ghost" id="xyz3d-reset">시점 초기화</button>
+  <button type="button" class="btn small ghost" id="xyz3d-copy" disabled>선택 번호 복사</button>
+  <button type="button" class="btn small ghost" id="xyz3d-mark-c5" disabled>선택 원자 → C5</button>
+  <button type="button" class="btn small ghost" id="xyz3d-mark-c6" disabled>선택 원자 → C6</button>
+  <button type="button" class="btn small ghost" id="xyz3d-clear-marks">C5/C6 표시 초기화</button>
+ </div>
+ <div id="xyz3d-selected" role="status">원자를 클릭하면 원소·좌표·ORCA 인덱스가 표시됩니다.</div>
+ <div class="xyz3d-note">마우스 드래그: 회전 · 휠: 확대/축소 · 원자 클릭: 번호 선택. 결합선은 거리와 공유결합 반경으로 추정한 <b>시각화 전용</b> 표시입니다. C5/C6는 자동 판정하지 않으며 사용자가 직접 지정한 임시 라벨입니다. XYZ·INP·Job 파일은 변경되지 않습니다.</div>
+</dialog>
+<script>
+/* Offline XYZ viewer. Strict parsing, 0-based indices, client-side only. */
+const xyz3dView={atoms:[],bonds:[],points:[],selected:-1,marks:{C5:null,C6:null},yaw:-0.5,pitch:0.35,zoom:1,name:'',drag:null};
+const xyz3dRadius={H:0.31,He:0.28,Li:1.28,Be:0.96,B:0.84,C:0.76,N:0.71,O:0.66,F:0.57,Ne:0.58,Na:1.66,Mg:1.41,Al:1.21,Si:1.11,P:1.07,S:1.05,Cl:1.02,Ar:1.06,K:2.03,Ca:1.76,Fe:1.32,Co:1.26,Ni:1.24,Cu:1.32,Zn:1.22,Br:1.20,I:1.39};
+const xyz3dElements=new Set(('H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu Hf Ta W Re Os Ir Pt Au Hg Tl Pb Bi Po At Rn Fr Ra Ac Th Pa U Np Pu Am Cm Bk Cf Es Fm Md No Lr Rf Db Sg Bh Hs Mt Ds Rg Cn Nh Fl Mc Lv Ts Og').split(' '));
+function xyz3DParse(text){
+ if(typeof text!=='string'||text.length>4*1024*1024)throw Error('XYZ 용량은 4 MB 이하여야 합니다.');
+ const lines=text.replace(/^\uFEFF/,'').replace(/\r/g,'').split('\n');
+ const count=Number((lines[0]||'').trim());
+ if(!Number.isSafeInteger(count)||count<1||count>800||lines.length<count+2)throw Error('XYZ 첫 줄의 원자 수(1~800)와 전체 좌표 줄을 확인하세요.');
+ const atoms=[];
+ for(let i=0;i<count;i++){
+  const fields=(lines[i+2]||'').trim().split(/\s+/);
+  const raw=fields[0]||'';const element=raw.slice(0,1).toUpperCase()+raw.slice(1).toLowerCase();
+  if(!xyz3dElements.has(element)||fields.length<4)throw Error('XYZ '+(i+3)+'행 원소 또는 좌표 형식이 올바르지 않습니다.');
+  const v=fields.slice(1,4).map(x=>Number(x.replace(/[dD]/g,'E')));
+  if(v.some(x=>!Number.isFinite(x)||Math.abs(x)>1e7))throw Error('XYZ '+(i+3)+'행 좌표가 유효한 실수가 아닙니다.');
+  atoms.push({index:i,element,x:v[0],y:v[1],z:v[2],radius:xyz3dRadius[element]||0.9});
+ }
+ const center=[0,0,0];
+ for(const a of atoms){center[0]+=a.x;center[1]+=a.y;center[2]+=a.z;}
+ for(let j=0;j<3;j++)center[j]/=atoms.length;
+ let extent=0;
+ for(const a of atoms){a.px=a.x-center[0];a.py=a.y-center[1];a.pz=a.z-center[2];extent=Math.max(extent,Math.hypot(a.px,a.py,a.pz));}
+ const bonds=[];
+ for(let i=0;i<atoms.length;i++)for(let j=i+1;j<atoms.length;j++){
+  const a=atoms[i],b=atoms[j],dx=a.x-b.x,dy=a.y-b.y,dz=a.z-b.z;
+  const d2=dx*dx+dy*dy+dz*dz,limit=1.2*(a.radius+b.radius);
+  if(d2>0.16&&d2<limit*limit&&bonds.length<3200)bonds.push([i,j]);
+ }
+ return {atoms,bonds,extent:Math.max(extent,0.5)};
+}
+function xyz3DOpen(name,text){
+ try{
+  const data=xyz3DParse(text);
+  Object.assign(xyz3dView,data,{name:String(name),selected:-1,marks:{C5:null,C6:null},yaw:-0.5,pitch:0.35,zoom:1,drag:null});
+  $('xyz3d-title').textContent=String(name)+' · 3D Structure';
+  $('xyz3d-info').textContent=data.atoms.length+' atoms · '+data.bonds.length+' 추정 bonds · 좌표 단위 Å';
+  $('xyz3d-selected').textContent='원자를 클릭해 ORCA index를 확인하세요.';
+  for(const id of ['xyz3d-copy','xyz3d-mark-c5','xyz3d-mark-c6'])$(id).disabled=true;
+  const dialog=$('xyz3d-dialog');
+  if(!dialog.open)dialog.showModal();
+  requestAnimationFrame(xyz3DDraw);
+ }catch(e){const msg='XYZ 3D 미리보기 실패: '+e.message;if(typeof toast==='function')toast(msg);else alert(msg);}
+}
+const xyz3dColors={H:'#e8eff8',C:'#8c9fb9',N:'#64a7ff',O:'#ff646d',F:'#7de0a3',S:'#f2ca4d',P:'#ee995c',Cl:'#63d891',Br:'#b67a60',I:'#b090ef'};
+function xyz3DDraw(){
+ const view=xyz3dView,canvas=$('xyz3d-canvas'),ctx=canvas.getContext('2d');if(!ctx||!view.atoms.length)return;
+ const rect=canvas.getBoundingClientRect(),width=Math.max(260,rect.width||600),height=Math.max(220,rect.height||360),dpr=Math.min(2,window.devicePixelRatio||1);
+ canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);
+ ctx.fillStyle='#0a1321';ctx.fillRect(0,0,width,height);
+ const cy=Math.cos(view.yaw),sy=Math.sin(view.yaw),cx=Math.cos(view.pitch),sx=Math.sin(view.pitch);
+ const scale=Math.min(width,height)*0.39/view.extent*view.zoom;
+ view.points=view.atoms.map(a=>{
+  const x=cy*a.px+sy*a.pz,z=-sy*a.px+cy*a.pz,y=cx*a.py-sx*z,depth=sx*a.py+cx*z;
+  return {x:width/2+x*scale,y:height/2-y*scale,z:depth,r:Math.max(5,Math.min(13,(7+a.radius*3)*Math.max(0.75,Math.min(1.3,view.zoom))))};
+ });
+ const sortedBonds=view.bonds.slice().sort((a,b)=>(view.points[a[0]].z+view.points[a[1]].z)-(view.points[b[0]].z+view.points[b[1]].z));
+ for(const [i,j] of sortedBonds){const a=view.points[i],b=view.points[j];ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.strokeStyle='#6e8199';ctx.lineWidth=2.5;ctx.stroke();}
+ const sorted=view.atoms.map((a,i)=>i).sort((i,j)=>view.points[i].z-view.points[j].z);
+ for(const i of sorted){
+  const a=view.atoms[i],p=view.points[i],color=xyz3dColors[a.element]||'#a9b4c7';
+  ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();
+  ctx.lineWidth=i===view.selected?3:1;ctx.strokeStyle=i===view.selected?'#ffffff':'#1d2b3e';ctx.stroke();
+  let tag='';
+  if(view.marks.C5===i)tag=' C5';if(view.marks.C6===i)tag=' C6';
+  if($('xyz3d-indices').checked||tag){ctx.font='bold 11px Arial';ctx.textAlign='left';ctx.fillStyle='#eef5ff';ctx.fillText(( $('xyz3d-indices').checked?String(i):'')+tag,p.x+p.r+3,p.y-3);}
+ }
+}
+function xyz3DSelect(i){
+ const view=xyz3dView;view.selected=i;const a=view.atoms[i];
+ $('xyz3d-selected').textContent='ORCA index '+i+' · '+a.element+' · XYZ '+(i+3)+'행 · ('+[a.x,a.y,a.z].map(v=>v.toFixed(5)).join(', ')+') Å';
+ for(const id of ['xyz3d-copy','xyz3d-mark-c5','xyz3d-mark-c6'])$(id).disabled=false;
+ xyz3DDraw();
+}
+$('xyz3d-primary').addEventListener('click',()=>xyz3DOpen(loadedXYZ,xyzOriginal));
+$('xyz3d-close').addEventListener('click',()=>$('xyz3d-dialog').close());
+$('xyz3d-reset').addEventListener('click',()=>{xyz3dView.yaw=-0.5;xyz3dView.pitch=0.35;xyz3dView.zoom=1;xyz3DDraw();});
+$('xyz3d-indices').addEventListener('change',xyz3DDraw);
+$('xyz3d-copy').addEventListener('click',async()=>{if(xyz3dView.selected<0)return;try{await navigator.clipboard.writeText(String(xyz3dView.selected));$('xyz3d-info').textContent='ORCA index '+xyz3dView.selected+' 복사 완료';}catch(e){$('xyz3d-info').textContent='복사 권한이 없습니다. 아래 ORCA index를 직접 복사하세요.';}});
+for(const label of ['C5','C6'])$('xyz3d-mark-'+label.toLowerCase()).addEventListener('click',()=>{
+ const i=xyz3dView.selected;if(i<0)return;const other=label==='C5'?'C6':'C5';
+ if(xyz3dView.marks[other]===i){$('xyz3d-info').textContent='C5와 C6는 서로 다른 원자로 표시하세요.';return;}
+ xyz3dView.marks[label]=i;$('xyz3d-info').textContent=label+' ← ORCA index '+i+' (사용자 지정, 화학적 위치 미검증)';xyz3DDraw();
+});
+$('xyz3d-clear-marks').addEventListener('click',()=>{xyz3dView.marks={C5:null,C6:null};xyz3DDraw();});
+const xyz3dCanvas=$('xyz3d-canvas');
+xyz3dCanvas.addEventListener('pointerdown',e=>{xyz3dView.drag={x:e.clientX,y:e.clientY,originX:e.clientX,originY:e.clientY};try{xyz3dCanvas.setPointerCapture(e.pointerId)}catch(_){}});
+xyz3dCanvas.addEventListener('pointermove',e=>{const d=xyz3dView.drag;if(!d)return;const dx=e.clientX-d.x,dy=e.clientY-d.y;d.x=e.clientX;d.y=e.clientY;xyz3dView.yaw+=dx*0.009;xyz3dView.pitch=Math.max(-1.55,Math.min(1.55,xyz3dView.pitch+dy*0.009));xyz3DDraw();});
+xyz3dCanvas.addEventListener('pointerup',e=>{const d=xyz3dView.drag;xyz3dView.drag=null;if(!d||Math.hypot(e.clientX-d.originX,e.clientY-d.originY)>5)return;
+ const rect=xyz3dCanvas.getBoundingClientRect(),x=e.clientX-rect.left,y=e.clientY-rect.top;
+ let best=-1,dist=Infinity;
+ for(let i=0;i<xyz3dView.points.length;i++){const p=xyz3dView.points[i],v=Math.hypot(p.x-x,p.y-y);if(v<Math.max(p.r+7,13)&&v<dist){best=i;dist=v;}}
+ if(best>=0)xyz3DSelect(best);
+});
+xyz3dCanvas.addEventListener('pointercancel',()=>{xyz3dView.drag=null;});
+xyz3dCanvas.addEventListener('wheel',e=>{if(!$('xyz3d-dialog').open)return;e.preventDefault();xyz3dView.zoom=Math.max(0.25,Math.min(4,xyz3dView.zoom*(e.deltaY>0?0.9:1.1)));xyz3DDraw();},{passive:false});
+window.addEventListener('resize',()=>{if($('xyz3d-dialog').open)xyz3DDraw();});
 </script>
 
 </body>
