@@ -49,3 +49,10 @@ Source 9df25b5 passed full local Go test/race/vet/build. Windows Release run 425
 - **PASS** Windows Action https://github.com/MRYoonn/ORCA-Nova/actions/runs/42574801764 : full Go tests, actual Windows PowerShell transactional test (success path and forced launch-failure rollback), Go Vet, backend/WebView2 native build and Portable ZIP packaging.
 - Rollback now protects all paths overwritten from the prevalidated staged package, including backend EXE, native UI EXE, nested WebView2 DLLs and newly introduced dependencies. Old files are retained in a local versioned backup folder; newly introduced files are removed if installation fails. Unrelated settings remain unchanged.
 - **Not claimed:** upgrade with running user's v1.5.1 app, recovery under locked production UI DLLs, actual licensed ORCA/MPI process cleanup or end-user GUI relaunch. These require physical Windows installation tests before stable v1.6.0.
+
+## 2026-11-09 — XYZ Manager / Batch browser QA
+
+- Initial browser run [42618530080](https://github.com/MRYoonn/ORCA-Nova/actions/runs/42618530080) failed at `tests/batch-ui.cjs:77` immediately after selecting a new XYZ: `File.text()` is asynchronous and the assertion checked `xyzOriginal` before the input event's asynchronous handler completed. This was a **test timing issue**, not evidence of lost imported files.
+- Fix: test commit `170cc10d` uses `page.waitForFunction(()=>xyzOriginal.length>0)` to await completion of the file's actual async read. [Browser QA run 42618736419](https://github.com/MRYoonn/ORCA-Nova/actions/runs/42618736419) **passed**.
+- The new frontend code was also checked by Windows Go/WebView2/Portable CI (e.g. [42618530173](https://github.com/MRYoonn/ORCA-Nova/actions/runs/42618530173)), **passed**. This is CI verification, not real ORCA/MPI runtime testing.
+- XYZ removal is intentionally confined to in-memory registrations; do not call OS file deletion for this feature. Already submitted Batch job and OUT files are preserved.
