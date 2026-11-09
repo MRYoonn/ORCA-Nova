@@ -163,5 +163,5 @@ func TestDigitallyBornPDFFixturePerPageExtraction(t *testing.T){
  if len(pages)!=1||pages[0].Number!=1||!strings.Contains(pages[0].Text,"B3LYP"){t.Fatal(pages)}
  result,err:=analyzeSI(SIDocument{Name:"test.pdf",PDFBase64:base64.StdEncoding.EncodeToString(raw)})
  if err!=nil{t.Fatal(err)}
- if len(findSIField(result,"basis").Values)!=1{t.Fatal(result)}
+ if len(findSIField(result,"basis").Values)!=1{t.Fatal(result,pages)}
 }
