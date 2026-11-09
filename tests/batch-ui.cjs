@@ -67,7 +67,7 @@ const fs=require('fs'),assert=require('assert');
  await page.locator('#desktop-to-batch').click();
  await page.waitForFunction(()=>batchMolecules.length===2);
  assert.equal(await page.evaluate(()=>batchMolecules.map(m=>m.name).sort().join(',')),'extra.xyz,primary.xyz');
- await page.locator('#desktop-extra-list .xyz-extra-item button').click();
+ await page.locator('#desktop-extra-list .xyz-extra-item button[aria-label$="추가 XYZ 등록 해제"]').click();
  assert.equal(await page.evaluate(()=>desktopXYZ.size),0);
  await page.locator('#xyz-remove').click();
  assert.equal(await page.evaluate(()=>loadedXYZ),'');

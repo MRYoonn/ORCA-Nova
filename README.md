@@ -6,6 +6,7 @@ ORCA Nova does not redistribute ORCA and is not affiliated with its developers.
 
 ## Features
 - Import XYZ geometries from Avogadro; generate and edit ORCA `.inp` files.
+- Preview imported/Batch XYZ in an offline rotatable 3D view, inspect zero-based ORCA atom indexes, and manually mark chemical C5/C6 positions (labels not automatically assigned).
 - DFT, TD-DFT, S0/S1/T1, geometry optimization, frequency, spin-density presets and multi-step workflows.
 - Korean help tooltips for calculations, functionals, basis sets, solvents and other options.
 - Select a locally installed `orca.exe`, run calculations, view `.out` logs, and inspect failure reports.
