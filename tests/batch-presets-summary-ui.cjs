@@ -70,6 +70,42 @@ const xyz='3\nwater\nO 0 0 0\nH 0.757 0.586 0\nH -0.757 0.586 0\n';
   assert((await summary.innerText()).includes('Gibbs Free Energy'));
   assert((await summary.innerText()).includes('2.01234'));
   assert((await summary.innerText()).includes('TD-DFT Vertical'));
+  // Energy differences are easiest to read in kcal/mol, while original energies stay Eh.
+  assert.equal(await page.locator('#viz-unit').inputValue(),'kcal/mol','default relative energy must use kcal/mol');
+  assert((await summary.innerText()).includes('Excitation (kcal/mol)'));
+  assert((await summary.innerText()).includes('73.79'),'3.20 eV -> 73.79 kcal/mol');
+  assert((await summary.innerText()).includes('3.2000'),'also retain spectroscopy eV');
+  const rootPlot=await page.evaluate(()=>{
+   $('viz-kind').value='roots';
+   const kcal=vizSeries();
+   $('viz-unit').value='eV';
+   const ev=vizSeries();
+   $('viz-unit').value='kcal/mol';
+   return {kcalY:kcal.rows[0].y,kcalAxis:kcal.ylabel,evY:ev.rows[0].y,evAxis:ev.ylabel};
+  });
+  assert(Math.abs(rootPlot.kcalY-73.7937563744)<1e-6);
+  assert.equal(rootPlot.kcalAxis,'Vertical Excitation Energy (kcal/mol)');
+  assert.equal(rootPlot.evY,3.20);
+  assert.equal(rootPlot.evAxis,'Vertical Excitation Energy (eV)');
+  const batchSample=await page.evaluate(()=>batchVertical({Roots:[{Root:1,Kind:'singlet',EV:3.20}],Status:'Completed'},'singlet'));
+  assert(batchSample.includes('73.79 kcal/mol (3.2 eV)'));
+  assert((await summary.innerText()).includes('-123.45678912 Eh'),'source absolute energy retains Eh');
+  const profileDisplay=await page.evaluate(()=>{
+   const example={kind:'adiabatic',energy:'Electronic',gapKJ:216.15,warnings:[]};
+   const reaction={kind:'reaction',energy:'Gibbs',barrierKJ:83.68,reactionKJ:-41.84,warnings:[]};
+   visualizationModel.profile={...example,points:[{x:0,y:0,label:'S0',energyEh:-123.45},{x:1,y:216.15,label:'T1',energyEh:-123.36}]};
+   $('viz-kind').value='profile';
+   const series=vizSeries();
+   return {adiabatic:vizProfileSummaryText(example),reaction:vizProfileSummaryText(reaction),series,original:visualizationModel.profile.points[1].y};
+  });
+  assert(profileDisplay.adiabatic.includes('51.66 kcal/mol'));
+  assert(profileDisplay.adiabatic.includes('216.15 kJ/mol'));
+  assert(profileDisplay.reaction.includes('20.00 kcal/mol'));
+  assert(profileDisplay.reaction.includes('-10.00 kcal/mol'));
+  assert.equal(profileDisplay.series.ylabel,'Relative Electronic (kcal/mol)');
+  assert(Math.abs(profileDisplay.series.rows[1].y-216.15/4.184)<1e-8);
+  assert.equal(profileDisplay.original,216.15,'backend kJ raw profile remains intact');
+
   assert((await summary.innerText()).includes('0-based'));
   assert.equal(await summary.locator('img').count(),0);
   assert.equal(await summary.locator('.viz-report-energy').count(),4);
