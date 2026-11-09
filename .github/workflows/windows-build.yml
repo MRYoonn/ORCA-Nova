@@ -27,6 +27,8 @@ jobs:
             $output | Set-Content BUILD_FAILURE_ANALYSIS.md
           }
           exit $result
+      - name: Validate embedded browser JavaScript and provenance
+        run: node tests/scientific-ui-syntax.cjs
       - name: Vet Go backend
         run: go vet ./...
       - name: Build Windows backend

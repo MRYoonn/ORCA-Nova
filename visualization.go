@@ -28,6 +28,12 @@ type PESPoint struct {
 	Source     string   `json:"source"`
 	Line       int      `json:"line"`
 	XYZ        string   `json:"xyz,omitempty"`
+	Analysis   *ScanStepAnalysis `json:"analysis,omitempty"`
+}
+// Step analysis is present only for population rows actually printed inside
+// the matching PES scan step; missing atomic data remains unavailable.
+type ScanStepAnalysis struct {
+	Populations map[string][]AtomicPopulation `json:"Populations"`
 }
 type VisualizationSource struct {
 	RawOutput    string       `json:"rawOutput,omitempty"`
@@ -68,6 +74,8 @@ func parseVisualization(name, output, inp string) VisualizationSource {
 	}
 	scanSCF := []bool{}
 	scan := -1
+	spinSection := ""
+	spinRows := map[string][]AtomicPopulation{}
 	cycle := 0
 	scfTable := false
 	irTable := false
@@ -84,8 +92,44 @@ func parseVisualization(name, output, inp string) VisualizationSource {
 			v.PES = append(v.PES, PESPoint{Step: step, Status: "Unavailable", Source: name, Line: lineNo})
 			scanSCF = append(scanSCF, false)
 			scan = len(v.PES) - 1
+			spinRows = map[string][]AtomicPopulation{}
+			spinSection = ""
 		}
 		if scan >= 0 {
+			// Capture atomic spin tables only within this explicit scan step.
+			// OUT files that print only one final population table must not
+			// fabricate values for all earlier points.
+			switch {
+			case strings.Contains(u, "MULLIKEN ATOMIC CHARGES"):
+				spinSection = "Mulliken"
+				spinRows[spinSection] = nil
+			case strings.Contains(u, "LOEWDIN ATOMIC CHARGES"), strings.Contains(u, "LÖWDIN ATOMIC CHARGES"):
+				spinSection = "Loewdin"
+				spinRows[spinSection] = nil
+			case strings.Contains(u, "HIRSHFELD ATOMIC CHARGES"), strings.Contains(u, "HIRSHFELD ANALYSIS"):
+				spinSection = "Hirshfeld"
+				spinRows[spinSection] = nil
+			case strings.Contains(u, "VIBRATIONAL FREQUENCIES"),
+				strings.Contains(u, "ORBITAL ENERGIES"),
+				strings.Contains(u, "NORMAL MODES"),
+				strings.Contains(u, "IR SPECTRUM"),
+				strings.Contains(u, "MAYER POPULATION ANALYSIS"):
+				spinSection = ""
+			}
+			if spinSection != "" {
+				m := atomRx.FindStringSubmatch(s)
+				if spinSection == "Hirshfeld" && len(m) == 0 {
+					m = hirshfeldAtomRx.FindStringSubmatch(s)
+				}
+				if len(m) > 4 && m[4] != "" && len(spinRows[spinSection]) < 1024 {
+					i, _ := strconv.Atoi(m[1])
+					q, qErr := number(m[3])
+					spin, spinErr := number(m[4])
+					if qErr == nil && spinErr == nil && !math.IsNaN(spin) && !math.IsInf(spin, 0) {
+						spinRows[spinSection] = append(spinRows[spinSection], AtomicPopulation{Index: i, Element: m[2], Charge: q, Spin: &spin})
+					}
+				}
+			}
 			p := &v.PES[scan]
 			if m := scanXYZRX.FindStringSubmatch(s); m != nil && safeName(m[1]) {
 				p.XYZ = m[1]
@@ -109,6 +153,13 @@ func parseVisualization(name, output, inp string) VisualizationSource {
 			}
 			if strings.Contains(u, "DID NOT CONVERGE") || strings.Contains(u, "NOT CONVERGED") || strings.Contains(u, "ERROR TERMINATION") {
 				p.Status = "Failed"
+			}
+			if len(spinRows) > 0 {
+				pops := map[string][]AtomicPopulation{}
+				for scheme, rows := range spinRows {
+					if len(rows) > 0 { pops[scheme] = append([]AtomicPopulation(nil), rows...) }
+				}
+				if len(pops) > 0 { p.Analysis = &ScanStepAnalysis{Populations: pops} }
 			}
 		}
 		if m := cycleRX.FindStringSubmatch(s); m != nil {
@@ -166,6 +217,9 @@ func parseVisualization(name, output, inp string) VisualizationSource {
 		p := &v.PES[i]
 		if (p.Energy == nil || !scanSCF[i]) && p.Status == "Completed" {
 			p.Status = "Unavailable"
+		}
+		if p.Analysis == nil {
+			v.Warnings = append(v.Warnings, fmt.Sprintf("Scan step %d: 해당 단계의 Atomic Spin Population이 없어 Spin 곡선에서 제외됩니다.", p.Step))
 		}
 		if p.Coordinate == nil {
 			v.Warnings = append(v.Warnings, fmt.Sprintf("Scan step %d: 실제 Bond Distance를 인식하지 못했습니다. 점을 생성하지 않습니다.", p.Step))
@@ -255,6 +309,7 @@ func loadVisualization(folder string) (Visualization, error) {
 	return v, nil
 }
 func (a *App) visualizationRoute(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path == "/api/visualization/profile" { a.scientificProfileRoute(w, r); return }
 	if r.Method == http.MethodPost {
 		var x struct {
 			Name   string `json:"name"`

@@ -34,7 +34,7 @@ var (
 	thermalRx      = regexp.MustCompile(`(?i)^\s*Thermal correction to (?:Energy|Internal Energy)\s*\.{0,3}\s*(` + orcaNumber + `)\s+Eh\b`)
 	entropyValueRx = regexp.MustCompile(`(?i)^\s*Total entropy\s*\.{0,3}\s*(` + orcaNumber + `)\s+Eh/K\b`)
 	entropyRx      = regexp.MustCompile(`(?i)^\s*Final entropy term\s+\.{0,3}\s*(` + orcaNumber + `)\s+Eh\b`)
-	tempRx         = regexp.MustCompile(`(?i)Temperature\s*[:=]\s*(` + orcaNumber + `)\s*K\b`)
+	tempRx         = regexp.MustCompile(`(?i)Temperature\s*(?:[:=]|\.{1,3})?\s*(` + orcaNumber + `)\s*K\b`)
 	s2Rx           = regexp.MustCompile(`(?i)(?:Expectation value of\s*)?<S(?:\*\*|\^)?2>\s*(?:\:|=)\s*(` + orcaNumber + `)`)
 	rootRx         = regexp.MustCompile(`(?i)^\s*STATE\s+(\d+)\s*:\s*E\s*=\s*(` + orcaNumber + `)\s*(?:au|a\.u\.)\s+(` + orcaNumber + `)\s*eV`)
 	multRx         = regexp.MustCompile(`(?i)\bMult\s+([12345])\b`)
