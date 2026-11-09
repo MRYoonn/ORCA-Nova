@@ -1,0 +1,61 @@
+name: Real ORCA 6.1.1 Golden Validation
+on:
+  push:
+    branches: ['feat/orca-real-golden-*']
+  pull_request:
+    paths:
+      - 'real_orca_golden_test.go'
+      - '.github/workflows/real-orca-golden.yml'
+      - 'report.go'
+      - 'visualization.go'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  golden:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      ORCA_REAL_GOLDEN_DIR: ${{ github.workspace }}/.test-orca-real-611
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Obtain upstream real ORCA output (ephemeral only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          base=https://raw.githubusercontent.com/dhwan0112/dhk.github.io/0d7afec3fb8ca34b287e2413fccb4a7376899a75/guides/orca/examples
+          for dir in 01-single-point 02-opt-freq; do
+            mkdir -p "$ORCA_REAL_GOLDEN_DIR/$dir"
+            for file in water.out water.inp; do
+              curl --fail --location --retry 3 --retry-delay 2 --max-time 90 "$base/$dir/$file" -o "$ORCA_REAL_GOLDEN_DIR/$dir/$file"
+            done
+          done
+          # Validate upstream Git blob identities before processing; reject
+          # any changed or malformed download. Source files are not repackaged.
+          [ "$(git hash-object "$ORCA_REAL_GOLDEN_DIR/01-single-point/water.out")" = "32d1c6a0ad0bede114a6b55e546f7e6c023f5295" ]
+          [ "$(git hash-object "$ORCA_REAL_GOLDEN_DIR/02-opt-freq/water.out")" = "21369a90c0a4a9683fce07888db5383491ad0c8a" ]
+          [ "$(git hash-object "$ORCA_REAL_GOLDEN_DIR/01-single-point/water.inp")" = "beff8eec23c01f50d3d75e083d1101b8dfc9b49b" ]
+          [ "$(git hash-object "$ORCA_REAL_GOLDEN_DIR/02-opt-freq/water.inp")" = "f026aabf90d14d0ec6441c6b9c5b826cdb8d8e7d" ]
+      - name: Obtain independent ORCA 6.1.1 scan, TDDFT and triplet outputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          base=https://raw.githubusercontent.com/HiroYokoyama/moleditpy_orca_result_analyzer_plugin/5a991e87847391f883e5668299424195dd1bef96/tests/sample_outputs
+          mkdir -p "$ORCA_REAL_GOLDEN_DIR/public-6.1.1"
+          for file in ethane-scan.out benzene-opt-vex.out o2-opt_orb.out; do
+            curl --fail --location --retry 3 --retry-delay 2 --max-time 180 "$base/$file" -o "$ORCA_REAL_GOLDEN_DIR/public-6.1.1/$file"
+          done
+          [ "$(git hash-object "$ORCA_REAL_GOLDEN_DIR/public-6.1.1/ethane-scan.out")" = "82ef1eab674d147eebab37cc7e4ba6e1ee375a14" ]
+          [ "$(git hash-object "$ORCA_REAL_GOLDEN_DIR/public-6.1.1/benzene-opt-vex.out")" = "87da13b827028b4d9683648d2600b8a01caef45f" ]
+          [ "$(git hash-object "$ORCA_REAL_GOLDEN_DIR/public-6.1.1/o2-opt_orb.out")" = "81d0e145e268889beedc5e8d2fb75c03b1b40139" ]
+      - name: Parse real ORCA 6.1.1 files against independently recorded values
+        run: go test -run '^TestReal(Orca611WaterGolden|ORCA611ScanTDDFTAndTriplet)$' -count=1 -v ./...
+      - name: Full Go regressions
+        run: go test -count=1 ./...
+      - name: Always remove third-party fixtures
+        if: always()
+        shell: bash
+        run: rm -rf "$ORCA_REAL_GOLDEN_DIR"

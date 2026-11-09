@@ -28,6 +28,7 @@ type PESPoint struct {
 	Source     string   `json:"source"`
 	Line       int      `json:"line"`
 	XYZ        string   `json:"xyz,omitempty"`
+	CoordinateKind string `json:"coordinateKind,omitempty"`
 	Analysis   *ScanStepAnalysis `json:"analysis,omitempty"`
 }
 // Step analysis is present only for population rows actually printed inside
@@ -57,6 +58,9 @@ type Visualization struct {
 var scanXYZRX = regexp.MustCompile(`(?i)(?:XYZ FILE|GEOMETRY FILE)\s*[:=]\s*([A-Za-z0-9_.-]+\.xyz)\b`)
 var scanStepRX = regexp.MustCompile(`(?i)(?:RELAXED\s+SURFACE\s+SCAN\s+STEP|SCAN\s+STEP)\s*[:#]?\s*(\d+)`)
 var scanCoordRX = regexp.MustCompile(`(?i)(?:SCAN COORDINATE|CURRENT VALUE|BOND DISTANCE)\s*[:=]\s*(` + orcaNumber + `)`)
+// Real ORCA 6.1.1 prints scanned coordinates in a STEP banner,
+ // e.g. "* Dihedral (5,1,0,2): -60.000 *", not "SCAN COORDINATE".
+var scanBannerCoordRX = regexp.MustCompile(`(?i)^\s*\*?\s*(Bond|Angle|Dihedral)\s*\(\s*[0-9,\s]+\)\s*:\s*(` + orcaNumber + `)`)
 var cycleRX = regexp.MustCompile(`(?i)GEOMETRY OPTIMIZATION CYCLE\s*(\d+)`)
 var rmsGradientRX = regexp.MustCompile(`(?i)RMS gradient\s+(` + orcaNumber + `)`)
 var numericRowRX = regexp.MustCompile(`^\s*(\d+)\s+(` + orcaNumber + `)\s+(` + orcaNumber + `)`)
@@ -74,6 +78,7 @@ func parseVisualization(name, output, inp string) VisualizationSource {
 	}
 	scanSCF := []bool{}
 	scan := -1
+	scanStepLine := -100
 	spinSection := ""
 	spinRows := map[string][]AtomicPopulation{}
 	cycle := 0
@@ -92,6 +97,7 @@ func parseVisualization(name, output, inp string) VisualizationSource {
 			v.PES = append(v.PES, PESPoint{Step: step, Status: "Unavailable", Source: name, Line: lineNo})
 			scanSCF = append(scanSCF, false)
 			scan = len(v.PES) - 1
+			scanStepLine = lineNo
 			spinRows = map[string][]AtomicPopulation{}
 			spinSection = ""
 		}
@@ -131,6 +137,16 @@ func parseVisualization(name, output, inp string) VisualizationSource {
 				}
 			}
 			p := &v.PES[scan]
+			// Only accept the banner of the current step, not unrelated geometry
+			// or atomic-population lines elsewhere in a long ORCA output.
+			if lineNo-scanStepLine<=4 {
+				if m:=scanBannerCoordRX.FindStringSubmatch(s);m!=nil {
+					if x,ok:=finiteNumber(m[2]);ok {
+						p.Coordinate=&x
+						p.CoordinateKind=strings.ToLower(m[1])
+					}
+				}
+			}
 			if m := scanXYZRX.FindStringSubmatch(s); m != nil && safeName(m[1]) {
 				p.XYZ = m[1]
 			}
@@ -222,7 +238,7 @@ func parseVisualization(name, output, inp string) VisualizationSource {
 			v.Warnings = append(v.Warnings, fmt.Sprintf("Scan step %d: 해당 단계의 Atomic Spin Population이 없어 Spin 곡선에서 제외됩니다.", p.Step))
 		}
 		if p.Coordinate == nil {
-			v.Warnings = append(v.Warnings, fmt.Sprintf("Scan step %d: 실제 Bond Distance를 인식하지 못했습니다. 점을 생성하지 않습니다.", p.Step))
+			v.Warnings = append(v.Warnings, fmt.Sprintf("Scan step %d: 실제 Scan 좌표를 인식하지 못했습니다. 점을 생성하지 않습니다.", p.Step))
 		}
 	}
 	if len(v.SCF) > 0 {
