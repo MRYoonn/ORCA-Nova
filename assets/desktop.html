@@ -1052,7 +1052,7 @@ function vizSeries(){
  const s=vizSource(),a=vizAnalysis(s),kind=$('viz-kind').value;let rows=[],xlabel='Index',ylabel='';
  if(kind==='profile'){
  const p=visualizationModel.profile||{},points=p.points||[];rows=points.map(x=>({x:x.x,y:x.y,label:x.label,source:x.source,status:'Verified inputs',rawEnergyEh:x.energyEh}));
- xlabel=p.kind==='reaction'?'Reaction coordinate (R → TS → P)':'State (S₀ → T₁)';rows=rows.map(point=>({...point,rawEnergyKJ:point.y,y:vizFinite(point.y)?point.y/4.184:null}));
+ rows=rows.map(point=>({...point,rawEnergyKJ:point.y,y:vizFinite(point.y)?point.y/4.184:null}));
  xlabel=p.kind==='reaction'?'Reaction coordinate (R → TS → P)':'State (S₀ → T₁)';ylabel='Relative '+(p.energy||'Energy')+' (kcal/mol)';
  }
  else if(kind==='pes'){rows=($('viz-overlay').checked?visualizationModel.sources:[s]).flatMap(v=>(v.pes||[]).map((p,i)=>({...p,x:p.coordinate,y:vizEnergy(p),group:v.name,label:v.name+' · Step '+(p.step??i+1)})));xlabel=vizCoordinateLabel(s);ylabel='Electronic Energy (Eh)'}
