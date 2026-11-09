@@ -37,7 +37,7 @@ unzip -tqq ORCA_Nova_Portable_Windows.zip
 unzip -Z1 ORCA_Nova_Portable_Windows.zip > entries.txt
 grep -Fxq 'ORCA_Nova.exe' entries.txt
 grep -Fxq 'ORCA_Nova_UI.exe' entries.txt
-if grep -Eiq '(^|[/\\])orca(\\.exe)?$' entries.txt; then
+if grep -Eiq '(^|[/\\])orca(\.exe)?$' entries.txt; then
   echo "Unexpected redistributed ORCA executable" >&2
   exit 1
 fi
