@@ -13,7 +13,7 @@ ORCA Nova는 이제 **텍스트 복사가 가능한 SI PDF**를 로컬 API로 �
 1. `v1.6.0-rc.7` 이후 최신 시험판에서 **Supporting Information · PDF Method 분석 / INP 대조**를 펼칩니다.
 2. SI PDF를 불러오거나 SI의 **Computational/DFT Method** 문단을 직접 붙여넣고 **DOI**를 기록합니다.
 3. **PDF / SI 분석 및 현재 INP 비교** 버튼을 눌러 Functional/Basis/Dispersion/Solvent/Software/Task 후보와 페이지·발췌문을 확인합니다.
-4. **Ambiguous, Unsupported, Gaussian** 후보는 수동 검토합니다. **지원되는 고유 후보**만 체크하고 확인 창에서 적용합니다. **Opt/Freq와 SP가 서로 다른 수준**이면 각각 독립된 INP/Workflow로 설정합니다.
+4. **Ambiguous, Unsupported, Gaussian** 후보는 수동 검토합니다. **지원되는 고유 후보**만 체크하고 확인 창에서 적용합니다. Opt+Freq / SP 단락 후보는 따로 표시되며 그 단계의 후보만 고르면 확인창 후 A4(Opt+Freq) 또는 A2(SP) 모드로 전환됩니다. 서로 다른 수준의 항목을 섞어 선택할 수 없습니다. **Opt/Freq와 SP는 각각 독립된 INP/Workflow**로 실행해야 합니다.
 5. 결과에 오류가 있으면 **근거 TXT**를 저장해 검토합니다. 이 파일은 문헌 조건을 검증했다는 증명이 아닙니다.
 
 ## Opt + Freq / SP Composite Gibbs
