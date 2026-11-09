@@ -1,8 +1,8 @@
 {
-  "tag": "v1.6.0-rc.5",
+  "tag": "v1.6.0-rc.6",
   "prerelease": true,
   "source": "approved-main-merge",
-  "summary": "Independent Batch per-molecule preset selection and readable OUT result summary with absolute energies, convergence, S2, TDDFT vertical roots and signed Atomic Spin Population, with Chromium and Windows Portable builds verified; stable channel remains v1.5.1",
+  "summary": "kcal/mol-first energy differences and relative plots, dual kcal/mol/eV TD-DFT excitations and Batch Root comparison, verified S0/T1 reaction profile unit conversion, preserved original Eh and kJ values; stable v1.5.1 unchanged",
   "release_type": "verification-prerelease",
   "stable_release_blocked": true
 }
