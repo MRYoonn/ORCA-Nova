@@ -773,7 +773,7 @@ function batchRenderMolecules(){
    const x=Number(control.value);
    if(!Number.isSafeInteger(x)||(key==='mult'&&(x<1||x>5))){batchMessage('Charge는 정수, Multiplicity는 1–5를 입력하세요.',true);control.value=m[key];return;}
    if(m.custom&&!confirm('개별 편집한 INP를 현재 프리셋으로 다시 생성할까요?')){control.value=m[key];return;}
-   m[key]=x;batchCapture(m);m.custom=false;batchRenderMolecules();
+   m[key]=x;if(!m.presetId)m.presetId=active;batchCapture(m);m.custom=false;batchRenderMolecules();
   };
   const inputs=row.querySelector('.batch-inputs');
   for(const file of m.request?.files||[]){
@@ -1111,7 +1111,8 @@ function vizRenderSummary(){
  node('div','viz-report-note','Eh = Hartree. 절대 에너지 자체는 반응 에너지·EnT 가능성·S₀–T₁ Gap을 의미하지 않습니다. 비교 전 Method, Geometry, 전자상태, Thermal correction을 검증하세요.',energies);
  if(typeof a.S2==='number'&&Number.isFinite(a.S2)){
   const spin=node('section','viz-report-section',undefined,report);node('h4','','Spin 확인',spin);
-  node('div','','⟨S²⟩ = '+a.S2.toFixed(5)+' · 목표 Multiplicity의 이상적 값 및 Spin contamination은 별도 검토',spin);
+  const m=Number(a.Multiplicity),ideal=Number.isInteger(m)&&m>0?((m-1)/2)*((m+1)/2):null;
+  node('div','','⟨S²⟩ = '+a.S2.toFixed(5)+(ideal!==null?' · 이 Multiplicity의 이상적 S(S+1) = '+ideal.toFixed(3):'')+' · Spin contamination 및 상태 정체성은 별도 검토',spin);
  }
  const roots=Array.isArray(a.Roots)?a.Roots:[];
  const section=node('section','viz-report-section',undefined,report);
@@ -1124,7 +1125,7 @@ function vizRenderSummary(){
    const tr=node('tr','',undefined,table);
    for(const v of [String(root.Kind||'Unknown')+' '+root.Root,vizSummaryNumber(root.EV,4),vizSummaryNumber(root.WavelengthNM,1),vizSummaryNumber(root.OscillatorStrength,5)])node('td','',v,tr);
   }
-  node('div','viz-report-note','여기서 표시한 값은 S₀ 구조의 Vertical Excitation이며 최적화된 T₁의 Adiabatic Energy가 아닙니다.',section);
+  node('div','viz-report-note','해당 OUT의 계산 구조에서 얻은 Vertical Excitation입니다. S₀ 최적화 구조라고 자동 가정할 수 없고, 최적화된 T₁의 Adiabatic Energy도 아닙니다.',section);
  }
  const pop=a.Populations&&typeof a.Populations==='object'?a.Populations:{};
  const schemes=Object.keys(pop).filter(k=>Array.isArray(pop[k])&&pop[k].some(x=>typeof x.Spin==='number'&&Number.isFinite(x.Spin)));
