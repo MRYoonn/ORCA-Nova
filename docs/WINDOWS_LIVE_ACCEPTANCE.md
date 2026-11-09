@@ -31,6 +31,21 @@ Replace the example ORCA path with the actual `orca.exe` location on the machine
 
 The test writes `ORCA_NOVA_WINDOWS_ACCEPTANCE.json` without the local API secret. It uses a unique temporary folder and isolated `APPDATA` setting, does not touch the real ORCA Nova preferences/jobs, and deletes its temporary test data by default. Use `-KeepTemporaryFiles` only if diagnosing a failure. Do not publish private or unpublished molecular outputs.
 
+
+## Real published v1.5.1 → v1.6.0-rc.2 update transaction
+
+The second independent Windows workflow downloads the actual published stable `v1.5.1` ZIP and candidate `v1.6.0-rc.2` ZIP; each file's SHA-256 is compared with the matching published checksum file before it is extracted.
+
+It then applies the **current portable updater's exact PowerShell script** against isolated copies of the two released ZIP archives:
+
+- Successful upgrade: all installed EXE/UI/DLL files are byte-identical to the candidate ZIP, existing personal settings remain unchanged, and backed-up previous files are intact.
+- Deliberately failed launch: all previously existing files revert byte-for-byte to `v1.5.1`; newly introduced files are removed and settings remain unchanged.
+
+Successful Windows CI:
+https://github.com/MRYoonn/ORCA-Nova/actions/runs/42578114462
+
+This closes the **published-file replacement and rollback transaction** part of the release gate. The script is executed in a test sandbox with a harmless launch executable rather than a real in-app update prompt. It does not establish that a live `v1.5.1` installation will offer the prerelease (it correctly must not), or that WebView2 relaunch and ORCA/MPI process handling work on the user's physical PC. Do not substitute this test for those remaining manual acceptance checks.
+
 ## Manual Windows GUI, update and cancellation acceptance checklist
 
 1. Unzip the RC into a **new empty folder** and launch the normal `ORCA_Nova.exe` (not test mode). Confirm the WebView2 native window opens, menu/buttons are usable and the results graphs render. The CI test skips the GUI.
