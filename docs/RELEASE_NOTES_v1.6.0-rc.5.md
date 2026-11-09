@@ -16,7 +16,7 @@
 기존 `결과 요약` 탭의 원시 JSON 표시를 계층형 연구용 보고 화면으로 대체했습니다.
 
 1. **계산 상태**: ORCA 정상 종료, SCF convergence, Geometry Opt 수렴을 구분 표시.
-2. **4가지 절대 에너지**: Electronic Energy, Gibbs Free Energy, Enthalpy, ZPE를 별도 카드로 표시(단위 Eh).
+2. **총 에너지 3종과 보정항 1종**: Electronic Energy, Gibbs Free Energy, Enthalpy, Zero-Point Energy (ZPE correction)를 구분해 표시(단위 Eh).
 3. **Spin**: 값이 있으면 ⟨S²⟩과 해당 Multiplicity의 이상적 S(S+1)을 나란히 표시.
 4. **TD-DFT Vertical Excitation**: ROOT, eV, nm, oscillator strength로 표 구성.
 5. **Atomic Spin Population**: 원소, **ORCA 0-based 원자 번호**, 부호가 있는 Spin 값, 분석법을 명시.
