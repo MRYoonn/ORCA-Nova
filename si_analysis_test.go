@@ -142,7 +142,7 @@ func makeSimpleSIPDF(text string)[]byte{
   "<< /Type /Catalog /Pages 2 0 R >>",
   "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
   "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>",
-  "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+  fmt.Sprintf("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /FirstChar 32 /LastChar 126 /Widths [ %s ] >>","300 "+strings.TrimSpace(strings.Repeat("600 ",94))),
  }
  stream:=fmt.Sprintf("BT /F1 12 Tf 50 720 Td (%s) Tj ET",strings.ReplaceAll(text,"(",""))
  objects=append(objects,fmt.Sprintf("<< /Length %d >>\nstream\n%s\nendstream",len(stream),stream))
