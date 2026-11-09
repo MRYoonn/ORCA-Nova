@@ -697,8 +697,8 @@ setInterval(()=>{if(lastDesktopState?.update)desktopUpdateShow(lastDesktopState.
 <details class="batch-comparison" open style="margin-top:18px"><summary style="cursor:pointer;color:#b7d9fa">다중 분자 결과 비교 · 실제 OUT 추출값</summary>
 <div class="batch-note">ORCA 원자 번호는 0부터 시작합니다. 아래 번호는 분자 고리의 C5 / C6 명칭과 자동으로 대응하지 않습니다. 각 XYZ의 원자 순서를 직접 확인하세요. Spin Population만으로 반응 선택성을 확정할 수 없습니다.</div>
 <div class="batch-controls"><label>ORCA atom index A <input class="control" id="batch-atom-a" type="number" min="0" step="1" value="4"></label><label>ORCA atom index B <input class="control" id="batch-atom-b" type="number" min="0" step="1" value="5"></label><button class="btn small ghost" id="batch-compare-refresh">비교 결과 새로고침</button><button class="btn small ghost" id="batch-compare-csv">↓ 비교 CSV</button></div>
-<div class="batch-note">Vertical 값은 TD-DFT Root 1의 excitation energy (eV)입니다. Electronic Energy (Eh) 및 서로 다른 Geometry 사이의 Adiabatic 에너지와 구분합니다. 이 표는 Adiabatic 값을 자동 추정하지 않습니다.</div>
-<div class="batch-table-wrap"><table class="batch-table" id="batch-comparison-table"><thead><tr><th>Molecule / 단계</th><th>Status</th><th>Method / Geometry</th><th>Electronic (Eh)</th><th>Vertical S₁ (eV)</th><th>Vertical T₁ (eV)</th><th>Spin A (electrons)</th><th>Spin B (electrons)</th></tr></thead><tbody id="batch-comparison-body"><tr><td colspan="8">Not calculated · 결과 새로고침을 선택하세요.</td></tr></tbody></table></div>
+<div class="batch-note">Vertical 값은 TD-DFT Root 1의 excitation energy이며 kcal/mol 우선, eV를 병기합니다. Electronic Energy (Eh) 및 서로 다른 Geometry 사이의 Adiabatic 에너지와 구분합니다. 이 표는 Adiabatic 값을 자동 추정하지 않습니다.</div>
+<div class="batch-table-wrap"><table class="batch-table" id="batch-comparison-table"><thead><tr><th>Molecule / 단계</th><th>Status</th><th>Method / Geometry</th><th>Electronic (Eh)</th><th>Vertical S₁ (kcal/mol; eV)</th><th>Vertical T₁ (kcal/mol; eV)</th><th>Spin A (electrons)</th><th>Spin B (electrons)</th></tr></thead><tbody id="batch-comparison-body"><tr><td colspan="8">Not calculated · 결과 새로고침을 선택하세요.</td></tr></tbody></table></div>
 <div class="batch-note" id="batch-comparison-status" role="status"></div>
 </details>
 
@@ -932,7 +932,7 @@ $('batch-csv').onclick=async()=>{try{const r=await fetch('/api/queue/export?sess
 let batchComparisonRows=[],batchCompareBusy=false;
 function batchAbsent(analysis){return ['Failed','Not calculated'].includes(analysis.Status)?analysis.Status:'Unavailable';}
 function batchNumeric(value,analysis){return typeof value==='number'&&Number.isFinite(value)?String(value):batchAbsent(analysis);}
-function batchVertical(analysis,kind){const root=(analysis.Roots||[]).find(v=>v.Root===1&&[kind,kind==='singlet'?'s':'t'].includes(String(v.Kind).toLowerCase()));return root?batchNumeric(root.EV,analysis):batchAbsent(analysis);}
+function batchVertical(analysis,kind){const root=(analysis.Roots||[]).find(v=>v.Root===1&&[kind,kind==='singlet'?'s':'t'].includes(String(v.Kind).toLowerCase()));if(!root||typeof root.EV!=='number'||!Number.isFinite(root.EV))return batchAbsent(analysis);return (root.EV*23.060548867).toFixed(2)+' kcal/mol ('+root.EV+' eV)';}
 function batchAtomSpin(analysis,index){
  const populations=analysis.Populations||{};
  // Choose one available scheme explicitly. Never combine values across schemes
@@ -1057,7 +1057,7 @@ function vizSeries(){
  }
  else if(kind==='pes'){rows=($('viz-overlay').checked?visualizationModel.sources:[s]).flatMap(v=>(v.pes||[]).map((p,i)=>({...p,x:p.coordinate,y:vizEnergy(p),group:v.name,label:v.name+' · Step '+(p.step??i+1)})));xlabel=vizCoordinateLabel(s);ylabel='Electronic Energy (Eh)'}
  else if(['optimization','gradient','scf','scfDelta'].includes(kind)){rows=(s[kind==='scfDelta'?'scf':kind]||[]).map((p,i)=>({...p,x:p.x??p.cycle??p.iteration??i+1,y:p.y??p.energyEh??p.value}));xlabel=kind.startsWith('scf')?'SCF Iteration':'Optimization Cycle';ylabel=kind==='gradient'?'Gradient (Eh/bohr)':'Energy (Eh)';if(kind==='scfDelta')rows=rows.slice(1).map((p,i)=>({...p,y:p.y-rows[i].y}))}
- else if(kind==='roots'||kind==='uv'){rows=(a.Roots||[]).map((p,i)=>({x:kind==='uv'?p.WavelengthNM:p.Root,y:kind==='uv'?p.OscillatorStrength:p.EV,label:p.Kind+' Root '+p.Root,source:s.name,step:p.Root}));xlabel=kind==='uv'?'Wavelength (nm)':'TD-DFT Root';ylabel=kind==='uv'?'Oscillator Strength':'Vertical Excitation Energy (eV)'}
+ else if(kind==='roots'||kind==='uv'){const unit=$('viz-unit').value;const factor={'Eh':1/27.211386245988,'kJ/mol':96.4853321233,'kcal/mol':23.060548867,'eV':1}[unit]||1;rows=(a.Roots||[]).map((p,i)=>({x:kind==='uv'?p.WavelengthNM:p.Root,y:kind==='uv'?p.OscillatorStrength:vizFinite(p.EV)?p.EV*factor:null,rawExcitationEV:p.EV,label:p.Kind+' Root '+p.Root,source:s.name,step:p.Root}));xlabel=kind==='uv'?'Wavelength (nm)':'TD-DFT Root';ylabel=kind==='uv'?'Oscillator Strength':'Vertical Excitation Energy ('+unit+')'}
  else if(kind==='frequency'){rows=(a.Frequencies||[]).map((y,i)=>({x:i+1,y,status:y<0?'Imaginary Frequency':'Real Frequency',source:s.name}));xlabel='Vibrational Mode';ylabel='Frequency (cm⁻¹)'}
  else if(kind==='ir'){rows=(s.ir||[]).map((p,i)=>({...p,x:p.x??p.frequency,y:p.y??p.intensity}));xlabel='Frequency (cm⁻¹)';ylabel='IR Intensity (km/mol)'}
  else if(kind==='spin'){const pop=$('viz-pop').value,key=Object.keys(a.Populations||{}).find(k=>k.toLowerCase().replace('ö','oe').includes(pop.toLowerCase()));rows=((a.Populations||{})[key]||[]).map(p=>({x:p.Index,y:p.Spin,label:'Atom '+p.Index+' '+p.Element,source:s.name}));xlabel='ORCA Atom Index (0-based)';ylabel=(key||pop)+' Spin Population (electrons)'}
