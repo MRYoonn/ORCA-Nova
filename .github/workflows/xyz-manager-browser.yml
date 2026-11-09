@@ -8,6 +8,7 @@ on:
       - 'tests/batch-ui.cjs'
       - 'tests/xyz-3d-ui.cjs'
       - 'tests/batch-presets-summary-ui.cjs'
+      - 'tests/si-ui.cjs'
       - '.github/workflows/xyz-manager-browser.yml'
   workflow_dispatch:
 permissions:
@@ -33,3 +34,5 @@ jobs:
         run: node tests/xyz-3d-ui.cjs
       - name: Browser regression — per-XYZ presets and readable scientific summary
         run: node tests/batch-presets-summary-ui.cjs
+      - name: Browser regression — offline SI PDF/text evidence and composite Gibbs UI
+        run: node tests/si-ui.cjs

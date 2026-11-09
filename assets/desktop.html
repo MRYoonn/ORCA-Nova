@@ -106,6 +106,34 @@
     <div class="preset-context" id="preset-context"><strong>추천</strong> · Opt + Spin Density처럼 여러 계산을 하나의 INP에서 함께 요청할 수 있어요. 빠른 구조 탐색은 r2SCAN-3c로 시작하고, 최종 논문 값은 Method를 다시 검토하세요.</div>
     <div class="preset-help">ⓘ <b>빠른 계산 ≠ 더 정확한 계산.</b> 최종 보고용 에너지는 논문 SI의 Method, Basis Set, Solvent 등을 맞춰 재계산해야 해요.</div>
   </div>
+  <details class="si-panel" id="si-panel">
+   <summary>📑 Supporting Information · PDF Method 분석 / INP 대조</summary>
+   <div class="si-note">SI PDF 또는 계산 조건 텍스트를 **로컬에서** 분석해 출처 페이지와 후보 조건을 표시합니다. DOI는 사용자가 직접 입력하는 참고 정보이며 자동 검증되지 않습니다. 후보는 수동 확인 후에만 INP에 적용됩니다.</div>
+   <div class="si-toolbar">
+    <label class="btn small ghost" for="si-file" data-help="복사 가능한 글자가 있는 12MB 이하의 SI PDF를 선택하세요. 파일은 ORCA Nova 로컬 앱에서만 분석합니다. 스캔 PDF에는 OCR을 제공하지 않습니다.">+ SI PDF 선택</label>
+    <input id="si-file" type="file" accept=".pdf,application/pdf" hidden>
+    <span id="si-file-name">PDF 미선택 · 텍스트 직접 입력 가능</span>
+   </div>
+   <label class="si-field">DOI (사용자가 확인한 문헌 DOI)<input id="si-doi" class="control" type="text" placeholder="10.1002/anie.9565676"></label>
+   <label class="si-field">SI 계산 섹션 직접 입력 (PDF 대신 사용 가능)<textarea id="si-text" class="control" rows="4" placeholder="Computational details / DFT calculations ..."></textarea></label>
+   <div class="si-toolbar"><button class="btn primary small" id="si-analyze">PDF / SI 분석 및 현재 INP 비교</button><button class="btn small ghost" id="si-export" disabled>근거 TXT 저장</button><button class="btn small ghost" id="si-apply" disabled>선택 항목만 INP에 적용</button></div>
+   <div id="si-status" role="status" class="si-note">계산 조건은 여러 수준(Opt/Freq/SP), 서로 다른 화학종 및 Software에 따라 다를 수 있습니다. 검증 없이 자동 적용하지 않습니다.</div>
+   <div id="si-results"></div>
+   <details class="si-composite">
+    <summary>Opt + Freq / 고수준 SP 혼합수준 Gibbs 에너지 계산</summary>
+    <p class="si-note"><code>G_composite = E_high(SP) + [G_low(Opt+Freq) − E_low(Opt+Freq)]</code>. 동일 화학종·전하·Multiplicity·기하 구조·용매 조건을 자동 확인합니다. 모든 입력 파일이 필요하며 Gaussian OUT는 현재 지원하지 않습니다.</p>
+    <div class="si-file-grid">
+     <label>Opt+Freq INP<input type="file" id="si-low-inp" accept=".inp,text/plain"></label>
+     <label>Opt+Freq OUT<input type="file" id="si-low-out" accept=".out,.log,text/plain"></label>
+     <label>Opt 최종 XYZ<input type="file" id="si-low-xyz" accept=".xyz,text/plain"></label>
+     <label>High SP INP<input type="file" id="si-high-inp" accept=".inp,text/plain"></label>
+     <label>High SP OUT<input type="file" id="si-high-out" accept=".out,.log,text/plain"></label>
+     <label>SP 입력 XYZ<input type="file" id="si-high-xyz" accept=".xyz,text/plain"></label>
+    </div>
+    <div class="si-toolbar"><label>Stationary Point <select class="control" id="si-stationary"><option value="minimum">Minimum · imaginary = 0</option><option value="ts">TS · imaginary = 1</option></select></label><button class="btn small primary" id="si-compute">Composite Gibbs 계산</button><button class="btn small ghost" id="si-comp-export" disabled>계산 보고서 TXT</button></div>
+    <pre class="si-readout" id="si-composite-result" aria-live="polite">6개 파일을 불러온 후 계산하세요.</pre>
+   </details>
+  </details>
 <div class="section"><div class="section-head"><span class="section-title">01 · Molecule</span><span class="section-desc">Avogadro → XYZ</span></div><div class="file-box" id="dropzone"><div style="min-width:0"><div class="file-meta" id="xyz-filename">molecule.xyz</div><div class="file-details" id="xyz-meta">XYZ 파일을 불러오면 여기에 표시돼요</div></div><button class="btn small" id="xyz-load" data-help="Avogadro에서 내보낸 .xyz 파일을 불러와요. 실제 파일 내용은 서버로 전송되지 않아요.">＋ XYZ 불러오기</button><button class="btn small ghost" id="xyz-remove" disabled data-help="기본 XYZ 등록만 해제합니다. 디스크 원본이나 완료된 계산 결과는 삭제하지 않습니다.">기본 XYZ 삭제</button><button class="btn small ghost" id="xyz3d-primary" disabled data-help="현재 기본 XYZ의 구조를 회전해 보고 ORCA 원자 인덱스(0부터 시작)를 확인합니다. C5/C6 표시는 직접 지정해야 합니다.">◈ XYZ 3D 미리보기</button></div><input id="xyz-file" type="file" accept=".xyz,text/plain" hidden><div class="hint" style="margin-top:7px">삭제는 프로그램 등록 목록에만 적용됩니다. 원본 XYZ·OUT 파일은 그대로 유지됩니다.</div></div>
 <div class="section"><div class="section-head"><span class="section-title">02 · Electronic Structure</span><span class="section-desc">Method &amp; Basis</span></div><div class="fieldset"><div class="two-cols"><div class="field"><label class="field-label" for="functional">Functional <span class="help-icon" tabindex="0" data-title="Functional" data-help="전자 에너지를 근사적으로 계산하는 이론의 종류예요. 논문 SI와 비교하려면 같은 Functional을 선택하세요.">?</span></label><select class="control" id="functional"><option>B3LYP</option><option>PBE0</option><option>TPSSh</option><option>BP86</option><option>M06-2X</option><option>wB97X-D3</option><option>r2SCAN-3c</option></select></div><div class="field"><label class="field-label" for="basis">Basis Set <span class="help-icon" tabindex="0" data-title="Basis Set" data-help="원자 주변의 전자 분포를 수학적으로 표현하는 데 사용하는 함수 집합이에요. 정확도와 계산 비용에 영향을 줘요.">?</span></label><select class="control" id="basis"><option>def2-TZVP</option><option>def2-SVP</option><option>def2-TZVPP</option><option>def2-QZVP</option><option>def2-QZVPPD</option></select></div></div><div class="two-cols"><div class="field"><label class="field-label" for="dispersion">Dispersion <span class="help-icon" tabindex="0" data-title="Dispersion" data-help="분자 내부나 분자 사이의 분산 상호작용을 보정해요. 일부 Functional에는 자체 보정이 들어있으므로 중복 적용을 피해야 해요.">?</span></label><select class="control" id="dispersion"><option>D4</option><option>D3BJ</option><option>D3ZERO</option><option>None</option></select></div><div class="field"><label class="field-label" for="scf">SCF Convergence <span class="help-icon" tabindex="0" data-title="SCF Convergence" data-help="전자 밀도 계산을 얼마나 엄격하게 수렴시킬지 정해요. TightSCF는 일반적인 정밀 계산에 많이 사용돼요.">?</span></label><select class="control" id="scf"><option>TightSCF</option><option>NormalSCF</option><option>VeryTightSCF</option></select></div></div></div></div>
   <div class="method-safety" id="method-safety" aria-live="polite" style="margin-top:10px">설정된 Functional과 Basis Set의 사용 조건을 확인해 주세요.</div>
@@ -1377,6 +1405,151 @@ xyz3dCanvas.addEventListener('pointerup',e=>{const d=xyz3dView.drag;xyz3dView.dr
 xyz3dCanvas.addEventListener('pointercancel',()=>{xyz3dView.drag=null;});
 xyz3dCanvas.addEventListener('wheel',e=>{if(!$('xyz3d-dialog').open)return;e.preventDefault();xyz3dView.zoom=Math.max(0.25,Math.min(4,xyz3dView.zoom*(e.deltaY>0?0.9:1.1)));xyz3DDraw();},{passive:false});
 window.addEventListener('resize',()=>{if($('xyz3d-dialog').open)xyz3DDraw();});
+</script>
+
+
+<style>
+.si-panel{background:#111e2d;border:1px solid #35516f;border-radius:10px;padding:13px;margin:10px 0 18px}
+.si-panel summary{cursor:pointer;color:#c7e8fb;font-weight:700;font-size:13px}
+.si-note{font-size:11px;color:#a6c1da;line-height:1.65;padding:7px 0;white-space:pre-wrap}
+.si-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:9px 0}
+.si-field{display:block;margin:8px 0;font-size:11px;color:#c2d9ef}
+.si-field .control{display:block;width:100%;margin-top:5px}
+.si-field textarea{resize:vertical;min-height:75px}
+#si-file-name{font-size:11px;color:#acc6d9;overflow-wrap:anywhere}
+.si-block{border:1px solid #37536a;background:#172638;padding:10px;border-radius:7px;margin:9px 0}
+.si-block-head{font-size:12px;color:#e2f4ff;font-weight:700;margin:0 0 8px}
+.si-candidate{padding:6px;border-bottom:1px solid #304154;color:#c9d8e5;font-size:11px}
+.si-evidence{color:#94b5cb;margin:4px 0 2px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:10px}
+.si-candidate input{margin-right:7px}
+.si-diff{font-size:11px;color:#abcde1;padding:5px 0;word-break:break-word}
+.si-composite{margin:12px 0;border-top:1px solid #37516a;padding-top:10px}
+.si-file-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:9px}
+.si-file-grid label{font-size:11px;display:flex;flex-direction:column;gap:4px;color:#c4d5e5}
+.si-file-grid input{max-width:100%;font-size:10px}
+.si-readout{white-space:pre-wrap;word-break:break-word;background:#0d1825;padding:12px;border-radius:7px;color:#bad6ed;font-size:11px;line-height:1.55}
+</style>
+<script>
+let siCurrent=null,siReport='',siCompositeReport='';
+const SI_SELECT={functional:'functional',basis:'basis',dispersion:'dispersion',solvation:'solvmodel',solvent:'solvent'};
+function siStatus(s,bad=false){const el=$('si-status');el.textContent=s;el.style.color=bad?'#ffabb3':'#a6c1da'}
+function siNode(tag,text,parent){const el=document.createElement(tag);if(text!==undefined)el.textContent=String(text);if(parent)parent.append(el);return el}
+function siRender(data){
+ const container=$('si-results');container.replaceChildren();
+ const evidence=siNode('div','PDF/입력 텍스트 '+data.pages+'페이지 분석 · 근거 '+(data.evidence||[]).length+'건 · 모든 후보는 미검증',container);evidence.className='si-note';
+ for(const field of data.fields||[]){
+  const block=siNode('section',undefined,container);block.className='si-block';
+  const head=siNode('div',field.field.toUpperCase()+' · '+field.status,block);head.className='si-block-head';
+  if(!(field.values||[]).length){siNode('div','Not identified · 직접 확인 필요',block).className='si-candidate';continue}
+  for(const value of field.values){
+   const line=siNode('div',undefined,block);line.className='si-candidate';
+   const label=siNode('label',undefined,line),cb=siNode('input',undefined,label);cb.type='checkbox';cb.className='si-choice';cb.dataset.field=field.field;cb.dataset.value=value;
+   cb.disabled=field.field==='software'||field.field==='task'||field.status==='ambiguous'||field.status==='requires-translation'||field.status==='unsupported-direct';
+   siNode('span',value+(cb.disabled?' · 적용 불가/수동 확인':' · 선택해 적용'),label);
+   const e=(data.evidence||[]).filter(e=>e.field===field.field&&e.value===value);
+   for(const source of e.slice(0,3)){siNode('div','PDF Page '+source.page+' · '+source.excerpt,line).className='si-evidence'}
+  }
+ }
+ if(data.levels?.length){
+  const section=siNode('section',undefined,container);section.className='si-block';
+  siNode('div','SI의 Opt/Freq 와 고수준 SP 단락 후보 (문헌 전체 검증 아님)',section).className='si-block-head';
+  const software=(data.fields||[]).find(v=>v.field==='software');
+  const gaussianOnly=software?.values?.includes('Gaussian')&&!software?.values?.includes('ORCA');
+  if(gaussianOnly)siNode('div','Gaussian 문헌입니다. ORCA 지원 설정/기본 함수/용매 모델의 치환 검증 전에는 자동 적용할 수 없습니다.',section).className='si-note';
+  for(const [i,level] of data.levels.entries()){
+   const block=siNode('div',undefined,section);block.className='si-candidate';
+   siNode('div',level.kind+' · PDF page '+level.page+' · 단계 후보 (적용시 계산모드 변경)',block).className='si-block-head';
+   const levelid=level.kind+'@'+level.page+'-'+i;
+   for(const [field,values] of Object.entries(level.values||{})){
+    for(const value of values){
+     const el=siNode('label',undefined,block);el.style.display='block';
+     const checkbox=siNode('input',undefined,el);checkbox.type='checkbox';checkbox.className='si-choice si-level-choice';checkbox.dataset.field=field;checkbox.dataset.value=value;checkbox.dataset.level=levelid;checkbox.dataset.kind=level.kind;
+     const select=SI_SELECT[field]?$(SI_SELECT[field]):null;
+     checkbox.disabled=gaussianOnly||values.length>1||!select||![...select.options].some(x=>x.value===value);
+     siNode('span',field+': '+value+(checkbox.disabled?' · 수동 변환 필요':' · 현재 단계용 선택'),el);
+    }
+   }
+   siNode('div',level.excerpt.slice(0,550),block).className='si-evidence';
+  }
+ }
+ if(data.differences?.length){
+  const block=siNode('section',undefined,container);block.className='si-block';
+  siNode('div','현재 INP와의 비교 (참고값, 자동 일치 판정이 아님)',block).className='si-block-head';
+  for(const d of data.differences)siNode('div',d.field+': SI '+d.si+' / INP '+d.inp+' → '+d.status,block).className='si-diff';
+ }
+ for(const warning of data.warnings||[])siNode('div','주의: '+warning,container).className='si-note';
+}
+$('si-results').addEventListener('change',event=>{
+ const chosen=event.target;
+ if(!chosen?.matches('input.si-choice')||!chosen.checked)return;
+ const group=chosen.dataset.level||'general';
+ for(const option of $('si-results').querySelectorAll('input.si-choice')){
+  const other=option.dataset.level||'general';
+  if(other!==group)option.checked=false;
+ }
+});
+function siBase64(buffer){
+ const arr=new Uint8Array(buffer);let chunks=[];
+ for(let i=0;i<arr.length;i+=16384)chunks.push(String.fromCharCode(...arr.subarray(i,i+16384)));
+ return btoa(chunks.join(''));
+}
+$('si-file').addEventListener('change',()=>{$('si-file-name').textContent=$('si-file').files[0]?.name||'PDF 미선택';siCurrent=null;$('si-export').disabled=true;$('si-apply').disabled=true;});
+$('si-analyze').onclick=async()=>{
+ const btn=$('si-analyze');btn.disabled=true;siCurrent=null;$('si-export').disabled=true;$('si-apply').disabled=true;
+ try{
+  const file=$('si-file').files[0],raw=$('si-text').value.trim();
+  if(!file&&!raw)throw Error('SI PDF를 선택하거나 계산 섹션 텍스트를 입력해 주세요.');
+  const doc={name:file?.name||'SI pasted text',doi:$('si-doi').value.trim(),input:$('editor').value||''};
+  if(file){if(file.size>12*1024*1024)throw Error('PDF는 12MB 이하여야 합니다.');doc.pdfBase64=siBase64(await file.arrayBuffer());}
+  else{doc.text=raw;}
+  siStatus('로컬 PDF/텍스트에서 계산 조건 후보를 추출하고 있습니다.');
+  const response=await desktopAPI('si/analyze',doc);
+  siCurrent=response;siReport='Source: '+response.name+'\nDOI (user-provided): '+response.doi+'\nVerified SI method: No\n'+(response.evidence||[]).map(e=>e.field+' = '+e.value+' | Page '+e.page+' | '+e.excerpt).join('\n')+'\n'+(response.warnings||[]).join('\n');
+  siRender(response);
+  $('si-export').disabled=false;$('si-apply').disabled=false;
+  siStatus('분석 완료 · '+response.evidence.length+'개 근거 후보. PDF 페이지와 Opt/SP 수준을 직접 확인하세요.');
+ }catch(e){siStatus('SI 분석 실패: '+e.message,true)}finally{btn.disabled=false}
+};
+$('si-export').onclick=()=>{if(siReport)download('SI_method_evidence.txt',siReport,'text/plain;charset=utf-8')};
+$('si-apply').onclick=()=>{
+ if(!siCurrent) return;
+ const selected=[...document.querySelectorAll('#si-results input.si-choice:checked')];
+ if(!selected.length){siStatus('적용할 근거 후보의 체크박스를 선택하세요.',true);return;}
+ const activeLevels=new Set(selected.filter(x=>x.dataset.level).map(x=>x.dataset.level));
+ if(activeLevels.size>1||(activeLevels.size===1&&selected.some(x=>!x.dataset.level))){siStatus('Opt/SP 단계 후보는 같은 단계에서만 선택하세요. 일반 후보와 단계 후보를 함께 적용할 수 없습니다.',true);return;}
+ const chosenKind=activeLevels.size?selected.find(x=>x.dataset.kind)?.dataset.kind:null;
+ const updates=[];
+ for(const ch of selected){
+  const field=SI_SELECT[ch.dataset.field];
+  if(!field)continue;
+  const el=$(field),value=ch.dataset.value;
+  if(!el||![...el.options].some(op=>op.value===value)){siStatus(field+' / '+value+'는 현재 ORCA 설정에서 직접 지원되지 않습니다. 수동으로 변환·검증하세요.',true);return;}
+  if(updates.some(x=>x[0]===field)){siStatus('같은 항목은 하나만 선택해야 합니다.',true);return;}
+  updates.push([field,value]);
+ }
+ if(!updates.length){siStatus('지원되는 옵션을 선택해 주세요.',true);return;}
+ const proposedMode=chosenKind==='SP'?'A2':chosenKind==='Opt+Freq'?'A4':null;
+ const description=proposedMode?' 계산 모드를 '+proposedMode+(proposedMode==='A2'?' Single Point':' Opt+Freq')+'로 변경합니다.':'';
+ if(!confirm('논문 SI PDF를 자동으로 완전 검증한 것이 아닙니다.'+description+' 직접 확인한 '+updates.length+'개 조건을 현재 계산 입력에 적용하고 기존 수동 INP 편집을 덮어쓸까요?'))return;
+ if(proposedMode){active=proposedMode;activeStage=0;}
+ for(const [field,value] of updates)$(field).value=value;
+ selectedPreset='';refreshPresetHighlight();syncAllPickers();generate(true);
+ siStatus(updates.map(x=>x.join(' = ')).join(', ')+' 적용됨 · 계산 전 실제 INP의 Opt/SP 역할·Charge·Multiplicity를 다시 확인하세요.');
+};
+$('si-compute').onclick=async()=>{
+ const btn=$('si-compute');btn.disabled=true;$('si-comp-export').disabled=true;
+ try{
+  const ids=['si-low-inp','si-low-out','si-low-xyz','si-high-inp','si-high-out','si-high-xyz'];
+  for(const id of ids)if(!$(id).files[0])throw Error('Opt/SP의 INP, OUT, XYZ 여섯 파일을 모두 선택하세요.');
+  const [lowInp,lowOut,lowXYZ,highInp,highOut,highXYZ]=await Promise.all(ids.map(id=>$(id).files[0].text()));
+  const r=await desktopAPI('si/composite',{lowInp,lowOut,lowXYZ,highInp,highOut,highXYZ,stationaryPoint:$('si-stationary').value});
+  const lines=[r.formula,'Verified inputs: '+r.verifiedInputs,'Opt+Freq Method: '+r.lowMethod,'High SP Method: '+r.highMethod,'Atoms: '+r.atoms+'; Charge: '+r.charge+'; Multiplicity: '+r.multiplicity,
+   'E_low: '+r.lowElectronicEh.toFixed(9)+' Eh','G_low: '+r.lowGibbsEh.toFixed(9)+' Eh','E_high: '+r.highElectronicEh.toFixed(9)+' Eh','Thermal correction: '+r.correctionEh.toFixed(9)+' Eh',
+   'Composite G (ABSOLUTE): '+r.compositeGibbsEh.toFixed(9)+' Eh','이 값은 상대 에너지 ΔG가 아닙니다.',...(r.warnings||[])];
+  siCompositeReport=lines.join('\n');$('si-composite-result').textContent=siCompositeReport;$('si-comp-export').disabled=false;
+ }catch(e){$('si-composite-result').textContent='검증/계산 실패: '+e.message}finally{btn.disabled=false}
+};
+$('si-comp-export').onclick=()=>{if(siCompositeReport)download('SI_Opt_SP_Gibbs.txt',siCompositeReport,'text/plain;charset=utf-8')};
 </script>
 
 </body>
