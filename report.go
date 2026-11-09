@@ -435,10 +435,10 @@ func showConversion(v *float64) string {
 	if v == nil {
 		return "계산되지 않음"
 	}
-	return fmt.Sprintf("%.9f Eh (%.4f eV; %.3f kcal/mol; %.3f kJ/mol)", *v, *v*ehToEV, *v*ehToKcal, *v*ehToKJ)
+	return fmt.Sprintf("%.9f Eh", *v)
 }
 func showDelta(eh float64) string {
-	return fmt.Sprintf("%+.6f Eh = %+.3f eV = %+.3f kcal/mol = %+.3f kJ/mol", eh, eh*ehToEV, eh*ehToKcal, eh*ehToKJ)
+	return fmt.Sprintf("%+.3f kcal/mol (%+.3f eV; %+.6f Eh; %+.3f kJ/mol)", eh*ehToKcal, eh*ehToEV, eh, eh*ehToKJ)
 }
 
 func formatAnalysis(a OrcaAnalysis, stage Stage) string {
@@ -478,7 +478,7 @@ func formatAnalysis(a OrcaAnalysis, stage Stage) string {
 	} else {
 		b.WriteString("<S²>: 계산되지 않음 / 출력 없음\n")
 	}
-	b.WriteString("참고: 절대 Electronic Energy는 다른 분자의 반응 에너지로 바로 해석할 수 없습니다.\n")
+	b.WriteString("참고: Electronic/Gibbs/Enthalpy는 총 에너지(Eh), ZPE는 보정항(Eh)입니다. ΔE/ΔG 등 에너지 차이만 kcal/mol을 우선 표시합니다. 절대 Electronic Energy는 다른 분자의 반응 에너지로 바로 해석할 수 없습니다.\n")
 	b.WriteString("\n[Excited States — TD-DFT Vertical Energy]\n")
 	if len(a.Roots) == 0 {
 		b.WriteString("출력된 S₁/T₁ Root가 없습니다.\n")
@@ -491,7 +491,7 @@ func formatAnalysis(a OrcaAnalysis, stage Stage) string {
 			if r.Kind != "unknown" {
 				label = fmt.Sprintf("%s%d", r.Kind, r.Root)
 			}
-			fmt.Fprintf(&b, "%-12s %.4f eV (%.6f Eh; %.3f kJ/mol) — Vertical excitation; NOT an Adiabatic gap\n", label, r.EV, r.EH, r.EH*ehToKJ)
+			fmt.Fprintf(&b, "%-12s %.3f kcal/mol (%.4f eV; %.6f Eh; %.3f kJ/mol) — Vertical excitation; NOT an Adiabatic gap\n", label, r.EV*ehToKcal/ehToEV, r.EV, r.EH, r.EH*ehToKJ)
 			if r.WavelengthNM != nil {
 				fmt.Fprintf(&b, "  Excitation Wavelength: %.3f nm\n", *r.WavelengthNM)
 			} else {
