@@ -254,8 +254,7 @@ func compareSIInput(fields []SIField,inp string)[]SIDifference{
   have:=got[field.Field];if have==""{have="Not specified"}
   status:="unknown"
   if len(field.Values)>1{status="ambiguous"}else if len(field.Values)==1{
-   if field.Status=="unsupported-direct"{status="unsupported"}
-   else if strings.EqualFold(field.Values[0],have){status="match"}else{status="review"}
+   if field.Status=="unsupported-direct" {status="unsupported"} else if strings.EqualFold(field.Values[0],have) {status="match"} else {status="review"}
   }
   diff=append(diff,SIDifference{Field:field.Field,SI:target,INP:have,Status:status})
  }
