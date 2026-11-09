@@ -1,12 +1,13 @@
 name: XYZ Manager and Batch Browser QA
 on:
   push:
-    branches: ['feat/xyz-manager-batch-ux-*', 'feat/xyz-3d-*']
+    branches: ['feat/xyz-manager-batch-ux-*', 'feat/xyz-3d-*', 'feat/batch-presets-*']
   pull_request:
     paths:
       - 'assets/desktop.html'
       - 'tests/batch-ui.cjs'
       - 'tests/xyz-3d-ui.cjs'
+      - 'tests/batch-presets-summary-ui.cjs'
       - '.github/workflows/xyz-manager-browser.yml'
   workflow_dispatch:
 permissions:
@@ -30,3 +31,5 @@ jobs:
         run: node tests/batch-ui.cjs
       - name: Browser regression — offline XYZ 3D preview
         run: node tests/xyz-3d-ui.cjs
+      - name: Browser regression — per-XYZ presets and readable scientific summary
+        run: node tests/batch-presets-summary-ui.cjs
