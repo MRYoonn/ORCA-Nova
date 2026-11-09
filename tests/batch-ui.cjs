@@ -74,7 +74,7 @@ const fs=require('fs'),assert=require('assert');
  assert.equal(await page.evaluate(()=>xyzOriginal),'');
  assert.equal(await page.evaluate(()=>batchMolecules.length),2); // Registration copies persist.
  await page.locator('#desktop-extra-xyz').setInputFiles([{name:'extra2.xyz',mimeType:'text/plain',buffer:Buffer.from(xyz)}]);
- assert.equal(await page.evaluate(()=>xyzOriginal.length>0),true);
+ await page.waitForFunction(()=>xyzOriginal.length>0); // FileReader async after input event
  page.once('dialog',d=>d.accept());
  await page.locator('#desktop-clear-xyz').click();
  assert.equal(await page.evaluate(()=>xyzOriginal),'');
