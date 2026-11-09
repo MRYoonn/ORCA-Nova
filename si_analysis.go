@@ -79,7 +79,7 @@ var siKeywords = map[string][]struct{Value, Pattern string}{
   {"6-31+G(d,p)",`(?i)6[- ]?31\+\s*G\s*\(\s*d\s*,\s*p\s*\)`},
  },
  "dispersion":{
-  {"D3BJ",`(?i)\bD3\s*\(?\s*BJ\s*\)?\b|\bD3BJ\b|\bD3\s*[- ]?Becke[- ]?Johnson\b`},
+  {"D3BJ",`(?i)\bD3\s*\(\s*BJ\s*\)|\bD3BJ\b|\bD3\s*[- ]?Becke[- ]?Johnson\b`},
   {"D3ZERO",`(?i)\bD3ZERO\b|\bD3\b.{0,80}\bzero[- ]?damping\b|\bD3\b.{0,60}\bzero damping\b`},
   {"D4",`(?i)\bD4\b|\bGrimme.s D4\b`},
   {"D3 (damping unspecified)",`(?i)\bD3\b|\bGrimme.s D3\b`},
@@ -110,7 +110,7 @@ var siKeywords = map[string][]struct{Value, Pattern string}{
  },
 }
 var siOrder=[]string{"software","functional","basis","dispersion","solvation","solvent","task"}
-var siSectionRx=regexp.MustCompile(`(?i)computational\s+(?:method(?:ology)?|details?|analys(?:is|es)|study)|DFT\s+calculations?|theoretical\s+calculations?|quantum[- ]chemical\s+calculations?`)
+var siSectionRx=regexp.MustCompile(`(?i)(?:computational|computation)\s+(?:method(?:ology)?|details?|analys(?:is|es)|study)|DFT\s+calculations?|theoretical\s+calculations?|quantum[- ]chemical\s+calculations?`)
 
 // The legacy PDF parser handles digitally born PDFs, not image scans/OCR.
 // The text is returned page-by-page to preserve evidence and prevent invented pages.
@@ -134,13 +134,18 @@ func extractSIPDF(raw []byte)(pages []SIPage,err error){
    return parts[i].X<parts[j].X
   })
   var b strings.Builder
-  y:=0.0
+  var prev pdf.Text
   for j,g:=range parts {
    if j>0 {
-    if absFloat(g.Y-y)>2.5 {b.WriteByte('\n')}else{b.WriteByte(' ')}
+    if absFloat(g.Y-prev.Y)>2.5 {b.WriteByte('\n')} else {
+     gap:=g.X-(prev.X+prev.W)
+     threshold:=g.FontSize*0.17
+     if threshold<0.9{threshold=0.9}
+     if gap>threshold {b.WriteByte(' ')}
+    }
    }
    b.WriteString(g.S)
-   y=g.Y
+   prev=g
    if b.Len()>160000 {break}
   }
   text:=b.String()
@@ -196,7 +201,10 @@ func analyzeSI(doc SIDocument)(SIResult,error){
       if regexp.MustCompile(`(?i)\b(?:CPCM|IEFPCM|SMD)\b`).MatchString(excerpt){continue}
      }
      // Reject shorter names nested in longer recognized method/basis names.
-     if field=="functional"&&option.Value=="B3LYP"&&regexp.MustCompile(`(?i)CAM[- ]?B3LYP`).MatchString(excerpt){continue}
+     if field=="functional"&&option.Value=="B3LYP"{
+      withoutCAM:=regexp.MustCompile(`(?i)CAM[- ]?B3LYP`).ReplaceAllString(excerpt,"")
+      if !re.MatchString(withoutCAM){continue}
+     }
      if field=="basis"&&option.Value=="def2-TZVP"&&regexp.MustCompile(`(?i)def2[- ]?TZVPP\b`).MatchString(excerpt){continue}
      if found[field][option.Value]{continue}
      found[field][option.Value]=true
