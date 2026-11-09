@@ -56,3 +56,9 @@ Source 9df25b5 passed full local Go test/race/vet/build. Windows Release run 425
 - Fix: test commit `170cc10d` uses `page.waitForFunction(()=>xyzOriginal.length>0)` to await completion of the file's actual async read. [Browser QA run 42618736419](https://github.com/MRYoonn/ORCA-Nova/actions/runs/42618736419) **passed**.
 - The new frontend code was also checked by Windows Go/WebView2/Portable CI (e.g. [42618530173](https://github.com/MRYoonn/ORCA-Nova/actions/runs/42618530173)), **passed**. This is CI verification, not real ORCA/MPI runtime testing.
 - XYZ removal is intentionally confined to in-memory registrations; do not call OS file deletion for this feature. Already submitted Batch job and OUT files are preserved.
+
+
+## 2026-11-09 — offline XYZ 3D viewer (feature branch)
+
+- First browser CI run [42621838505](https://github.com/MRYoonn/ORCA-Nova/actions/runs/42621838505) **FAILED** in the *pre-existing* Batch regression at `tests/batch-ui.cjs:70`. With the new extra XYZ `3D` button, the old locator `#desktop-extra-list .xyz-extra-item button` matched both Preview and Delete; Playwright strict-mode rejected the ambiguous selector. The failure did not demonstrate an XYZ deletion or Queue bug.
+- Fix commit `b11d734e` selects the existing Delete action using its accessible `추가 XYZ 등록 해제` label, preserving the two separate buttons and the original deletion assertion. No assertion was disabled. Revalidate with the browser workflow and Windows build before merging or claiming release success.
