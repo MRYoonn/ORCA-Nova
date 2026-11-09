@@ -1,0 +1,29 @@
+name: XYZ Manager and Batch Browser QA
+on:
+  push:
+    branches: ['feat/xyz-manager-batch-ux-*']
+  pull_request:
+    paths:
+      - 'assets/desktop.html'
+      - 'tests/batch-ui.cjs'
+      - '.github/workflows/xyz-manager-browser.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install pinned Playwright browser test tools
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Validate embedded app JavaScript syntax
+        run: node tests/scientific-ui-syntax.cjs
+      - name: Browser regression — XYZ removal and Multi-XYZ Batch
+        run: node tests/batch-ui.cjs
