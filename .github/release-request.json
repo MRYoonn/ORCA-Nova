@@ -1,8 +1,8 @@
 {
-  "tag": "v1.6.0-rc.2",
+  "tag": "v1.6.0-rc.3",
   "prerelease": true,
   "source": "approved-main-merge",
-  "summary": "New RC: five pinned real ORCA 6.1.1 output Golden tests, safe PES axes, transactional EXE/UI/DLL update rollback with native Windows CI; stable release blocked pending licensed ORCA/MPI and real installed-update verification",
+  "summary": "XYZ primary/extra registration delete, Batch selection/bulk clear, single-to-Batch transfer and 2/4 parallel CPU-RAM estimation, with passing Chromium UI tests; keep stable channel v1.5.1 and live ORCA/MPI validation gate",
   "release_type": "verification-prerelease",
   "stable_release_blocked": true
 }
