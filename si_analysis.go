@@ -263,6 +263,7 @@ func compareSIInput(fields []SIField,inp string)[]SIDifference{
 }
 func (a *App) siRoute(w http.ResponseWriter,r *http.Request){
  if r.Method!=http.MethodPost {fail(w,http.StatusMethodNotAllowed,"POST 요청만 허용합니다");return}
+ if r.URL.Path=="/api/si/composite"{a.siCompositeRoute(w,r);return}
  if r.URL.Path!="/api/si/analyze"{http.NotFound(w,r);return}
  var doc SIDocument
  if err:=json.NewDecoder(io.LimitReader(r.Body,20<<20)).Decode(&doc);err!=nil{fail(w,400,"SI 파일 요청을 읽지 못했습니다");return}
