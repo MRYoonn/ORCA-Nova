@@ -62,6 +62,16 @@ func TestThreePublicSIMethodFixturesRequireHumanReview(t *testing.T){
    if len(got.Values)>1 &&got.Status!="ambiguous" {t.Errorf("must flag multi-method %s ambiguous: %v",field,got)}
   }
   for _,e:=range a.Evidence{if e.Page!=1||len(e.Excerpt)==0{t.Fatal("missing excerpt page",e)}}
+  if strings.Contains(tc.label,"Jiang") {
+   optOK,spOK:=false,false
+   for _,level:=range a.Levels {
+    for _,basis:=range level.Values["basis"] {
+     if level.Kind=="Opt+Freq"&&basis=="6-31+G(d,p)" {optOK=true}
+     if level.Kind=="SP"&&basis=="6-311+G(d,p)" {spOK=true}
+    }
+   }
+   if !optOK||!spOK {t.Errorf("separate Opt/SP basis evidence missing: %#v",a.Levels)}
+  }
  })}
 }
 
