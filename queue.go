@@ -572,9 +572,19 @@ func (a *App) queueRoute(w http.ResponseWriter, r *http.Request) {
 		q.mu.Lock()
 		defer q.mu.Unlock()
 		q.snapshotLocked()
-		w.Header().Set("Content-Type", "text/csv; charset=utf-8")
-		w.Header().Set("Content-Disposition", "attachment; filename=batch_results.csv")
-		q.exportLocked(w)
+		w.Header().Set("Cache-Control", "no-store")
+		switch r.URL.Query().Get("format") {
+		case "", "csv":
+			w.Header().Set("Content-Type", "text/csv; charset=utf-8")
+			w.Header().Set("Content-Disposition", "attachment; filename=batch_results.csv")
+			q.exportLocked(w)
+		case "txt":
+			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			w.Header().Set("Content-Disposition", "attachment; filename=batch_summary.txt")
+			q.exportHumanTextLocked(w)
+		default:
+			fail(w, 400, "지원하는 보고서 형식은 csv 또는 txt입니다")
+		}
 	case "/api/queue", "/api/queue/preflight":
 		if r.Method == "GET" && r.URL.Path == "/api/queue" {
 			q.mu.Lock()
@@ -679,48 +689,95 @@ func csvSafe(s string) string {
 	}
 	return s
 }
+// batchStageAnalysis reads only this Job's OUT and INP. Never infer calculated
+// results from the Queue state or from another molecule's stage.
+func batchStageAnalysis(e *QueueEntry, stage Stage) (OrcaAnalysis, bool) {
+ if e.Job==nil||e.Job.Folder=="" {return OrcaAnalysis{},false}
+ input,err:=os.ReadFile(filepath.Join(e.Job.Folder,stage.Input))
+ if err!=nil {return OrcaAnalysis{},false}
+ stem:=strings.TrimSuffix(stage.Input,filepath.Ext(stage.Input))
+ out,err:=os.Open(filepath.Join(e.Job.Folder,stem+".out"))
+ if err!=nil {return OrcaAnalysis{},false}
+ defer out.Close()
+ result,err:=ParseOrcaOutput(out,stem+".out",string(input))
+ return result,err==nil&&result.Found
+}
+
+func batchEnergyCSV(v *float64) string {
+ if v==nil||!isFinite(*v) {return "Not calculated"}
+ return strconv.FormatFloat(*v,'g',16,64)
+}
+
+func batchRootCSV(roots []ExcitedRoot,kind string)(kcal,eV string){
+ kcal,eV="Not calculated","Not calculated"
+ for _,root:=range roots {
+  label:=strings.ToLower(root.Kind)
+  if root.Root!=1||!strings.HasPrefix(label,kind)||!isFinite(root.EV){continue}
+  return strconv.FormatFloat(root.EV*ehToKcal/ehToEV,'f',3,64),
+         strconv.FormatFloat(root.EV,'f',4,64)
+ }
+ return
+}
+
 func (q *JobQueue) exportLocked(out io.Writer) {
-	c := csv.NewWriter(out)
-	defer c.Flush()
-	c.Write([]string{"Molecule", "Status", "Stage", "Method", "Charge", "Multiplicity", "Geometry", "Electronic_Eh", "Gibbs_Eh", "Spin_population", "Folder", "Message"})
-	for _, e := range q.Jobs {
-		for _, s := range e.Request.Stages {
-			row := []string{csvSafe(e.Label), e.State, csvSafe(s.Name), "Unavailable", "Unavailable", "Unavailable", s.Source, "Not calculated", "Not calculated", "Unavailable", "", ""}
-			if e.Job != nil {
-				row[10] = csvSafe(e.Job.Folder)
-				row[11] = csvSafe(e.Job.Message)
-				inp, _ := os.ReadFile(filepath.Join(e.Job.Folder, s.Input))
-				out, err := os.Open(filepath.Join(e.Job.Folder, strings.TrimSuffix(s.Input, filepath.Ext(s.Input))+".out"))
-				if err == nil {
-					a, err := ParseOrcaOutput(out, s.Input, string(inp))
-					out.Close()
-					if err == nil {
-						row[3] = csvSafe(a.Method)
-						row[4] = strconv.Itoa(a.Charge)
-						row[5] = strconv.Itoa(a.Multiplicity)
-						if a.Normal && a.SCFConverged {
-							row[7] = "Unavailable"
-							row[8] = "Unavailable"
-							if a.Electronic != nil {
-								row[7] = strconv.FormatFloat(*a.Electronic, 'g', 16, 64)
-							}
-							if a.Gibbs != nil {
-								row[8] = strconv.FormatFloat(*a.Gibbs, 'g', 16, 64)
-							}
-						} else {
-							row[7] = "Failed"
-							row[8] = "Failed"
-						}
-						if len(a.Populations) > 0 {
-							b, _ := json.Marshal(a.Populations)
-							row[9] = string(b)
-						}
-					}
-				}
-			}
-			c.Write(row)
-		}
-	}
+ c:=csv.NewWriter(out)
+ defer c.Flush()
+ _=c.Write([]string{
+  "Molecule","Status","Stage","Method","Charge","Multiplicity","Geometry",
+  "Electronic_Eh","Gibbs_Eh","Spin_population","Folder","Message",
+  "Stage_Status","ORCA_Normal","SCF_Converged","Geometry_Optimized",
+  "Imaginary_Frequencies","S2","Enthalpy_Eh","ZPE_Correction_Eh",
+  "Vertical_S1_kcal_mol","Vertical_S1_eV","Vertical_T1_kcal_mol","Vertical_T1_eV",
+  "Temperature_K","Warnings",
+ })
+ for _,e:=range q.Jobs {
+  for _,stage:=range e.Request.Stages {
+   row:=[]string{csvSafe(e.Label),e.State,csvSafe(stage.Name),"Unavailable",
+    "Not calculated","Not calculated",csvSafe(stage.Source),
+    "Not calculated","Not calculated","Not calculated","","",
+    "Not calculated","Not calculated","Not calculated","Not calculated",
+    "Not calculated","Not calculated","Not calculated","Not calculated",
+    "Not calculated","Not calculated","Not calculated","Not calculated",
+    "Not calculated",""}
+   if e.Job!=nil {
+    row[10]=csvSafe(e.Job.Folder)
+    row[11]=csvSafe(e.Job.Message)
+   }
+   if a,ok:=batchStageAnalysis(e,stage);ok {
+    row[3]=csvSafe(a.Method)
+    row[4]=strconv.Itoa(a.Charge)
+    if a.Multiplicity>0 {row[5]=strconv.Itoa(a.Multiplicity)}
+    if a.Geometry!="" {row[6]=csvSafe(a.Geometry)}
+    row[12]=a.Status
+    row[13]=strconv.FormatBool(a.Normal)
+    row[14]=strconv.FormatBool(a.SCFConverged)
+    if stage.Opt {row[15]=strconv.FormatBool(a.Optimized)}
+    if a.ImaginaryCount!=nil {row[16]=strconv.Itoa(*a.ImaginaryCount)}
+    row[17]=batchEnergyCSV(a.S2)
+    if a.Temperature!=nil&&isFinite(*a.Temperature){
+     row[24]=strconv.FormatFloat(*a.Temperature,'f',2,64)
+    }
+    if len(a.Warnings)>0 {row[25]=csvSafe(strings.Join(a.Warnings," | "))}
+    // Incomplete or unconverged OUT must not appear as a completed
+    // numeric research result; the raw OUT remains accessible.
+    if a.Normal&&a.SCFConverged&&( !stage.Opt||a.Optimized) {
+     row[7]=batchEnergyCSV(a.Electronic)
+     row[8]=batchEnergyCSV(a.Gibbs)
+     row[18]=batchEnergyCSV(a.Enthalpy)
+     row[19]=batchEnergyCSV(a.ZPE)
+     row[20],row[21]=batchRootCSV(a.Roots,"s")
+     row[22],row[23]=batchRootCSV(a.Roots,"t")
+     if len(a.Populations)>0 {
+      b,err:=json.Marshal(a.Populations)
+      if err==nil {row[9]=string(b)}
+     }
+    } else {
+     row[7]="Failed";row[8]="Failed"
+    }
+   }
+   _=c.Write(row)
+  }
+ }
 }
 
 func cfgUpdating(a *App) bool { a.mu.Lock(); defer a.mu.Unlock(); return a.updating }

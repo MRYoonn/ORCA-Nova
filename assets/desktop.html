@@ -45,13 +45,14 @@
 .field:has(.enhanced-picker){position:relative}.enhanced-picker{position:relative}
 .original-select{position:absolute!important;opacity:0!important;pointer-events:none!important;width:1px!important;height:1px!important;overflow:hidden!important;left:0;top:0}
 .picker-button{width:100%;min-height:37px;background:#111b28;border:1px solid #314359;border-radius:8px;color:#edf4ff;display:flex;align-items:center;justify-content:space-between;text-align:left;gap:6px;padding:8px 9px;font-size:11.5px}
+#picker-functional .picker-button,#picker-basis .picker-button{min-height:41px;font-size:13px;padding:9px 11px}
 .picker-button:hover{border-color:#7198bd;background:#192639}.picker-button[aria-expanded="true"]{border-color:#77b6f7;box-shadow:0 0 0 2px #537ba740}.picker-button:disabled{opacity:.55;cursor:not-allowed}
 .picker-button .selected-val{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:650}.picker-caret{color:#8ea5be;font-size:12px}.recommended-dot{font-size:9px;color:#84dfc5;white-space:nowrap}
 .field-explain{font-size:10px;color:#9fb6ce;line-height:1.6;margin-top:6px;min-height:19px}.field-explain strong{color:#a7e3d3}
 .picker-popover{position:fixed;z-index:9500;display:none;background:#121e2d;border:1px solid #54708d;border-radius:10px;box-shadow:0 24px 55px #03070ad9;max-height:min(450px,68vh);overflow-y:auto;padding:6px}
 .picker-popover.open{display:block}.picker-opt{display:flex;width:100%;align-items:flex-start;gap:9px;text-align:left;background:transparent;border:1px solid transparent;color:#eef7ff;border-radius:7px;padding:9px 8px;line-height:1.45}
 .picker-opt:hover,.picker-opt:focus-visible{background:#234268;border-color:#426c95}.picker-opt[aria-selected="true"]{background:#1b3551;border-color:#31587b}
-.picker-opt-main{flex:1;min-width:0}.picker-opt-title{font-weight:720;font-size:11.5px}.picker-opt-desc{margin-top:4px;font-size:10.5px;color:#b0c5da;line-height:1.55}
+.picker-opt-main{flex:1;min-width:0}.picker-opt-title{font-weight:720;font-size:12.5px}.picker-opt-desc{margin-top:5px;font-size:11.5px;color:#b0c5da;line-height:1.65}
 .picker-opt-right{display:flex;align-items:center;gap:5px;flex-shrink:0}.picker-opt .help-icon{opacity:.92}
 .picker-opt .pill{font-size:9px;color:#7de1c6;white-space:nowrap;border:1px solid #3d716e;background:#16423d;border-radius:5px;padding:3px 5px}
 .picker-foot{padding:8px 7px 4px;color:#90a9c4;font-size:9.5px;line-height:1.6;border-top:1px solid #2a4056;margin-top:4px}
@@ -272,7 +273,7 @@ if(!Object.prototype.hasOwnProperty.call(p.settings,'extra-spinpop'))$('extra-sp
 selectedPreset=p.id;refreshPresetHighlight();syncAllPickers();renderNav();generate(true);
 $('preset-context').innerHTML='<strong>적용 완료 · '+esc(p.title)+'</strong><br>'+esc(p.desc)+'<br><span style="color:#94abc2">※ ORCA에 실제로 계산을 실행한 것은 아니며 INP 생성 설정만 바뀌었어요.</span>';
 toast(p.title+' 설정을 적용했어요.')}
-function initPresets(){const box=$('preset-grid');box.innerHTML=PRESETS.map(p=>`<button type="button" class="preset-item" data-preset="${p.id}" data-title="${esc(p.title)}" data-help="${esc(p.desc)}"><span class="preset-top"><span class="preset-title">${esc(p.title)}</span><span class="preset-pill" data-class="${p.tag.includes("추천")?"recommended":p.tag==="문헌 Method"?"literature":"preset"}">${p.tag.includes("추천")?"추천":p.tag==="문헌 Method"?"문헌":"프리셋"}</span></span><span class="preset-sub">${esc(p.subtitle)} · <span class="help-icon" style="display:inline-flex;vertical-align:middle">?</span></span></button>`).join('');box.querySelectorAll('.preset-item').forEach(b=>b.addEventListener('click',()=>applyPreset(b.dataset.preset)));}
+function initPresets(){const box=$('preset-grid');box.innerHTML=PRESETS.map(p=>`<button type="button" class="preset-item" data-preset="${p.id}" data-title="${esc(p.title)}" data-help="${esc(p.desc)}"><span class="preset-top"><span class="preset-title">${esc(p.title)}</span><span class="preset-pill" data-class="${p.tag.includes("추천")?"recommended":p.tag==="문헌 Method"?"literature":"preset"}" title="${p.tag.includes("추천")?"추천 · 시작점 제안일 뿐, 계산법 검증이나 논문 재현이 아닙니다.":p.tag==="문헌 Method"?"문헌 Method · 출처와 실제 SI 검증 범위를 확인하세요.":"프리셋 · 미리 저장된 설정입니다."}">${p.tag.includes("추천")?"추천":p.tag==="문헌 Method"?"문헌":"프리셋"}</span></span><span class="preset-sub">${esc(p.subtitle)} · <span class="help-icon" style="display:inline-flex;vertical-align:middle">?</span></span></button>`).join('');box.querySelectorAll('.preset-item').forEach(b=>b.addEventListener('click',()=>applyPreset(b.dataset.preset)));}
 
 const GROUPS=[
 {id:'W',name:'Combined Workflows · 통합 계산',items:[
@@ -690,7 +691,7 @@ setInterval(()=>{if(lastDesktopState?.update)desktopUpdateShow(lastDesktopState.
 <button id="batch-two-parallel" class="btn small ghost" data-help="동시 실행 목표만 2개로 설정합니다. 실행 가능한지는 실제 CPU/RAM 예산에 따라 결정됩니다.">동시 2개</button><button id="batch-four-parallel" class="btn small ghost" data-help="동시 실행 목표만 4개로 설정합니다. 시스템 자원이 부족하면 Scheduler가 일부 계산을 대기시킵니다.">동시 4개</button><label>전체 RAM 예산 (MB) <span class="help-icon" tabindex="0" data-help="MaxCore는 코어당 MB입니다. Scheduler는 CPU × MaxCore에 안전 여유 25%를 더해 예약합니다. 실제 메모리 사용량의 절대 상한은 아닙니다. PC와 다른 프로그램에 필요한 RAM을 제외하세요.">?</span><input class="control" id="batch-ram" type="number" min="1" value="8192"></label>
 </div>
 <div class="batch-budget-note" id="batch-budget-note">현재 INP 기준으로 병렬 계산에 필요한 CPU/RAM 예산을 표시합니다.</div>
-<div class="batch-controls"><button class="btn small ghost" id="batch-check">전체 Preflight</button><button class="btn primary" id="batch-start">▶ Batch 계산 시작</button><button class="btn small ghost" id="batch-pause">대기 작업 보류</button><button class="btn small ghost" id="batch-resume">대기 작업 재개</button><button class="btn small danger" id="batch-stop">■ 전체 중단</button><button class="btn small ghost" id="batch-csv">↓ 전체 CSV</button></div>
+<div class="batch-controls"><button class="btn small ghost" id="batch-check">전체 Preflight</button><button class="btn primary" id="batch-start">▶ Batch 계산 시작</button><button class="btn small ghost" id="batch-pause">대기 작업 보류</button><button class="btn small ghost" id="batch-resume">대기 작업 재개</button><button class="btn small danger" id="batch-stop">■ 전체 중단</button><button class="btn small ghost" id="batch-csv" data-help="원본 OUT를 검증해 생성한 전체 Batch CSV를 내려받아요. 각 단계의 수렴, Energy(Eh), S₁/T₁ Vertical(kcal/mol·eV), Spin과 누락 항목을 포함해요.">↓ 전체 CSV</button><button class="btn small ghost" id="batch-txt" data-help="분자·단계별 계산 상태, Electronic/Gibbs/Enthalpy, Frequency, Vertical S₁/T₁과 원자별 Spin을 한글 설명과 함께 TXT로 저장해요.">↓ 전체 TXT</button></div>
 <pre id="batch-status" class="batch-status" role="status">XYZ 파일을 등록하세요. 실제 ORCA 6.x 실행 결과와 Mock 검증은 구분됩니다.</pre>
 <div class="batch-note" id="batch-queue-info">Job Queue · 아직 등록된 작업 없음</div>
 <div class="batch-table-wrap"><table class="batch-table"><thead><tr><th>Molecule / 계산</th><th>Status / 단계</th><th>CPU / RAM</th><th>경과 / ETA</th><th>작업 관리</th></tr></thead><tbody id="batch-queue"></tbody></table></div>
@@ -881,7 +882,7 @@ function batchSeconds(s){s=Math.max(0,Math.floor(Number(s)||0));return Math.floo
 async function batchPoll(){
  try{
   const d=await desktopAPI('queue');batchQueueState=d;
-  const jobs=d.jobs||[];$('batch-queue-info').textContent='Job Queue · '+jobs.length+'개 · '+(d.paused?'대기 작업 보류':'Scheduler 실행')+' · 전체 Batch ETA: '+(typeof d.batchEta==='string'?d.batchEta:'추정 중')+' (자원 대기·실패 재시작에 따라 변동)'+(d.error?' · '+d.error:'');
+  const jobs=d.jobs||[],running=jobs.filter(j=>j.state==='Running'),cpuUsed=running.reduce((n,j)=>n+(j.cpu||0),0),ramUsed=running.reduce((n,j)=>n+(j.ramMB||0),0);const budget=d.limits?(' · 예약 '+cpuUsed+'/'+d.limits.cpu+' CPU, '+ramUsed+'/'+d.limits.ramMB+' MB RAM (실사용량 아님)'):'';$('batch-queue-info').textContent='Job Queue · '+jobs.length+'개 · 실행 중 '+running.length+'개 · '+(d.paused?'대기 작업 보류':'Scheduler 실행')+budget+' · 전체 Batch ETA: '+(typeof d.batchEta==='string'?d.batchEta:'추정 중')+' (자원 대기·실패 재시작에 따라 변동)'+(d.error?' · '+d.error:'');
   const body=$('batch-queue');body.replaceChildren();
   for(const j of jobs){
    const row=document.createElement('tr'),cells=Array.from({length:5},()=>document.createElement('td'));row.append(...cells);
@@ -929,6 +930,7 @@ $('batch-apply').onclick=()=>{if(batchMolecules.some(m=>m.custom)&&!confirm('모
 $('batch-check').onclick=()=>batchSubmit(false);$('batch-start').onclick=()=>batchSubmit(true);
 $('batch-pause').onclick=()=>batchAction('pause');$('batch-resume').onclick=()=>batchAction('resume');$('batch-stop').onclick=()=>{if(confirm('진행 중인 모든 Job을 중단하고 대기 작업도 중단할까요?'))batchAction('stopAll')};
 $('batch-csv').onclick=async()=>{try{const r=await fetch('/api/queue/export?session='+encodeURIComponent(desktopSession));if(!r.ok)throw Error('CSV를 읽지 못했습니다.');download('batch_results.csv',await r.text(),'text/csv;charset=utf-8')}catch(e){batchMessage(e.message,true)}};
+$('batch-txt').onclick=async()=>{try{const r=await fetch('/api/queue/export?format=txt&session='+encodeURIComponent(desktopSession));if(!r.ok)throw Error('TXT 보고서를 읽지 못했습니다.');download('batch_summary.txt',await r.text(),'text/plain;charset=utf-8')}catch(e){batchMessage(e.message,true)}};
 let batchComparisonRows=[],batchCompareBusy=false;
 function batchAbsent(analysis){return ['Failed','Not calculated'].includes(analysis.Status)?analysis.Status:'Unavailable';}
 function batchNumeric(value,analysis){return typeof value==='number'&&Number.isFinite(value)?String(value):batchAbsent(analysis);}

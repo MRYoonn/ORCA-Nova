@@ -27,6 +27,13 @@ jobs:
             $output | Set-Content BUILD_FAILURE_ANALYSIS.md
           }
           exit $result
+      - name: Validate local Windows ORCA6 audit script syntax (no licensed ORCA in CI)
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path 'tests/windows-orca6-smoke-check.ps1').Path, [ref]$tokens, [ref]$errors) | Out-Null
+          if ($errors.Count -gt 0) { $errors | Format-List | Out-String | Write-Output; exit 1 }
       - name: Validate embedded browser JavaScript and provenance
         run: node tests/scientific-ui-syntax.cjs
       - name: Vet Go backend
@@ -63,6 +70,14 @@ jobs:
           if (-not (Test-Path dist/ORCA_Nova_UI.exe)) { throw 'native WebView2 host was not packaged' }
           Compress-Archive -Path dist/* -DestinationPath ORCA_Nova_Portable_Windows.zip -Force
           Get-FileHash ORCA_Nova_Portable_Windows.zip -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  ORCA_Nova_Portable_Windows.zip" } | Set-Content SHA256SUMS.txt
+      - name: Smoke-test packaged Windows EXE and authenticated API (no ORCA binary)
+        shell: pwsh
+        run: |
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File 'tests/Windows-Portable-LiveAcceptance.ps1' -PortableZip 'ORCA_Nova_Portable_Windows.zip' -ChecksumFile 'SHA256SUMS.txt' -ExpectedVersion '1.5.0' -ReportPath 'WINDOWS_CI_SMOKE.json'
+          if ($LASTEXITCODE -ne 0) {
+            Get-Content -LiteralPath 'WINDOWS_CI_SMOKE.json' -ErrorAction SilentlyContinue | Write-Output
+            throw 'Packaged Windows EXE or authenticated API acceptance failed'
+          }
       - name: Write build failure report
         if: failure()
         shell: pwsh
@@ -80,4 +95,5 @@ jobs:
             ORCA_Nova_Portable_Windows.zip
             SHA256SUMS.txt
             BUILD_FAILURE_REPORT.txt
+            WINDOWS_CI_SMOKE.json
           if-no-files-found: warn
