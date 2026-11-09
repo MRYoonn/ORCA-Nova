@@ -815,7 +815,7 @@ async function batchImport(files){
    m.request={label:filenameStem(m.name)+'_import',files:[{name:m.name,content:m.xyz},...inputs.map(f=>({name:f.name,content:f.content}))],stages:inputs.map(f=>({name:f.name,input:f.name,source:f.source,opt:/^\s*!.*\b(?:Opt|OptTS)\b/im.test(f.content)}))};
   }
   batchRenderMolecules();batchMessage(batchMolecules.length+'개 분자 등록 · 모든 INP를 검토한 뒤 전체 Preflight를 실행하세요.'+(notes.length?'\n'+notes.join('\n'):''),notes.length>0);
- }catch(e){batchMessage(e.message,true)}finally{batchImporting=false;}
+ }catch(e){batchMessage(e.message,true)}finally{batchImporting=false;batchUpdateSelection();}
 }
 function batchPayload(){const jobs=batchMolecules.filter(m=>m.included).map(m=>m.request);if(!jobs.length)throw Error('실행할 분자를 한 개 이상 포함하세요.');return {jobs,limits:batchLimits()};}
 function batchCheckLines(result){return JSON.stringify(result,null,2)}
@@ -826,7 +826,7 @@ async function batchSubmit(start){
   batchMessage(batchCheckLines(result));
   if(result.ok===false)throw Error('전체 Preflight를 통과하지 못했습니다. 아래 검사 결과를 확인하세요.\n'+batchCheckLines(result));
   if(start){await desktopConfig();await desktopAPI('queue',payload);batchMessage(payload.jobs.length+'개 Job을 Queue에 등록했습니다.');await batchPoll();}
- }catch(e){batchMessage(e.message,true)}finally{batchRequestBusy=false;$('batch-start').disabled=false;$('batch-check').disabled=false;}
+ }catch(e){batchMessage(e.message,true)}finally{batchRequestBusy=false;$('batch-start').disabled=false;$('batch-check').disabled=false;batchUpdateSelection();}
 }
 async function batchAction(action,id=''){
  try{await desktopAPI('queue/action',{action,id});await batchPoll()}catch(e){batchMessage(e.message,true)}
