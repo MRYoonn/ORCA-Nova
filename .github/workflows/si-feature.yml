@@ -1,0 +1,28 @@
+name: SI PDF dependency and scientific feature regressions
+on:
+  push:
+    branches: ['feat/si-evidence-analysis-20261110']
+  pull_request:
+    paths:
+      - 'si_*.go'
+      - 'go.mod'
+      - 'go.sum'
+      - '.github/workflows/si-feature.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  si:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Download pinned PDF dependency and show checksums
+        run: |
+          go mod download -json rsc.io/pdf@v0.1.1
+          cat go.sum || true
+      - name: Go regressions
+        run: go test -count=1 ./...
