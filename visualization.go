@@ -58,67 +58,9 @@ type Visualization struct {
 var scanXYZRX = regexp.MustCompile(`(?i)(?:XYZ FILE|GEOMETRY FILE)\s*[:=]\s*([A-Za-z0-9_.-]+\.xyz)\b`)
 var scanStepRX = regexp.MustCompile(`(?i)(?:RELAXED\s+SURFACE\s+SCAN\s+STEP|SCAN\s+STEP)\s*[:#]?\s*(\d+)`)
 var scanCoordRX = regexp.MustCompile(`(?i)(?:SCAN COORDINATE|CURRENT VALUE|BOND DISTANCE)\s*[:=]\s*(` + orcaNumber + `)`)
+// Real ORCA 6.1.1 prints scanned coordinates in a STEP banner,
+ // e.g. "* Dihedral (5,1,0,2): -60.000 *", not "SCAN COORDINATE".
 var scanBannerCoordRX = regexp.MustCompile(`(?i)^\s*\*?\s*(Bond|Angle|Dihedral)\s*\(\s*[0-9,\s]+\)\s*:\s*(` + orcaNumber + `)`)
-var actualScanRowRX = regexp.MustCompile(`^\s*(` + orcaNumber + `)\s+(` + orcaNumber + `)\s*package main
-
-import (
-	"bufio"
-	"encoding/json"
-	"fmt"
-	"io"
-	"math"
-	"net/http"
-	"os"
-	"path/filepath"
-	"regexp"
-	"strconv"
-	"strings"
-)
-
-type PlotPoint struct {
-	X      float64 `json:"x"`
-	Y      float64 `json:"y"`
-	Source string  `json:"source"`
-	Line   int     `json:"line"`
-}
-type PESPoint struct {
-	Step       int      `json:"step"`
-	Coordinate *float64 `json:"coordinate"`
-	Energy     *float64 `json:"energyEh"`
-	Status     string   `json:"status"`
-	Source     string   `json:"source"`
-	Line       int      `json:"line"`
-	XYZ        string   `json:"xyz,omitempty"`
-	CoordinateKind string `json:"coordinateKind,omitempty"`
-	Analysis   *ScanStepAnalysis `json:"analysis,omitempty"`
-}
-// Step analysis is present only for population rows actually printed inside
-// the matching PES scan step; missing atomic data remains unavailable.
-type ScanStepAnalysis struct {
-	Populations map[string][]AtomicPopulation `json:"Populations"`
-}
-type VisualizationSource struct {
-	RawOutput    string       `json:"rawOutput,omitempty"`
-	Input        string       `json:"input,omitempty"`
-	Name         string       `json:"name"`
-	Analysis     OrcaAnalysis `json:"analysis"`
-	PES          []PESPoint   `json:"pes"`
-	Optimization []PlotPoint  `json:"optimization"`
-	Gradient     []PlotPoint  `json:"gradient"`
-	SCF          []PlotPoint  `json:"scf"`
-	SCFDelta     []PlotPoint  `json:"scfDelta"`
-	IR           []PlotPoint  `json:"ir"`
-	Warnings     []string     `json:"warnings"`
-}
-type Visualization struct {
-	Sources  []VisualizationSource `json:"sources"`
-	Units    map[string]string     `json:"units"`
-	Warnings []string              `json:"warnings"`
-}
-
-var scanXYZRX = regexp.MustCompile(`(?i)(?:XYZ FILE|GEOMETRY FILE)\s*[:=]\s*([A-Za-z0-9_.-]+\.xyz)\b`)
-var scanStepRX = regexp.MustCompile(`(?i)(?:RELAXED\s+SURFACE\s+SCAN\s+STEP|SCAN\s+STEP)\s*[:#]?\s*(\d+)`)
-)
 var cycleRX = regexp.MustCompile(`(?i)GEOMETRY OPTIMIZATION CYCLE\s*(\d+)`)
 var rmsGradientRX = regexp.MustCompile(`(?i)RMS gradient\s+(` + orcaNumber + `)`)
 var numericRowRX = regexp.MustCompile(`^\s*(\d+)\s+(` + orcaNumber + `)\s+(` + orcaNumber + `)`)
@@ -137,8 +79,6 @@ func parseVisualization(name, output, inp string) VisualizationSource {
 	scanSCF := []bool{}
 	scan := -1
 	scanStepLine := -100
-	var actualRows []struct{coordinate,energy float64; line int}
-	actualSummary := false
 	spinSection := ""
 	spinRows := map[string][]AtomicPopulation{}
 	cycle := 0
@@ -152,23 +92,6 @@ func parseVisualization(name, output, inp string) VisualizationSource {
 		lineNo++
 		s := scanner.Text()
 		u := strings.ToUpper(s)
-		// The scan summary provides authoritative coordinates with an
-		// explicit energy type. Match only the "Actual Energy" table,
-		// never accidentally substitute the separate SCF Energy table.
-		if strings.Contains(u, "THE CALCULATED SURFACE USING THE 'ACTUAL ENERGY'") {
-			actualSummary = true
-			continue
-		}
-		if actualSummary {
-			if m:=actualScanRowRX.FindStringSubmatch(s); m!=nil {
-				coord,ok1:=finiteNumber(m[1]);energy,ok2:=finiteNumber(m[2])
-				if ok1 && ok2 && len(actualRows)<10000 {
-					actualRows=append(actualRows,struct{coordinate,energy float64; line int}{coord,energy,lineNo})
-				}
-				continue
-			}
-			if len(actualRows)>0 || strings.Contains(u,"THE CALCULATED SURFACE USING THE SCF ENERGY"){actualSummary=false}
-		}
 		if m := scanStepRX.FindStringSubmatch(s); m != nil {
 			step, _ := strconv.Atoi(m[1])
 			v.PES = append(v.PES, PESPoint{Step: step, Status: "Unavailable", Source: name, Line: lineNo})
@@ -214,8 +137,8 @@ func parseVisualization(name, output, inp string) VisualizationSource {
 				}
 			}
 			p := &v.PES[scan]
-			// ORCA 6.1 prints the actual coordinate directly in the scan
-			// step banner, e.g. "* Dihedral (5,1,0,2) : -60.0 *".
+			// Only accept the banner of the current step, not unrelated geometry
+			// or atomic-population lines elsewhere in a long ORCA output.
 			if lineNo-scanStepLine<=4 {
 				if m:=scanBannerCoordRX.FindStringSubmatch(s);m!=nil {
 					if x,ok:=finiteNumber(m[2]);ok {
@@ -305,26 +228,6 @@ func parseVisualization(name, output, inp string) VisualizationSource {
 	}
 	if err := scanner.Err(); err != nil {
 		v.Warnings = append(v.Warnings, err.Error())
-	}
-	if len(actualRows)>0 {
-		if len(actualRows)!=len(v.PES){
-			v.Warnings=append(v.Warnings,fmt.Sprintf("실제 Scan summary %d점과 Step block %d개가 달라 자동 병합을 중단합니다.",len(actualRows),len(v.PES)))
-		}else{
-			matching:=true
-			for i,p:=range v.PES {
-				if p.Coordinate!=nil&&math.Abs(*p.Coordinate-actualRows[i].coordinate)>0.00001 {matching=false;break}
-			}
-			if matching {
-				for i:=range v.PES {
-					p:=&v.PES[i]
-					if p.Coordinate==nil {x:=actualRows[i].coordinate;p.Coordinate=&x}
-					if p.Energy==nil && p.Status=="Completed" && scanSCF[i] {
-						energy:=actualRows[i].energy;p.Energy=&energy
-						p.Line=actualRows[i].line
-					}
-				}
-			}else{v.Warnings=append(v.Warnings,"Step 헤더와 Scan summary의 좌표가 일치하지 않아 자동 병합하지 않았습니다.")}
-		}
 	}
 	for i := range v.PES {
 		p := &v.PES[i]
