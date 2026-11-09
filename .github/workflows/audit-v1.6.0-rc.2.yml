@@ -1,0 +1,20 @@
+name: Audit v1.6.0-rc.2 Public Release
+on:
+  push:
+    branches: ['audit/v1.6.0-rc.2-public-assets']
+  pull_request:
+    paths:
+      - 'tests/audit-public-rc-release.sh'
+      - '.github/workflows/audit-v1.6.0-rc.2.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify-public-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download and independently audit public RC assets
+        shell: bash
+        run: bash tests/audit-public-rc-release.sh v1.6.0-rc.2 9a358c0bd4b18fb755e657decbcee188ed59764e v1.5.1
