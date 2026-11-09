@@ -1102,13 +1102,13 @@ function vizRenderSummary(){
  if(Number.isInteger(a.ImaginaryCount))addChip('Imaginary Frequencies: '+a.ImaginaryCount);
  const method=node('div','viz-report-note','Method / Settings: '+(a.Method||'Not available'),report);
  const energies=node('section','viz-report-section',undefined,report);
- node('h4','','핵심 에너지 · 원본 절대값',energies);
+ node('h4','','총 에너지 및 ZPE 보정값 · OUT 추출 수치',energies);
  const grid=node('div','viz-report-energies',undefined,energies);
- for(const [name,value] of [['Electronic Energy',a.Electronic],['Gibbs Free Energy (G)',a.Gibbs],['Enthalpy (H)',a.Enthalpy],['Zero Point Energy (ZPE)',a.ZPE]]){
+ for(const [name,value] of [['Electronic Energy',a.Electronic],['Gibbs Free Energy (G)',a.Gibbs],['Enthalpy (H)',a.Enthalpy],['Zero Point Energy (ZPE · correction)',a.ZPE]]){
   const card=node('div','viz-report-energy',undefined,grid);node('span','',name,card);
   node('strong','',value===null||value===undefined?'Not calculated':vizSummaryNumber(value)+' Eh',card);
  }
- node('div','viz-report-note','Eh = Hartree. 절대 에너지 자체는 반응 에너지·EnT 가능성·S₀–T₁ Gap을 의미하지 않습니다. 비교 전 Method, Geometry, 전자상태, Thermal correction을 검증하세요.',energies);
+ node('div','viz-report-note','Eh = Hartree. Electronic/Gibbs/Enthalpy는 각자의 총 에너지이며 ZPE는 진동 영점에너지 보정항입니다. 서로 임의로 더하거나 빼지 마세요. Method, Geometry, 전자상태 및 열역학 기준을 확인해야 합니다.',energies);
  if(typeof a.S2==='number'&&Number.isFinite(a.S2)){
   const spin=node('section','viz-report-section',undefined,report);node('h4','','Spin 확인',spin);
   const m=Number(a.Multiplicity),ideal=Number.isInteger(m)&&m>0?((m-1)/2)*((m+1)/2):null;

@@ -1,8 +1,8 @@
 {
-  "tag": "v1.6.0-rc.4",
+  "tag": "v1.6.0-rc.5",
   "prerelease": true,
   "source": "approved-main-merge",
-  "summary": "Offline XYZ 3D preview for primary, additional and Batch molecules, rotatable geometry and zero-based ORCA atom indices, manual C5/C6 marking, Chromium and Windows build validated; no real licensed ORCA/MPI user-PC validation",
+  "summary": "Independent Batch per-molecule preset selection and readable OUT result summary with absolute energies, convergence, S2, TDDFT vertical roots and signed Atomic Spin Population, with Chromium and Windows Portable builds verified; stable channel remains v1.5.1",
   "release_type": "verification-prerelease",
   "stable_release_blocked": true
 }
