@@ -26,9 +26,9 @@ $inputs=@(Get-ChildItem -LiteralPath $JobFolder -File -Filter '*.inp')
 if ($inputs.Count -eq 0) {$issues.Add('No stage INP files in the calculation folder.')}
 $seenSinglet=$false
 $seenTriplet=$false
-foreach ($input in $inputs) {
- $inp=Get-Content -LiteralPath $input.FullName -Raw -ErrorAction Stop
- $output=Join-Path $JobFolder ($input.BaseName+'.out')
+foreach ($inpFile in $inputs) {
+ $inp=Get-Content -LiteralPath $inpFile.FullName -Raw -ErrorAction Stop
+ $output=Join-Path $JobFolder ($inpFile.BaseName+'.out')
  $isOpt=[regex]::IsMatch($inp,'(?im)^\s*!\s*.*\b(?:Opt|OptTS)\b')
  $isFreq=[regex]::IsMatch($inp,'(?im)^\s*!\s*.*\b(?:Freq|NumFreq|AnFreq)\b')
  $mult=[regex]::Match($inp,'(?im)^\s*\*\s*xyzfile\s+-?\d+\s+(\d+)')
@@ -36,9 +36,9 @@ foreach ($input in $inputs) {
   if ($mult.Groups[1].Value -eq '1') {$seenSinglet=$true}
   if ($mult.Groups[1].Value -eq '3') {$seenTriplet=$true}
  }
- $state=[ordered]@{Stage=$input.Name;OUT=([IO.Path]::GetFileName($output));Normal=$false;SCF=$false;Optimization=$null;Frequency=$null;GBW=$null}
+ $state=[ordered]@{Stage=$inpFile.Name;OUT=([IO.Path]::GetFileName($output));Normal=$false;SCF=$false;Optimization=$null;Frequency=$null;GBW=$null}
  if (-not (Test-Path -LiteralPath $output -PathType Leaf)) {
-  $issues.Add("Missing OUT for stage $($input.Name)")
+  $issues.Add("Missing OUT for stage $($inpFile.Name)")
   $stages.Add($state)
   continue
  }
@@ -47,14 +47,14 @@ foreach ($input in $inputs) {
  $state.SCF=$outText.Contains('SCF CONVERGED')
  if ($isOpt) {$state.Optimization=$outText.Contains('THE OPTIMIZATION HAS CONVERGED')}
  if ($isFreq) {$state.Frequency=$outText.Contains('VIBRATIONAL FREQUENCIES')}
- if ($RequireGBW) {$state.GBW=Test-Path -LiteralPath (Join-Path $JobFolder ($input.BaseName+'.gbw')) -PathType Leaf}
- if (-not $state.Normal) {$issues.Add("ORCA normal termination missing: $($input.Name)")}
- if (-not $state.SCF) {$issues.Add("SCF convergence missing: $($input.Name)")}
- if ($isOpt -and -not $state.Optimization) {$issues.Add("Opt convergence missing: $($input.Name)")}
- if ($isFreq -and -not $state.Frequency) {$issues.Add("Frequency output missing: $($input.Name)")}
- if ($RequireGBW -and -not $state.GBW) {$issues.Add("GBW missing: $($input.Name)")}
- if ($isOpt -and -not (Test-Path -LiteralPath (Join-Path $JobFolder ($input.BaseName+'.xyz')) -PathType Leaf)) {
-  $issues.Add("Optimized XYZ missing: $($input.Name)")
+ if ($RequireGBW) {$state.GBW=Test-Path -LiteralPath (Join-Path $JobFolder ($inpFile.BaseName+'.gbw')) -PathType Leaf}
+ if (-not $state.Normal) {$issues.Add("ORCA normal termination missing: $($inpFile.Name)")}
+ if (-not $state.SCF) {$issues.Add("SCF convergence missing: $($inpFile.Name)")}
+ if ($isOpt -and -not $state.Optimization) {$issues.Add("Opt convergence missing: $($inpFile.Name)")}
+ if ($isFreq -and -not $state.Frequency) {$issues.Add("Frequency output missing: $($inpFile.Name)")}
+ if ($RequireGBW -and -not $state.GBW) {$issues.Add("GBW missing: $($inpFile.Name)")}
+ if ($isOpt -and -not (Test-Path -LiteralPath (Join-Path $JobFolder ($inpFile.BaseName+'.xyz')) -PathType Leaf)) {
+  $issues.Add("Optimized XYZ missing: $($inpFile.Name)")
  }
  $stages.Add($state)
 }
@@ -71,7 +71,7 @@ if ($RequireCube -and $cubeFiles.Count -eq 0) {
 $report=[ordered]@{
  Audit='ORCA Nova local Windows ORCA 6.x output acceptance'
  AuditTime=(Get-Date).ToString('o')
- RealORCA=[bool](Test-Path -LiteralPath $OrcaExe -PathType Leaf)
+ ExecutablePathExists=[bool](Test-Path -LiteralPath $OrcaExe -PathType Leaf)
  Check='Evidence inspection only; this audit does not run ORCA or validate chemical interpretation.'
  JobFolder=$JobFolder
  Stages=$stages.ToArray()
