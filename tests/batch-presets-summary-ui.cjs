@@ -75,6 +75,20 @@ const xyz='3\nwater\nO 0 0 0\nH 0.757 0.586 0\nH -0.757 0.586 0\n';
   assert((await summary.innerText()).includes('Excitation (kcal/mol)'));
   assert((await summary.innerText()).includes('73.79'),'3.20 eV -> 73.79 kcal/mol');
   assert((await summary.innerText()).includes('3.2000'),'also retain spectroscopy eV');
+  const rootPlot=await page.evaluate(()=>{
+   $('viz-kind').value='roots';
+   const kcal=vizSeries();
+   $('viz-unit').value='eV';
+   const ev=vizSeries();
+   $('viz-unit').value='kcal/mol';
+   return {kcalY:kcal.rows[0].y,kcalAxis:kcal.ylabel,evY:ev.rows[0].y,evAxis:ev.ylabel};
+  });
+  assert(Math.abs(rootPlot.kcalY-73.7937563744)<1e-6);
+  assert.equal(rootPlot.kcalAxis,'Vertical Excitation Energy (kcal/mol)');
+  assert.equal(rootPlot.evY,3.20);
+  assert.equal(rootPlot.evAxis,'Vertical Excitation Energy (eV)');
+  const batchSample=await page.evaluate(()=>batchVertical({Roots:[{Root:1,Kind:'singlet',EV:3.20}],Status:'Completed'},'singlet'));
+  assert(batchSample.includes('73.79 kcal/mol (3.2 eV)'));
   assert((await summary.innerText()).includes('-123.45678912 Eh'),'source absolute energy retains Eh');
   const profileDisplay=await page.evaluate(()=>{
    const example={kind:'adiabatic',energy:'Electronic',gapKJ:216.15,warnings:[]};
