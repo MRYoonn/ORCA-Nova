@@ -1,0 +1,22 @@
+name: Audit v1.6.0-rc.5 Public Release
+on:
+  push:
+    branches: ['main', 'audit/rc5-public-assets-20261109']
+    paths:
+      - '.github/workflows/audit-v1.6.0-rc.5.yml'
+      - 'tests/audit-public-rc-release.sh'
+  pull_request:
+    paths:
+      - '.github/workflows/audit-v1.6.0-rc.5.yml'
+      - 'tests/audit-public-rc-release.sh'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify-public-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Independently validate public RC5 SHA256, ZIP CRC and stable latest
+        run: bash tests/audit-public-rc-release.sh v1.6.0-rc.5 e1bd273ba66190000f513906c86fbb05595e9c3f v1.5.1
