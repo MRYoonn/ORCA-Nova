@@ -32,20 +32,28 @@ jobs:
         run: |
           $req = Get-Content '.github/release-request.json' -Raw | ConvertFrom-Json
           if ($req.source -ne 'approved-main-merge') { throw 'Release request must be reviewed' }
-          if ($req.tag -notmatch '^v[0-9]+\.[0-9]+\.[0-9]+$') { throw 'Invalid version tag in manifest' }
+          if ($req.tag -notmatch '^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$') { throw 'Invalid version tag in manifest' }
           $isPre = if ($req.prerelease -eq $true) { 'true' } else { 'false' }
           ('RELEASE_TAG=' + $req.tag) | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           ('RELEASE_PRERELEASE=' + $isPre) | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
       - name: Validate release tag and branch
         shell: pwsh
         run: |
-          if ($env:RELEASE_TAG -notmatch '^v[0-9]+\.[0-9]+\.[0-9]+$') { throw 'Version must look like v1.4.0.' }
+          if ($env:RELEASE_TAG -notmatch '^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$') { throw 'Version must look like v1.6.0 or v1.6.0-rc.1.' }
           if ('${{ github.event_name }}' -eq 'workflow_dispatch' -and '${{ github.ref_name }}' -ne 'main') { throw 'Run manual releases from main.' }
+      - name: Force release candidates out of stable channel
+        shell: pwsh
+        run: |
+          if ($env:RELEASE_TAG -match '-rc\.[0-9]+$') {
+            'RELEASE_PRERELEASE=true' | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          }
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
       - name: Test backend
-        run: go test ./...
+        run: go test -count=1 ./...
+      - name: Vet backend
+        run: go vet ./...
       - name: Build versioned backend
         shell: pwsh
         run: |
@@ -84,8 +92,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $cmd = @('release','create',$env:RELEASE_TAG,'ORCA_Nova_Portable_Windows.zip','SHA256SUMS.txt','--target',$env:GITHUB_SHA,'--generate-notes','--title',('ORCA Nova '+$env:RELEASE_TAG))
-          if ($env:RELEASE_PRERELEASE -eq 'true' -or ('${{ github.event_name }}' -eq 'workflow_dispatch' -and '${{ inputs.prerelease }}' -eq 'true')) { $cmd += '--prerelease' }
+          $cmd = @('release','create',$env:RELEASE_TAG,'ORCA_Nova_Portable_Windows.zip','SHA256SUMS.txt','--target',$env:GITHUB_SHA,'--title',('ORCA Nova '+$env:RELEASE_TAG))
+          if ($env:RELEASE_TAG -match '-rc\.[0-9]+$') { $cmd += @('--notes-file','docs/RELEASE_NOTES_v1.6.0-rc.1.md') } else { $cmd += '--generate-notes' }
+          if ($env:RELEASE_PRERELEASE -eq 'true' -or ('${{ github.event_name }}' -eq 'workflow_dispatch' -and '${{ inputs.prerelease }}' -eq 'true')) { $cmd += @('--prerelease','--latest=false') }
           gh release view $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY --json tagName *> $null
           if ($LASTEXITCODE -eq 0) { throw "Release $($env:RELEASE_TAG) already exists" }
           gh @cmd

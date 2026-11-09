@@ -1,8 +1,8 @@
 package main
 
 import (
-    "testing"
-    "strings"
+	"strings"
+	"testing"
 )
 
 func TestCompareVersion(t *testing.T) {
@@ -30,10 +30,33 @@ func TestChecksumFor(t *testing.T) {
 }
 
 func TestChecksumEntries(t *testing.T) {
-    const target = "ORCA_Nova_Portable_Windows.zip"
-    good := strings.Repeat("a", 64) + "  " + target + "\n"
-    sum, err := checksumFor(good, target)
-    if err != nil || sum != strings.Repeat("a", 64) { t.Fatalf("checksum=%q err=%v",sum,err) }
-    if _, err := checksumFor("incorrect  "+target, target); err == nil { t.Fatal("invalid digest accepted") }
-    if _, err := checksumFor(good, "other.zip"); err == nil { t.Fatal("wrong asset accepted") }
+	const target = "ORCA_Nova_Portable_Windows.zip"
+	good := strings.Repeat("a", 64) + "  " + target + "\n"
+	sum, err := checksumFor(good, target)
+	if err != nil || sum != strings.Repeat("a", 64) {
+		t.Fatalf("checksum=%q err=%v", sum, err)
+	}
+	if _, err := checksumFor("incorrect  "+target, target); err == nil {
+		t.Fatal("invalid digest accepted")
+	}
+	if _, err := checksumFor(good, "other.zip"); err == nil {
+		t.Fatal("wrong asset accepted")
+	}
+}
+
+func TestStableReleaseReplacesSameVersionRC(t *testing.T) {
+	for _, tc := range []struct {
+		candidate, current string
+		want               bool
+	}{
+		{"v1.6.0", "1.6.0-rc.1", true},
+		{"v1.6.0", "1.6.0", false},
+		{"v1.6.0-rc.2", "1.6.0", false},
+		{"v1.5.1", "1.6.0-rc.1", false},
+		{"v1.6.1", "1.6.0-rc.1", true},
+	} {
+		if got := newerVersion(tc.candidate, tc.current); got != tc.want {
+			t.Fatalf("%s -> %s = %v, want %v", tc.current, tc.candidate, got, tc.want)
+		}
+	}
 }
