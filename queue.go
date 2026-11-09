@@ -297,6 +297,7 @@ func (q *JobQueue) prepareLocked(e *QueueEntry, cfg Config) error {
 	}
 	return nil
 }
+
 // pauseForQuit persists pending jobs without starting them on the next launch.
 // Running workers must be stopped explicitly before exiting the native UI.
 func (q *JobQueue) pauseForQuit() error {
@@ -316,7 +317,7 @@ func (q *JobQueue) pauseForQuit() error {
 	return nil
 }
 
-func (q *JobQueue) action(id, action string) error {
+func (q *JobQueue) action(id, action string) (actionErr error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	if action == "pause" {
@@ -373,6 +374,14 @@ func (q *JobQueue) action(id, action string) error {
 			if e.Job != nil {
 				// Retry in a new folder; copy completed stages and all their artifacts. Never truncate old results.
 				old := e.Job
+				oldState, oldHeld := e.State, e.Held
+				defer func() {
+					if actionErr != nil {
+						e.Job = old
+						e.State = oldState
+						e.Held = oldHeld
+					}
+				}()
 				// Validate original XYZ and INP files as well: reusing edited
 				// geometries would invalidate the completed stages on retry.
 				for _, f := range e.Request.Files {
@@ -406,7 +415,7 @@ func (q *JobQueue) action(id, action string) error {
 					completed[strings.ToLower(name)] = true
 				}
 				for _, f := range entries {
-					if f.IsDir() || f.Type()&os.ModeSymlink != 0 || !safeName(f.Name()) {
+					if !f.Type().IsRegular() || !safeName(f.Name()) {
 						continue
 					}
 					name := strings.ToLower(f.Name())

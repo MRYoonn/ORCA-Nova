@@ -8,8 +8,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -17,6 +19,25 @@ import (
 
 // The test executable acts as a cross-platform ORCA substitute in child processes.
 func TestMain(m *testing.M) {
+	if len(os.Args) > 1 && os.Args[1] == "mock-tree-leaf" {
+		for {
+			if err := os.WriteFile(filepath.Join(os.Getenv("ORCA_NOVA_TREE_DIR"), "heartbeat"), []byte(time.Now().String()), 0600); err != nil {
+				os.Exit(2)
+			}
+			time.Sleep(30 * time.Millisecond)
+		}
+	}
+	if len(os.Args) > 1 && os.Args[1] == "mock-tree-parent" {
+		exe, _ := os.Executable()
+		child := exec.Command(exe, "mock-tree-leaf")
+		if err := child.Start(); err != nil {
+			os.Exit(3)
+		}
+		_ = os.WriteFile(filepath.Join(os.Getenv("ORCA_NOVA_TREE_DIR"), "leaf.pid"), []byte(strconv.Itoa(child.Process.Pid)), 0600)
+		time.Sleep(20 * time.Second)
+		_ = child.Process.Kill()
+		os.Exit(0)
+	}
 	if os.Getenv("ORCA_NOVA_MOCK") == "1" {
 		inp, _ := os.ReadFile(os.Args[1])
 		s := string(inp)
@@ -617,5 +638,87 @@ func TestBatchFourJobsParallelCancelRetryReports(t *testing.T) {
 	}
 	if _, err := os.Stat(old); err != nil {
 		t.Fatal("cancelled original job directory was lost:", err)
+	}
+}
+
+// A real helper process spawns another process, representing ORCA/MPI. This
+// same test runs on Windows (taskkill /T) and Unix (process group kill).
+func TestCancellationTerminatesDescendantProcess(t *testing.T) {
+	dir := t.TempDir()
+	exe, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command(exe, "mock-tree-parent")
+	cmd.Env = append(os.Environ(), "ORCA_NOVA_TREE_DIR="+dir)
+	configureProcess(cmd)
+	if err = cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		killTree(cmd.Process.Pid)
+		_ = cmd.Process.Kill()
+		if b, e := os.ReadFile(filepath.Join(dir, "leaf.pid")); e == nil {
+			if pid, e := strconv.Atoi(string(b)); e == nil {
+				if p, e := os.FindProcess(pid); e == nil {
+					_ = p.Kill()
+				}
+			}
+		}
+	}()
+	heartbeat := filepath.Join(dir, "heartbeat")
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		if _, err = os.Stat(heartbeat); err == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("descendant heartbeat never started")
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	killTree(cmd.Process.Pid)
+	_ = cmd.Process.Kill()
+	_ = cmd.Wait()
+	time.Sleep(100 * time.Millisecond)
+	before, err := os.ReadFile(heartbeat)
+	if err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(180 * time.Millisecond)
+	after, err := os.ReadFile(heartbeat)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(before) != string(after) {
+		t.Fatal("descendant kept running after process tree cancellation")
+	}
+}
+
+func TestRetrySaveFailureRestoresOriginalAttempt(t *testing.T) {
+	q := mockQueue(t)
+	e := addEntry(t, q, smallReq("retry transaction"))
+	q.mu.Lock()
+	err := q.prepareLocked(e, q.app.cfg)
+	q.mu.Unlock()
+	if err != nil {
+		t.Fatal(err)
+	}
+	old := e.Job
+	e.State = "Failed"
+	e.Held = true
+	// An existing directory cannot be atomically replaced by the queue JSON file.
+	q.path = q.app.cfg.WorkRoot
+	if err = q.action(e.ID, "retry"); err == nil {
+		t.Fatal("save failure was hidden")
+	}
+	if e.Job != old || e.State != "Failed" || !e.Held {
+		t.Fatal("failed retry replaced original job metadata")
+	}
+	if _, err = os.Stat(old.Folder); err != nil {
+		t.Fatal("original result directory lost", err)
+	}
+	if q.Error == "" || !q.Paused {
+		t.Fatal("queue did not expose persistence failure and pause")
 	}
 }
