@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"math"
 	"os"
 	"path/filepath"
@@ -79,14 +78,7 @@ func (q *JobQueue) writeBatchLocked() {
 	var csv bytes.Buffer
 	q.exportLocked(&csv)
 	var b strings.Builder
-	b.WriteString("ORCA Nova Batch Summary\n실제 ORCA 검증과 Mock 검증은 구분해야 합니다.\n")
-	for _, e := range q.Jobs {
-		fmt.Fprintf(&b, "%s | %s | CPU %d | RAM reservation %d MB", e.Label, e.State, e.CPU, e.RAMMB)
-		if e.Job != nil {
-			fmt.Fprintf(&b, " | %s | %s", e.Job.Folder, e.Job.Message)
-		}
-		b.WriteByte('\n')
-	}
+	q.exportHumanTextLocked(&b)
 	for name, data := range map[string][]byte{"batch_results.csv": csv.Bytes(), "batch_summary.txt": []byte(b.String())} {
 		path := filepath.Join(root, name)
 		if err := os.WriteFile(path+".tmp", data, 0600); err != nil {
