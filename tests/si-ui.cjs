@@ -70,7 +70,7 @@ const fs=require('fs'),path=require('path'),assert=require('assert');
   assert.equal(lastDoc.pdfBase64,Buffer.from('%PDF-1.4\nlocal test').toString('base64'));
   assert.equal(lastDoc.text,undefined);
   assert.equal(calls,2);
-  await page.locator('#si-composite summary').click();
+  await page.locator('.si-composite summary').click();
   const contents={
     'si-low-inp': '! PBE0 def2-SVP Opt Freq',
     'si-low-out': 'SCF CONVERGED',
