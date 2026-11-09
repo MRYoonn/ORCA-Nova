@@ -859,7 +859,14 @@ function vizSource(){return visualizationModel.sources[Number($('viz-source').va
 function vizAnalysis(s){return s.analysis||s.Analysis||{}}
 function vizFinite(n){return typeof n==='number'&&Number.isFinite(n)}
 function vizEnergy(p){return p.energyEh??p.energy??p.y}
-function vizCoordinateLabel(s){const inp=s.input||'';if(/%geom[\s\S]*?\bscan\b[\s\S]*?\bB\s+\d+\s+\d+/i.test(inp))return 'Bond Distance (Å)';if(/%geom[\s\S]*?\bscan\b[\s\S]*?\b[AD]\s+\d+\s+\d+/i.test(inp))return 'Scan Angle (degrees)';return 'Scan Coordinate (unit: original INP; Unavailable)'}
+function vizCoordinateLabel(s){
+ const point=(s.pes||[]).find(p=>p.coordinateKind);
+ if(point){const kind=point.coordinateKind.toLowerCase();return kind==='bond'?'Bond Distance (Å)':kind==='angle'?'Bond Angle (degrees)':kind==='dihedral'?'Dihedral Angle (degrees)':'Scan Coordinate (unknown unit)';}
+ const inp=s.input||'';
+ const m=/%geom[\s\S]*?\bscan\b[\s\S]*?\b([BAD])\s+\d+/i.exec(inp);
+ if(m)return m[1].toUpperCase()==='B'?'Bond Distance (Å)':m[1].toUpperCase()==='A'?'Bond Angle (degrees)':'Dihedral Angle (degrees)';
+ return 'Scan Coordinate (unit unverified)';
+}
 function vizSetModel(d){visualizationModel=d;visualizationModel.profile=null;const el=$('viz-source');el.replaceChildren();for(const [i,s]of(d.sources||[]).entries()){const o=document.createElement('option');o.value=i;o.textContent=s.name;el.append(o)}
  for(const role of ['a','b','c'])void vizLoadRoleFiles(role);
  vizRender()}
