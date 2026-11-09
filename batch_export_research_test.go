@@ -3,8 +3,9 @@ package main
 import (
  "bytes"
  "encoding/csv"
- "encoding/json"
  "net/http"
+ "runtime"
+ "time"
  "net/http/httptest"
  "os"
  "path/filepath"
@@ -89,6 +90,59 @@ func TestBatchExportTXTEndpointAndInvalidFormat(t *testing.T) {
  }
  w:=httptest.NewRecorder();a.guard(a.route)(w,httptest.NewRequest(http.MethodGet,"/api/queue/export?format=txt",nil))
  if w.Code!=http.StatusForbidden {t.Fatal("unauthenticated TXT export",w.Code)}
- // Reject comma or quote payload injection by preserving CSV parse structure.
- if err:=json.Unmarshal([]byte("null"),new(any));err!=nil{t.Fatal(err)}
+}
+
+// Exercise four truly concurrent mock process slots on machines with at least
+// four logical CPUs, and verify one cancellation does not kill the other three.
+// Actual research-PC ORCA/MPI validation is a separate acceptance gate.
+func TestFourParallelIndependentCancellation(t *testing.T) {
+ if runtime.NumCPU()<4 {t.Skip("requires four logical CPUs to test four concurrent workers")}
+ q:=mockQueue(t)
+ q.Limits=QueueLimits{Concurrency:4,CPU:4,RAMMB:500}
+ for _,name:=range []string{"A","B","C","D"} {
+  r:=smallReq(name)
+  r.Files[1].Content+="\n# MOCK_BLOCK\n"
+  addEntry(t,q,r)
+ }
+ if err:=q.action("","resume");err!=nil{t.Fatal(err)}
+ waitQueue(t,q,func(es []*QueueEntry)bool{
+  for _,e:=range es{if e.State!="Running" {return false}}
+  return true
+ })
+ q.mu.Lock()
+ var cpu,ram int
+ dirs:=map[string]bool{}
+ for _,e:=range q.Jobs {
+  cpu+=e.CPU;ram+=e.RAMMB
+  if dirs[e.Job.Folder] {q.mu.Unlock();t.Fatal("Job output folder overlap")}
+  dirs[e.Job.Folder]=true
+ }
+ cancelID:=q.Jobs[0].ID
+ q.mu.Unlock()
+ if cpu>q.Limits.CPU||ram>q.Limits.RAMMB {t.Fatal("Scheduler overcommitted CPU/RAM")}
+ // Explicitly wait for all four mock children to start, not just Queue state.
+ q.mu.Lock()
+ folders:=make([]string,0,4)
+ for _,e:=range q.Jobs {folders=append(folders,e.Job.Folder)}
+ q.mu.Unlock()
+ for _,folder:=range folders {
+  deadline:=time.Now().Add(5*time.Second)
+  for {
+   if _,err:=os.Stat(filepath.Join(folder,"started"));err==nil{break}
+   if time.Now().After(deadline){t.Fatal("mock subprocess never started: "+folder)}
+   time.Sleep(15*time.Millisecond)
+  }
+ }
+ if err:=q.action(cancelID,"cancel");err!=nil{t.Fatal(err)}
+ waitQueue(t,q,func(es []*QueueEntry)bool{
+  if es[0].State!="Interrupted"{return false}
+  for _,e:=range es[1:]{if e.State!="Running"{return false}}
+  return true
+ })
+ if err:=os.WriteFile(filepath.Join(q.app.cfg.WorkRoot,"allow_continue"),[]byte("yes"),0600);err!=nil{t.Fatal(err)}
+ waitQueue(t,q,func(es []*QueueEntry)bool{
+  if es[0].State!="Interrupted" {return false}
+  for _,e:=range es[1:]{if e.State!="Completed"{return false}}
+  return true
+ })
 }
