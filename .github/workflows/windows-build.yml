@@ -27,6 +27,13 @@ jobs:
             $output | Set-Content BUILD_FAILURE_ANALYSIS.md
           }
           exit $result
+      - name: Validate local Windows ORCA6 audit script syntax (no licensed ORCA in CI)
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path 'tests/windows-orca6-smoke-check.ps1').Path, [ref]$tokens, [ref]$errors) | Out-Null
+          if ($errors.Count -gt 0) { $errors | Format-List | Out-String | Write-Output; exit 1 }
       - name: Validate embedded browser JavaScript and provenance
         run: node tests/scientific-ui-syntax.cjs
       - name: Vet Go backend
