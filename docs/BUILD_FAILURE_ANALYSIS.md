@@ -62,3 +62,9 @@ Source 9df25b5 passed full local Go test/race/vet/build. Windows Release run 425
 
 - First browser CI run [42621838505](https://github.com/MRYoonn/ORCA-Nova/actions/runs/42621838505) **FAILED** in the *pre-existing* Batch regression at `tests/batch-ui.cjs:70`. With the new extra XYZ `3D` button, the old locator `#desktop-extra-list .xyz-extra-item button` matched both Preview and Delete; Playwright strict-mode rejected the ambiguous selector. The failure did not demonstrate an XYZ deletion or Queue bug.
 - Fix commit `b11d734e` selects the existing Delete action using its accessible `추가 XYZ 등록 해제` label, preserving the two separate buttons and the original deletion assertion. No assertion was disabled. Revalidate with the browser workflow and Windows build before merging or claiming release success.
+
+
+## 2026-11-09 — Batch per-molecule presets and readable Result Summary
+
+- Initial Chromium regression on run [42628918519](https://github.com/MRYoonn/ORCA-Nova/actions/runs/42628918519) **failed** at `tests/batch-presets-summary-ui.cjs:34`: Playwright timed out filling a `textarea` nested in a closed `<details>` INP editor. The textarea existed, but was intentionally hidden by the existing UI until its summary was clicked. The prior XYZ removal and 3D browser regressions passed in this run; Windows Go/WebView2 build on the feature code passed independently.
+- Fix: explicitly expand the INP details row with a real user click in the browser regression before entering the custom INP. No UI disclosure behavior or assertion was weakened. Later runs must pass the full per-molecule and result-summary test before merge.
