@@ -103,7 +103,7 @@ var siKeywords = map[string][]struct{Value, Pattern string}{
   {"Gaussian",`(?i)\bGaussian\s*(?:09|16)\b`},
  },
  "task":{
-  {"Opt",`(?i)\bgeometry optimiz(?:ations?|ed|ation)\b|\boptimized geometr(?:y|ies)\b|\bOpt\b`},
+  {"Opt",`(?i)\bgeometry optimiz(?:ations?|ed|ation)\b|\boptimized geometr(?:y|ies)\b|\bgeometr(?:y|ies)\s+(?:were\s+|was\s+|are\s+)?optimized\b|\boptimizations?\b|\bOpt\b`},
   {"Freq",`(?i)\bfrequenc(?:y|ies)\b|\bvibrational\b|\bFreq\b`},
   {"SP",`(?i)\bsingle[- ]point\b|\bSP\b`},
   {"TDDFT",`(?i)\bTD[- ]?DFT\b|\bvertical excitations?\b`},
