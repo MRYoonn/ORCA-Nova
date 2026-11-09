@@ -18,6 +18,7 @@ const fs=require('fs'),path=require('path'),assert=require('assert');
       {field:'basis',value:'6-31+G(d,p)',page:25,excerpt:'Gaussian basis needs ORCA manual validation'},
       {field:'solvation',value:'CPCM',page:25,excerpt:'CPCM(acetonitrile) method'}
      ],
+     levels:[{kind:'SP',page:25,values:{functional:['PBE0'],basis:['def2-TZVPP']},excerpt:'Single Point PBE0 def2-TZVPP',warnings:[]}],
      fields:[
       {field:'functional',values:['M06-2X'],status:'candidate'},
       {field:'basis',values:['6-31+G(d,p)'],status:'unsupported-direct'},
@@ -51,7 +52,8 @@ const fs=require('fs'),path=require('path'),assert=require('assert');
   await page.waitForFunction(()=>!!siCurrent);
   assert.equal(lastDoc.doi,'10.1002/anie.9565676');
   assert(lastDoc.text.includes('M06-2X'));
-  assert.equal(await page.locator('#si-results input.si-choice').count(),5);
+  assert.equal(await page.locator('#si-results input.si-choice:not(.si-level-choice)').count(),5);
+  assert.equal(await page.locator('#si-results input.si-level-choice').count(),2);
   assert(await page.locator('#si-results input.si-choice[data-value="6-31+G(d,p)"]').isDisabled());
   assert(!(await page.locator('#si-results input.si-choice[data-value="M06-2X"]').isChecked()));
   assert((await page.locator('#si-results').innerText()).includes('Page 25'));
@@ -62,6 +64,11 @@ const fs=require('fs'),path=require('path'),assert=require('assert');
   await page.locator('#si-apply').click();
   assert.equal(await page.locator('#functional').inputValue(),'M06-2X');
   assert.equal(await page.locator('#solvmodel').inputValue(),'CPCM');
+  await page.locator('#si-results .si-level-choice[data-kind="SP"][data-field="basis"]').check();
+  page.once('dialog',d=>d.accept());
+  await page.locator('#si-apply').click();
+  assert.equal(await page.evaluate(()=>active),'A2','confirmed SI SP level must switch calculation mode');
+  assert.equal(await page.locator('#basis').inputValue(),'def2-TZVPP');
   // Explicit PDF mode uses base64 and never loads any remote source.
   await page.locator('#si-file').setInputFiles({name:'local_si.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-1.4\nlocal test')});
   await page.locator('#si-analyze').click();
