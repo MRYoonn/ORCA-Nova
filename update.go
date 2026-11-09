@@ -295,27 +295,99 @@ func (u *updater) prepare() (string, error) {
 
 const updateScript = `param([int]$CurrentPid,[string]$StageDir,[string]$TargetDir,[string]$Launch,[string]$Log)
 $ErrorActionPreference='Stop'
+$entries=@()
+$replacing=$false
+$backupDir=Join-Path $TargetDir ('.ORCA_Nova_backup_'+(Get-Date -Format 'yyyyMMddHHmmssfff'))
+$errorsDuringRollback=@()
 try {
-  for($i=0;$i -lt 90;$i++) { $p=Get-Process -Id $CurrentPid -ErrorAction SilentlyContinue; if(-not $p){break};Start-Sleep -Seconds 1 }
-  if (Get-Process -Id $CurrentPid -ErrorAction SilentlyContinue){throw '기존 ORCA Nova가 닫히지 않았습니다.'}
-  $appExe = Join-Path $TargetDir 'ORCA_Nova.exe'
-  $backup = $appExe + '.previous'
-  if(Test-Path -LiteralPath $backup){Remove-Item -LiteralPath $backup -Force}
-  Copy-Item -LiteralPath $appExe -Destination $backup -Force
-  # The WebView2 native host may still be exiting. Retry boundedly if its files are locked.
-  $copied=$false
-  for($i=0;$i -lt 45;$i++) {
-    try {
-      Copy-Item -Path (Join-Path $StageDir '*') -Destination $TargetDir -Recurse -Force -ErrorAction Stop
-      $copied=$true;break
-    } catch {
-      Start-Sleep -Seconds 2
+  for($i=0;$i -lt 90;$i++){
+    $p=Get-Process -Id $CurrentPid -ErrorAction SilentlyContinue
+    if(-not $p){break}
+    Start-Sleep -Seconds 1
+  }
+  if(Get-Process -Id $CurrentPid -ErrorAction SilentlyContinue){
+    throw '기존 ORCA Nova가 종료되지 않아 업데이트를 중단했습니다.'
+  }
+  $appExe=Join-Path $TargetDir 'ORCA_Nova.exe'
+  if(-not (Test-Path -LiteralPath $appExe -PathType Leaf)){throw '기존 ORCA_Nova.exe가 없습니다.'}
+  if(-not (Test-Path -LiteralPath (Join-Path $StageDir 'ORCA_Nova.exe') -PathType Leaf)){
+    throw '업데이트 ZIP의 ORCA_Nova.exe가 없습니다.'
+  }
+  $root=[System.IO.Path]::GetFullPath($StageDir).TrimEnd([char]92,[char]47)+[System.IO.Path]::DirectorySeparatorChar
+  $stageFiles=@(Get-ChildItem -LiteralPath $StageDir -File -Recurse -ErrorAction Stop)
+  if($stageFiles.Count -lt 1){throw '새 버전 파일이 없습니다.'}
+  # Back up ALL files that the update may replace, not just the backend EXE.
+  # Any non-overlapping user file in the target folder remains untouched.
+  foreach($f in $stageFiles){
+    $relative=$f.FullName.Substring($root.Length)
+    if($relative -eq '' -or $relative -match '(^|[\\/])\.\.([\\/]|$)'){
+      throw '잘못된 업데이트 대상 경로입니다.'
+    }
+    $destination=Join-Path $TargetDir $relative
+    $backup=Join-Path $backupDir $relative
+    if(Test-Path -LiteralPath $destination -PathType Container){
+      throw ('기존 폴더와 설치 파일이 충돌합니다: '+$relative)
+    }
+    $existed=Test-Path -LiteralPath $destination -PathType Leaf
+    if($existed){
+      New-Item -ItemType Directory -Force -Path (Split-Path -Parent $backup) | Out-Null
+      Copy-Item -LiteralPath $destination -Destination $backup -Force -ErrorAction Stop
+    }
+    $entries+= [pscustomobject]@{Src=$f.FullName;Dst=$destination;Backup=$backup;Exists=$existed;Name=$relative}
+  }
+  $replacing=$true
+  foreach($item in $entries){
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $item.Dst) | Out-Null
+    $copied=$false
+    for($i=0;$i -lt 45;$i++){
+      try{
+        Copy-Item -LiteralPath $item.Src -Destination $item.Dst -Force -ErrorAction Stop
+        $copied=$true
+        break
+      }catch{
+        if($i -lt 44){Start-Sleep -Seconds 2}
+      }
+    }
+    if(-not $copied){throw ('업데이트 파일 교체 실패: '+$item.Name)}
+  }
+  Start-Process -FilePath $Launch -WorkingDirectory $TargetDir -ErrorAction Stop
+  ('SUCCESS: '+(Get-Date)+'; backup: '+$backupDir) | Set-Content -LiteralPath $Log -Encoding UTF8
+  exit 0
+}catch{
+  $cause=$_.Exception.Message
+  if($replacing){
+    foreach($item in $entries){
+      try{
+        if($item.Exists){
+          if(-not(Test-Path -LiteralPath $item.Backup -PathType Leaf)){
+            throw ('백업 누락: '+$item.Name)
+          }
+          $restored=$false
+          for($i=0;$i -lt 20;$i++){
+            try{
+              Copy-Item -LiteralPath $item.Backup -Destination $item.Dst -Force -ErrorAction Stop
+              $restored=$true
+              break
+            }catch{
+              if($i -lt 19){Start-Sleep -Seconds 1}
+            }
+          }
+          if(-not $restored){throw ('복구 실패: '+$item.Name)}
+        }elseif(Test-Path -LiteralPath $item.Dst){
+          Remove-Item -LiteralPath $item.Dst -Force -ErrorAction Stop
+        }
+      }catch{$errorsDuringRollback+=($_.Exception.Message)}
     }
   }
-  if(-not $copied) {Copy-Item -LiteralPath $backup -Destination $appExe -Force;throw '업데이트 파일 교체 실패. EXE를 복구했습니다.'}
-  Start-Process -FilePath $Launch -WorkingDirectory $TargetDir
-  ('Updated: '+(Get-Date)) | Set-Content -LiteralPath $Log -Encoding UTF8
-}catch{('ERROR: '+$_.Exception.Message) | Set-Content -LiteralPath $Log -Encoding UTF8}
+  $message='ERROR: '+$cause
+  if($errorsDuringRollback.Count -eq 0){
+    $message+='; rollback: '+$(if($replacing){'SUCCESS'}else{'NOT NEEDED'})
+  }else{
+    $message+='; rollback: INCOMPLETE; '+($errorsDuringRollback -join '; ')
+  }
+  $message | Set-Content -LiteralPath $Log -Encoding UTF8
+  exit 1
+}
 `
 
 // stageReleaseArchive validates portable payload paths and types before installation.
