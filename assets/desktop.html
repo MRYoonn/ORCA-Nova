@@ -396,7 +396,7 @@ function activeInfo(){const c=calc(active),st=currentStage(),base=st[1];$('calc-
  $('next-stage').disabled=stages().length===1;$('next-stage').textContent=(activeStage===stages().length-1?'처음 단계 ↺':'다음 단계 →');
  $('download-workflow').style.display=c.kind==='workflow'?'inline-flex':'none';
  $('wf-count').textContent=stages().length+' STEP'+(stages().length>1?'S':'');$('workflow-foot').textContent=c.kind==='workflow'?'단계 확인 → Workflow ZIP 저장':'단일 INP 계산';
- $('xyz-filename').textContent=loadedXYZ||'molecule.xyz';$('xyz-meta').textContent=loadedXYZ?`${xyzAtomCount} atoms · 로컬에서 불러옴`:'XYZ 파일을 불러오면 여기에 표시돼요';
+ $('xyz-filename').textContent=loadedXYZ||'molecule.xyz';$('xyz-meta').textContent=loadedXYZ?`${xyzAtomCount} atoms · 로컬에서 불러옴`:'XYZ 파일을 불러오면 여기에 표시돼요';$('xyz-remove').disabled=!xyzOriginal;
  $('guide-title').textContent=c.name;
  renderWorkflow();renderConsole();renderWarning();
 }
@@ -456,6 +456,14 @@ function applyPrimaryXYZ(name,text){
  toast(`${name} · ${count} atoms 불러왔어요.`);
  return true;
 }
+function clearPrimaryXYZ(){
+ if(!xyzOriginal)return;
+ if(editorDirty&&!confirm('현재 수정한 INP가 재생성됩니다. 기본 XYZ 등록을 해제할까요?'))return;
+ const filename=loadedXYZ;
+ loadedXYZ='';xyzOriginal='';xyzAtomCount=null;$('xyz-file').value='';
+ generate(false);desktopXYZStatus();toast(filename+' · 기본 XYZ 등록 해제 (원본 파일 유지)');
+}
+$('xyz-remove').addEventListener('click',clearPrimaryXYZ);
 function loadXYZFile(file){if(!file)return;if(!file.name.toLowerCase().endsWith('.xyz')){toast('XYZ 파일을 선택해 주세요.');return}const r=new FileReader();r.onload=()=>applyPrimaryXYZ(file.name,String(r.result));r.readAsText(file)}
 $('xyz-load').addEventListener('click',()=>$('xyz-file').click());$('xyz-file').addEventListener('change',e=>loadXYZFile(e.target.files?.[0]));const dz=$('dropzone');dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over')});dz.addEventListener('dragleave',()=>dz.classList.remove('over'));dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');loadXYZFile(e.dataTransfer.files?.[0])});
 $('search').addEventListener('input',renderNav);uiChanges();$('editor').addEventListener('input',()=>{editorDirty=true;$('edit-status').textContent='직접 수정됨 · 저장 필요';renderLines()});$('editor').addEventListener('scroll',()=>{$('line-nums').scrollTop=$('editor').scrollTop});$('editor').addEventListener('keydown',e=>{if(e.key==='Tab'){e.preventDefault();const a=e.target.selectionStart,b=e.target.selectionEnd;e.target.setRangeText('  ',a,b,'end');e.target.dispatchEvent(new Event('input'))}});$('regen').addEventListener('click',()=>{if(editorDirty&&!confirm('직접 수정한 INP 내용을 덮어쓰고 재생성할까요?'))return;generate(true);toast('INP를 재생성했어요.')});
@@ -475,7 +483,19 @@ const desktopXYZ = new Map();
 function desktopXYZStatus(){
  const main=xyzOriginal?`기본 XYZ: ${loadedXYZ} (${xyzAtomCount} atoms)`:'기본 XYZ 없음';
  const extras=[...desktopXYZ.keys()];
- document.getElementById('desktop-extra-info').textContent=main+` · 추가 XYZ ${extras.length}개`+(extras.length?': '+extras.join(', '):'');
+ $('desktop-extra-info').textContent=main+` · 추가 XYZ ${extras.length}개`;
+ $('xyz-remove').disabled=!xyzOriginal;
+ $('desktop-to-batch').disabled=!xyzOriginal&&!extras.length;
+ $('desktop-clear-xyz').disabled=!xyzOriginal&&!extras.length;
+ const box=$('desktop-extra-list');box.replaceChildren();
+ for(const name of extras){
+  const item=document.createElement('span');item.className='xyz-extra-item';
+  const filename=document.createElement('span');filename.textContent=name;
+  const remove=document.createElement('button');remove.className='btn small ghost';remove.type='button';
+  remove.textContent='삭제';remove.setAttribute('aria-label',name+' 추가 XYZ 등록 해제');
+  remove.onclick=()=>{desktopXYZ.delete(name);desktopXYZStatus();toast(name+' · 추가 XYZ 등록 해제 (원본 파일 유지)')};
+  item.append(filename,remove);box.append(item);
+ }
 }
 async function desktopAPI(path, data){
  const url='/api/'+path+'?session='+encodeURIComponent(desktopSession);
@@ -487,11 +507,7 @@ function desktopMessage(msg,bad=false){let el=document.getElementById('desktop-s
 async function desktopConfig(){return desktopAPI('config',{orcaExe:document.getElementById('desktop-orca-path').value.trim(),workRoot:document.getElementById('desktop-work-root').value.trim()});}
 function desktopSafe(s){return /^[A-Za-z0-9_.-]{1,120}$/.test(s)&&!s.includes('..')}
 function desktopRunData(workflow){
- if(!xyzOriginal){
-  // Defensive recovery for XYZ files selected before the first main import.
-  const first=desktopXYZ.entries().next().value;
-  if(first){applyPrimaryXYZ(first[0],first[1]);}
- }
+ // An explicitly deleted primary XYZ must never be silently restored from extras.
  if(!xyzOriginal){throw Error('XYZ 파일을 먼저 선택해 주세요. 위의 「XYZ 선택 / 추가」 또는 왼쪽 「XYZ 불러오기」를 사용하면 돼요.');}
  if(workflow&&calc(active).kind!=='workflow')throw Error('왼쪽에서 W1–W5 등 Workflow 계산을 선택해 주세요.');
  if(!workflow&&calc(active).kind==='workflow')throw Error('Workflow 메뉴에서는 전체 Workflow 실행을 선택해 주세요.');
@@ -587,6 +603,21 @@ document.getElementById('desktop-open-out').addEventListener('change',async ev=>
 document.getElementById('desktop-stop').addEventListener('click',async()=>{if(!confirm('진행 중인 ORCA 계산을 중단할까요?'))return;try{await desktopAPI('stop',{});desktopMessage('중단 요청 완료')}catch(e){desktopMessage(e.message,true)}});
 document.getElementById('desktop-reveal').addEventListener('click',async()=>{try{await desktopAPI('reveal',{})}catch(e){desktopMessage(e.message,true)}});
 document.getElementById('desktop-quit').addEventListener('click',async()=>{if(lastDesktopState?.job?.state==='running'){toast('진행 중인 계산을 중단한 뒤 종료하세요.');return}try{await desktopAPI('quit',{});window.close();document.body.innerHTML='<div style="font:18px sans-serif;color:white;background:#111;padding:40px">ORCA Nova가 종료됐어요. 이 창을 닫아주세요.</div>';}catch(e){desktopMessage(e.message,true)}});
+$('desktop-clear-xyz').addEventListener('click',()=>{
+ if(!xyzOriginal&&!desktopXYZ.size)return;
+ if(!confirm('기본·추가 XYZ 등록을 모두 비울까요? 원본 파일과 이미 제출한 Queue는 유지됩니다.'))return;
+ if(xyzOriginal){loadedXYZ='';xyzOriginal='';xyzAtomCount=null;$('xyz-file').value='';generate(false)}
+ desktopXYZ.clear();$('desktop-extra-xyz').value='';desktopXYZStatus();
+ toast('입력 XYZ 등록을 비웠어요. 디스크 원본과 실행 Queue는 유지됩니다.');
+});
+$('desktop-to-batch').addEventListener('click',async()=>{
+ const files=[];
+ if(xyzOriginal){const content=xyzOriginal;files.push({name:workflowSourceName(),size:content.length,text:async()=>content});}
+ for(const [name,content] of desktopXYZ){files.push({name,size:content.length,text:async()=>content});}
+ if(!files.length){toast('Batch로 보낼 XYZ를 먼저 불러오세요.');return}
+ await batchImport(files);
+ $('batch-panel').scrollIntoView({behavior:'smooth',block:'start'});
+});
 document.getElementById('desktop-extra-xyz').addEventListener('change',async e=>{
  for(const f of e.target.files||[]){
   const name=filenameStem(f.name)+'.xyz';
