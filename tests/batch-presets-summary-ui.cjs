@@ -30,6 +30,7 @@ const xyz='3\nwater\nO 0 0 0\nH 0.757 0.586 0\nH -0.757 0.586 0\n';
   assert(check[1].label.endsWith('_A2'));
   assert(check[2].label.endsWith('_A4'));
   assert(check[0].input.some(x=>x.includes('* xyzfile 0 3')),'triplet stage must preserve multiplicity');
+  await page.locator('#batch-molecules tr').nth(0).locator('.batch-inputs details summary').first().click();
   const editor=page.locator('#batch-molecules tr').nth(0).locator('.batch-inputs textarea').first();
   await editor.fill('! PBE0 def2-SVP\n%maxcore 500\n* xyzfile 0 1 monomer.xyz\n');
   assert(await page.evaluate(()=>batchMolecules[0].custom));
