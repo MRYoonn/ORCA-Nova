@@ -33,6 +33,7 @@ jobs:
           $req = Get-Content '.github/release-request.json' -Raw | ConvertFrom-Json
           if ($req.source -ne 'approved-main-merge') { throw 'Release request must be reviewed' }
           if ($req.tag -notmatch '^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$') { throw 'Invalid version tag in manifest' }
+          if ($req.prerelease -eq $false -and ($req.release_type -ne 'stable' -or $req.stable_release_blocked -ne $false)) { throw 'Stable promotion requires explicit release_type=stable and stable_release_blocked=false approval' }
           $isPre = if ($req.prerelease -eq $true) { 'true' } else { 'false' }
           ('RELEASE_TAG=' + $req.tag) | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           ('RELEASE_PRERELEASE=' + $isPre) | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
@@ -87,6 +88,15 @@ jobs:
           if (-not (Test-Path dist/ORCA_Nova_UI.exe)) { throw 'native WebView2 host was not packaged' }
           Compress-Archive -Path dist/* -DestinationPath ORCA_Nova_Portable_Windows.zip -Force
           Get-FileHash ORCA_Nova_Portable_Windows.zip -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  ORCA_Nova_Portable_Windows.zip" } | Set-Content SHA256SUMS.txt
+      - name: Smoke-test actual packaged Windows EXE, version, and authenticated local API
+        shell: pwsh
+        run: |
+          $version=$env:RELEASE_TAG.TrimStart('v')
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File 'tests/Windows-Portable-LiveAcceptance.ps1' -PortableZip 'ORCA_Nova_Portable_Windows.zip' -ChecksumFile 'SHA256SUMS.txt' -ExpectedVersion $version -ReportPath 'WINDOWS_RELEASE_SMOKE.json'
+          if ($LASTEXITCODE -ne 0) {
+            Get-Content -LiteralPath 'WINDOWS_RELEASE_SMOKE.json' -ErrorAction SilentlyContinue | Write-Output
+            throw 'Versioned release EXE/API smoke test failed'
+          }
       - name: Publish GitHub Release
         shell: pwsh
         env:
@@ -98,7 +108,8 @@ jobs:
             if (-not (Test-Path -LiteralPath $notes -PathType Leaf)) { throw ('Release notes missing: ' + $notes) }
             $cmd += @('--notes-file', $notes)
           } else {
-            $cmd += '--generate-notes'
+            $notes = Join-Path 'docs' ('RELEASE_NOTES_' + $env:RELEASE_TAG + '.md')
+            if (Test-Path -LiteralPath $notes -PathType Leaf) { $cmd += @('--notes-file', $notes) } else { $cmd += '--generate-notes' }
           }
           if ($env:RELEASE_PRERELEASE -eq 'true' -or ('${{ github.event_name }}' -eq 'workflow_dispatch' -and '${{ inputs.prerelease }}' -eq 'true')) { $cmd += @('--prerelease','--latest=false') }
           gh release view $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY --json tagName *> $null

@@ -39,6 +39,8 @@ type githubRelease struct {
 }
 type updateState struct {
 	Current     string `json:"current"`
+	Channel     string `json:"channel"`
+	Prerelease  bool   `json:"prerelease"`
 	Latest      string `json:"latest,omitempty"`
 	Available   bool   `json:"available"`
 	Checking    bool   `json:"checking"`
@@ -54,7 +56,7 @@ type updater struct {
 }
 
 func newUpdater() *updater {
-	return &updater{state: updateState{Current: appVersion, Message: "업데이트 확인 전"}, client: &http.Client{Timeout: 15 * time.Second}}
+	return &updater{state: updateState{Current: appVersion, Channel: "stable", Message: "업데이트 확인 전"}, client: &http.Client{Timeout: 15 * time.Second}}
 }
 func (u *updater) snapshot() updateState { u.mu.Lock(); defer u.mu.Unlock(); return u.state }
 func parseVersion(v string) ([3]int, bool) {
@@ -74,105 +76,125 @@ func parseVersion(v string) ([3]int, bool) {
 	}
 	return arr, true
 }
-func newerVersion(a, b string) bool {
-	va, ok := parseVersion(a)
-	vb, ok2 := parseVersion(b)
-	if !ok || !ok2 {
-		return false
-	}
-	for i := 0; i < 3; i++ {
-		if va[i] > vb[i] {
-			return true
-		}
-		if va[i] < vb[i] {
-			return false
-		}
-	}
-	// A final release supersedes its same-core release candidate.
-	_, _, candidateHasPre := strings.Cut(strings.TrimSpace(a), "-")
-	_, currentPre, currentHasPre := strings.Cut(strings.TrimSpace(b), "-")
-	return !candidateHasPre && currentHasPre && currentPre != ""
+func releaseVersionSuffix(v string) (string, int, bool) {
+ _, suffix, prerelease := strings.Cut(strings.TrimPrefix(strings.TrimSpace(v), "v"), "-")
+ if !prerelease {return "",0,true}
+ if !strings.HasPrefix(suffix,"rc.") {return "",0,false}
+ n,err:=strconv.Atoi(strings.TrimPrefix(suffix,"rc."))
+ if err!=nil||n<1{return "",0,false}
+ return "rc",n,true
+}
+func newerVersion(a,b string)bool {
+ va,ok:=parseVersion(a);vb,ok2:=parseVersion(b)
+ if !ok||!ok2{return false}
+ ak,an,validA:=releaseVersionSuffix(a)
+ bk,bn,validB:=releaseVersionSuffix(b)
+ if !validA||!validB{return false}
+ for i:=0;i<3;i++{if va[i]>vb[i]{return true};if va[i]<vb[i]{return false}}
+ if ak==bk{if ak=="rc"{return an>bn};return false}
+ return ak==""&&bk=="rc"
+}
+func releaseAssetsValid(rel githubRelease)bool {
+ zip,sum:=false,false
+ for _,asset:=range rel.Assets{
+  if asset.Name==releaseZipName{zip=true}
+  if asset.Name=="SHA256SUMS.txt"{sum=true}
+ }
+ return zip&&sum
+}
+func releaseFitsChannel(rel githubRelease,channel string)bool {
+ if rel.Draft||!releaseAssetsValid(rel){return false}
+ if _,ok:=parseVersion(rel.Tag);!ok{return false}
+ kind,_,ok:=releaseVersionSuffix(rel.Tag);if !ok{return false}
+ if rel.Prerelease!=(kind=="rc"){return false}
+ return channel=="beta"||!rel.Prerelease
+}
+func selectRelease(candidates []githubRelease,channel,current string)(githubRelease,bool){
+ var best githubRelease
+ found:=false
+ for _,candidate:=range candidates {
+  if !releaseFitsChannel(candidate,channel)||!newerVersion(candidate.Tag,current){continue}
+  if !found||newerVersion(candidate.Tag,best.Tag){best=candidate;found=true}
+ }
+ return best,found
+}
+func (u *updater) setChannel(channel string)(updateState,error){
+ if channel!="stable"&&channel!="beta"{return u.snapshot(),fmt.Errorf("업데이트 채널은 Stable/Beta만 지원합니다")}
+ u.mu.Lock()
+ defer u.mu.Unlock()
+ if u.state.Checking {return u.state,fmt.Errorf("업데이트 검색 중에는 채널을 변경할 수 없습니다")}
+ if u.state.Channel==channel{return u.state,nil}
+ u.state.Channel=channel
+ u.state.Latest=""
+ u.state.Available=false
+ u.state.Prerelease=false
+ u.state.ReleaseURL=""
+ u.state.LastChecked=""
+ u.release=githubRelease{}
+ u.state.Message=map[string]string{"stable":"Stable 채널 · 정식판만 확인합니다","beta":"Beta 채널 · 시험판을 포함합니다"}[channel]
+ return u.state,nil
 }
 func (u *updater) check() updateState {
-	u.mu.Lock()
-	if u.state.Checking {
-		res := u.state
-		u.mu.Unlock()
-		return res
-	}
-	u.state.Checking = true
-	// Failed/offline checks must not offer stale cached updates.
-	u.state.Available = false
-	u.state.Latest = ""
-	u.state.ReleaseURL = ""
-	u.release = githubRelease{}
-	u.state.Message = "GitHub Release 확인 중"
-	u.mu.Unlock()
-	defer func() {
-		u.mu.Lock()
-		u.state.Checking = false
-		u.state.LastChecked = time.Now().Format(time.RFC3339)
-		u.mu.Unlock()
-	}()
-	req, _ := http.NewRequest(http.MethodGet, "https://api.github.com/repos/"+updateRepository+"/releases/latest", nil)
-	req.Header.Set("User-Agent", "ORCA-Nova/"+appVersion)
-	req.Header.Set("Accept", "application/vnd.github+json")
-	resp, err := u.client.Do(req)
-	if err != nil {
-		u.mu.Lock()
-		u.state.Message = "업데이트 서버 접속 실패: " + err.Error()
-		s := u.state
-		u.mu.Unlock()
-		return s
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		u.mu.Lock()
-		if resp.StatusCode == 404 {
-			u.state.Message = "GitHub Release가 아직 없거나 비공개 저장소예요."
-		} else {
-			u.state.Message = "GitHub 응답: " + resp.Status
-		}
-		s := u.state
-		u.mu.Unlock()
-		return s
-	}
-	var rel githubRelease
-	if err = json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(&rel); err != nil {
-		u.mu.Lock()
-		u.state.Message = "Release 정보 해석 실패"
-		s := u.state
-		u.mu.Unlock()
-		return s
-	}
-	available := !rel.Draft && !rel.Prerelease && newerVersion(rel.Tag, appVersion)
-	foundZip, foundSum := false, false
-	for _, a := range rel.Assets {
-		if a.Name == releaseZipName {
-			foundZip = true
-		}
-		if a.Name == "SHA256SUMS.txt" {
-			foundSum = true
-		}
-	}
-	if !foundZip || !foundSum {
-		available = false
-	}
-	u.mu.Lock()
-	u.release = rel
-	u.state.Latest = rel.Tag
-	u.state.Available = available
-	u.state.ReleaseURL = rel.HTMLURL
-	if !foundZip || !foundSum {
-		u.state.Message = "Release에 Portable ZIP 또는 SHA256SUMS.txt가 없어요."
-	} else if available {
-		u.state.Message = "새 버전 " + rel.Tag + " 사용 가능"
-	} else {
-		u.state.Message = "최신 버전 사용 중"
-	}
-	s := u.state
-	u.mu.Unlock()
-	return s
+ u.mu.Lock()
+ if u.state.Checking{res:=u.state;u.mu.Unlock();return res}
+ channel:=u.state.Channel
+ if channel!="beta"{channel="stable";u.state.Channel="stable"}
+ u.state.Checking=true
+ u.state.Available=false
+ u.state.Prerelease=false
+ u.state.Latest=""
+ u.state.ReleaseURL=""
+ u.release=githubRelease{}
+ u.state.Message="GitHub "+strings.ToUpper(channel[:1])+channel[1:]+" Release 확인 중"
+ u.mu.Unlock()
+ defer func(){
+  u.mu.Lock()
+  u.state.Checking=false
+  u.state.LastChecked=time.Now().Format(time.RFC3339)
+  u.mu.Unlock()
+ }()
+ endpoint:="https://api.github.com/repos/"+updateRepository+"/releases/latest"
+ if channel=="beta"{endpoint="https://api.github.com/repos/"+updateRepository+"/releases?per_page=50"}
+ req,_:=http.NewRequest(http.MethodGet,endpoint,nil)
+ req.Header.Set("User-Agent","ORCA-Nova/"+appVersion)
+ req.Header.Set("Accept","application/vnd.github+json")
+ resp,err:=u.client.Do(req)
+ if err!=nil{
+  u.mu.Lock();u.state.Message="업데이트 서버 접속 실패: "+err.Error();out:=u.state;u.mu.Unlock();return out
+ }
+ defer resp.Body.Close()
+ if resp.StatusCode!=http.StatusOK {
+  u.mu.Lock()
+  if resp.StatusCode==404{u.state.Message="GitHub Release가 아직 없거나 비공개 저장소예요."}else{u.state.Message="GitHub 응답: "+resp.Status}
+  out:=u.state;u.mu.Unlock();return out
+ }
+ var releases []githubRelease
+ if channel=="beta"{
+  if err=json.NewDecoder(io.LimitReader(resp.Body,1<<20)).Decode(&releases);err!=nil{
+   u.mu.Lock();u.state.Message="Release 목록 해석 실패";out:=u.state;u.mu.Unlock();return out
+  }
+ }else{
+  var rel githubRelease
+  if err=json.NewDecoder(io.LimitReader(resp.Body,1<<20)).Decode(&rel);err!=nil{
+   u.mu.Lock();u.state.Message="Release 정보 해석 실패";out:=u.state;u.mu.Unlock();return out
+  }
+  releases=[]githubRelease{rel}
+ }
+ rel,available:=selectRelease(releases,channel,appVersion)
+ u.mu.Lock()
+ if available {
+  u.release=rel
+  u.state.Latest=rel.Tag
+  u.state.Available=true
+  u.state.Prerelease=rel.Prerelease
+  u.state.ReleaseURL=rel.HTMLURL
+  u.state.Message=rel.Tag+" 사용 가능 · 릴리스 노트 확인 후 승인해 주세요"
+ }else{
+  u.state.Message=map[string]string{"stable":"Stable 최신 버전 사용 중 (Beta 제외)","beta":"Beta 채널에서 더 새로운 버전이 없습니다"}[channel]
+ }
+ out:=u.state
+ u.mu.Unlock()
+ return out
 }
 func (u *updater) getFile(url string, max int64) ([]byte, error) {
 	if !strings.HasPrefix(url, "https://github.com/"+updateRepository+"/releases/download/") && !strings.HasPrefix(url, "https://objects.githubusercontent.com/") {
