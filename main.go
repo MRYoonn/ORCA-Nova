@@ -26,8 +26,9 @@ import (
 var assets embed.FS
 
 type Config struct {
-	ORCAExe  string `json:"orcaExe"`
-	WorkRoot string `json:"workRoot"`
+	ORCAExe       string `json:"orcaExe"`
+	WorkRoot      string `json:"workRoot"`
+	UpdateChannel string `json:"updateChannel,omitempty"`
 }
 type JobFile struct {
 	Name    string `json:"name"`
@@ -89,7 +90,7 @@ func newApp() *App {
 	if err != nil {
 		home = "."
 	}
-	a := &App{cfg: Config{WorkRoot: filepath.Join(home, "Documents", "ORCA Nova Jobs")}, cfgPath: configPath()}
+	a := &App{cfg: Config{WorkRoot: filepath.Join(home, "Documents", "ORCA Nova Jobs"), UpdateChannel: "stable"}, cfgPath: configPath()}
 	cfgBytes, cfgErr := os.ReadFile(a.cfgPath)
 	if cfgErr != nil {
 		// Retain ORCA executable and working-folder preferences from ORCA Studio.
@@ -104,6 +105,7 @@ func newApp() *App {
 				a.cfg.WorkRoot = cfg.WorkRoot
 			}
 			a.cfg.ORCAExe = cfg.ORCAExe
+			if cfg.UpdateChannel == "beta" { a.cfg.UpdateChannel = "beta" }
 		}
 	}
 	b := make([]byte, 20)
@@ -112,6 +114,7 @@ func newApp() *App {
 	}
 	a.token = hex.EncodeToString(b)
 	a.updates = newUpdater()
+	_, _ = a.updates.setChannel(a.cfg.UpdateChannel)
 	a.history = newDurationHistory(a.cfgPath)
 	a.queue = newJobQueue(a, filepath.Join(filepath.Dir(a.cfgPath), "job_queue.json"))
 	return a
@@ -204,6 +207,24 @@ func (a *App) route(w http.ResponseWriter, r *http.Request) {
 			eta = &v
 		}
 		respond(w, 200, map[string]interface{}{"config": cfg, "job": job, "eta": eta, "platform": runtime.GOOS, "version": appVersion, "update": a.updates.snapshot()})
+	case "/api/update/channel":
+		if r.Method != http.MethodPost { fail(w,405,"Method not allowed");return }
+		var payload struct { Channel string `json:"channel"` }
+		if err:=json.NewDecoder(io.LimitReader(r.Body,1024)).Decode(&payload);err!=nil{fail(w,400,"업데이트 채널 요청이 올바르지 않습니다");return}
+		if payload.Channel!="stable"&&payload.Channel!="beta"{fail(w,400,"Stable 또는 Beta만 선택할 수 있습니다");return}
+		a.mu.Lock()
+		if a.updating{a.mu.Unlock();fail(w,409,"업데이트 설치 중에는 채널을 변경할 수 없습니다");return}
+		old:=a.cfg.UpdateChannel
+		a.mu.Unlock()
+		state,err:=a.updates.setChannel(payload.Channel)
+		if err!=nil{fail(w,409,err.Error());return}
+		a.mu.Lock();a.cfg.UpdateChannel=payload.Channel;a.mu.Unlock()
+		if err=a.saveConfig();err!=nil{
+			a.mu.Lock();a.cfg.UpdateChannel=old;a.mu.Unlock()
+			_,_=a.updates.setChannel(old)
+			fail(w,500,"업데이트 채널 설정을 저장하지 못했습니다: "+err.Error());return
+		}
+		respond(w,200,state)
 	case "/api/update/check":
 		if r.Method != http.MethodPost {
 			fail(w, 405, "Method not allowed")
@@ -271,6 +292,7 @@ func (a *App) route(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		a.mu.Lock()
+		cfg.UpdateChannel = a.cfg.UpdateChannel
 		a.cfg = cfg
 		a.mu.Unlock()
 		if err := a.saveConfig(); err != nil {
