@@ -1,8 +1,8 @@
 {
-  "tag": "v1.6.0",
+  "tag": "v1.6.1",
   "prerelease": false,
   "source": "approved-main-merge",
-  "summary": "User-approved stable promotion of tested ORCA Nova 1.6 features and opt-in Stable/Beta updater. Native Windows build, packaged EXE local API smoke, browser QA, offline SI scientific parser, 2-4 worker mock process cancellation, public ZIP swap and rollback validated in CI; proprietary ORCA/MPI actual research lab computation and interactive update UI on user's PC not verified. GitHub backups cover sources/releases, not local user settings or scientific files.",
+  "summary": "UX patch: quick presets grouped Literature -> Recommended -> Preset, two-column row-major, wider calculation pane and single-line headings at standard desktop width. Calculation Library and W/A/B/C/D/E accordion groups default folded. Chromium layout screenshots, prior Batch/SI/update regression tests, Windows backend + native host + packaged EXE authenticated API smoke passed. All ORCA scientific execution limitations from v1.6.0 remain.",
   "release_type": "stable",
   "stable_release_blocked": false
 }
