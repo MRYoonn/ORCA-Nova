@@ -1,0 +1,24 @@
+name: Audit v1.6.0 Public Stable
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/audit-v1.6.0-stable.yml'
+      - 'tests/audit-public-stable-release.sh'
+  push:
+    branches: ['main', 'audit/stable-v160-public-20261110']
+    paths:
+      - '.github/workflows/audit-v1.6.0-stable.yml'
+      - 'tests/audit-public-stable-release.sh'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify-public-stable:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify Stable v1.6.0 source, downloaded ZIP SHA256/CRC, latest and archived prior stable
+        run: |
+          bash tests/audit-public-stable-release.sh v1.6.0 b3d2c3fbbdc9f1b8411345978bd95ddf888e2f1f v1.6.0
+          curl --fail --silent --show-error https://api.github.com/repos/MRYoonn/ORCA-Nova/releases/tags/v1.5.1 | jq -e '.tag_name=="v1.5.1" and .prerelease==false and .assets|length>=2' >/dev/null
