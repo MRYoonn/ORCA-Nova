@@ -20,7 +20,7 @@ const fs=require('fs'),path=require('path'),assert=require('assert');
   assert(await wb.evaluate(el=>el.classList.contains('library-collapsed')),'library must be folded by default');
   assert.equal(await toggle.getAttribute('aria-expanded'),'false');
   assert(!(await page.locator('#library-content').isVisible()),'library lists should not occupy space initially');
-  assert.equal(await page.locator('#calc-nav details.nav-category').count(),5);
+  assert.equal(await page.locator('#calc-nav details.nav-category').count(),6);
   assert.equal(await page.locator('#calc-nav details[open]').count(),0,'all calculation groups should start collapsed');
   const groupNames=await page.locator('#preset-grid .preset-group').evaluateAll(nodes=>nodes.map(el=>el.dataset.kind));
   assert.deepEqual(groupNames,['literature','recommended','preset'],'preset groups must be literature > recommended > preset');
