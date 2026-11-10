@@ -21,4 +21,4 @@ jobs:
       - name: Verify Stable v1.6.0 source, downloaded ZIP SHA256/CRC, latest and archived prior stable
         run: |
           bash tests/audit-public-stable-release.sh v1.6.0 b3d2c3fbbdc9f1b8411345978bd95ddf888e2f1f v1.6.0
-          curl --fail --silent --show-error https://api.github.com/repos/MRYoonn/ORCA-Nova/releases/tags/v1.5.1 | jq -e '.tag_name=="v1.5.1" and .prerelease==false and .assets|length>=2' >/dev/null
+          curl --fail --silent --show-error https://api.github.com/repos/MRYoonn/ORCA-Nova/releases/tags/v1.5.1 | jq -e '.tag_name=="v1.5.1" and .prerelease==false and (.assets|length)>=2' >/dev/null
