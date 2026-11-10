@@ -1,8 +1,8 @@
 {
-  "tag": "v1.6.0-rc.8",
-  "prerelease": true,
+  "tag": "v1.6.0",
+  "prerelease": false,
   "source": "approved-main-merge",
-  "summary": "Offline PDF/text SI Method Analyzer, DOI/page evidence, per-level Opt/SP candidates, conservative INP mismatch and opt-in application, geometry/charge/mult/solvent/freq checked composite Gibbs absolute energy. Three curated public SI method snippets and Playwright/Go/Windows CI passed; original Glorius full SI and licensed research-PC ORCA/MPI remain unverified; stable v1.5.1 unchanged.",
-  "release_type": "verification-prerelease",
-  "stable_release_blocked": true
+  "summary": "User-approved stable promotion of tested ORCA Nova 1.6 features and opt-in Stable/Beta updater. Native Windows build, packaged EXE local API smoke, browser QA, offline SI scientific parser, 2-4 worker mock process cancellation, public ZIP swap and rollback validated in CI; proprietary ORCA/MPI actual research lab computation and interactive update UI on user's PC not verified. GitHub backups cover sources/releases, not local user settings or scientific files.",
+  "release_type": "stable",
+  "stable_release_blocked": false
 }
