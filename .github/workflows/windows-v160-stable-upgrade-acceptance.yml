@@ -2,7 +2,7 @@ name: Windows v1.6.0 Stable Published EXE + Prior Stable Rollback Acceptance
 on:
   pull_request:
     paths:
-      - '.github/workflows/windows-stable-v160-upgrade-acceptance.yml'
+      - '.github/workflows/windows-v160-stable-upgrade-acceptance.yml'
       - 'update_published_releases_test.go'
       - 'tests/Windows-Portable-LiveAcceptance.ps1'
   workflow_dispatch:
