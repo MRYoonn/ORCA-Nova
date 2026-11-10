@@ -382,7 +382,7 @@ function initPresets(){
   const items=PRESETS.filter(p=>presetClass(p)===group.id);
   return `<section class="preset-group" data-kind="${group.id}" aria-label="${group.name} 프리셋">
    <div class="preset-group-heading"><span class="preset-group-name">${group.name}</span><span class="preset-count">${items.length}개</span><span class="preset-group-note">${group.note}</span></div>
-   <div class="preset-group-grid">${items.map(p=>`<button type="button" class="preset-item" data-preset="${p.id}" data-title="${esc(p.title)}" data-help="${esc(p.desc)}" title="${esc(p.title+' — '+p.subtitle)}"><span class="preset-top"><span class="preset-title">${esc(p.title)}</span><span class="preset-pill" data-class="${group.id}">${group.name==='문헌 Method'?'문헌':group.name}</span></span><span class="preset-sub">${esc(p.subtitle)}</span></button>`).join('')}</div></section>`;
+   <div class="preset-group-grid">${items.map(p=>`<button type="button" class="preset-item" data-preset="${p.id}" data-title="${esc(p.title)}" data-help="${esc(p.desc)}" title="${esc(p.title+' — '+p.subtitle)}"><span class="preset-top"><span class="preset-title">${esc(p.title)}</span><span class="preset-pill" data-class="${group.id}" title="${group.id==='recommended'?'추천 · 시작점 제안일 뿐, 계산법 검증이나 논문 재현이 아닙니다.':group.id==='literature'?'문헌 Method · 출처와 전체 SI 검증 범위를 확인하세요.':'프리셋 · 미리 저장된 설정입니다.'}">${group.name==='문헌 Method'?'문헌':group.name}</span></span><span class="preset-sub">${esc(p.subtitle)}</span></button>`).join('')}</div></section>`;
  }).join('');
  box.querySelectorAll('.preset-item').forEach(b=>b.addEventListener('click',()=>applyPreset(b.dataset.preset)));
  refreshPresetHighlight();
