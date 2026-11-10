@@ -1,0 +1,55 @@
+name: Windows v1.6.1 Stable Published EXE + Prior Stable Rollback Acceptance
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/windows-v161-stable-upgrade-acceptance.yml'
+      - 'update_published_releases_test.go'
+      - 'tests/Windows-Portable-LiveAcceptance.ps1'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  published-package:
+    runs-on: windows-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Download stable v1.6.0 and published v1.6.1, verify both SHA256 checksums
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          foreach($v in @('v1.6.0','v1.6.1')){
+            $dir=Join-Path 'downloads' $v
+            New-Item -ItemType Directory -Force -Path $dir | Out-Null
+            $base="https://github.com/MRYoonn/ORCA-Nova/releases/download/$v"
+            $zip=Join-Path $dir 'ORCA_Nova_Portable_Windows.zip'
+            $sums=Join-Path $dir 'SHA256SUMS.txt'
+            Invoke-WebRequest -Uri ($base+'/ORCA_Nova_Portable_Windows.zip') -OutFile $zip -UseBasicParsing
+            Invoke-WebRequest -Uri ($base+'/SHA256SUMS.txt') -OutFile $sums -UseBasicParsing
+            $text=Get-Content -LiteralPath $sums -Raw
+            $match=[regex]::Match($text,'(?im)^([a-f0-9]{64})\s+\*?ORCA_Nova_Portable_Windows\.zip\s*$')
+            if(-not $match.Success){throw "Invalid SHA256SUMS.txt for $v"}
+            if((Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant() -ne $match.Groups[1].Value.ToLowerInvariant()){throw "Checksum mismatch: $v"}
+          }
+      - name: Live smoke-test actual published v1.6.1 Windows backend and session security (licensed ORCA not included)
+        shell: pwsh
+        run: |
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File 'tests/Windows-Portable-LiveAcceptance.ps1' -PortableZip 'downloads/v1.6.1/ORCA_Nova_Portable_Windows.zip' -ChecksumFile 'downloads/v1.6.1/SHA256SUMS.txt' -ExpectedVersion '1.6.1' -ReportPath 'WINDOWS_STABLE_V161_LIVE_ACCEPTANCE.json'
+          if($LASTEXITCODE -ne 0){Get-Content 'WINDOWS_STABLE_V161_LIVE_ACCEPTANCE.json' -ErrorAction SilentlyContinue; throw 'Published portable API test failed'}
+      - name: Exercise published stable-to-stable isolated file swap and rollback
+        shell: pwsh
+        run: |
+          $env:ORCA_PREVIOUS_RELEASE_ZIP=(Resolve-Path 'downloads/v1.6.0/ORCA_Nova_Portable_Windows.zip').Path
+          $env:ORCA_CANDIDATE_RELEASE_ZIP=(Resolve-Path 'downloads/v1.6.1/ORCA_Nova_Portable_Windows.zip').Path
+          go test -run '^TestWindowsPublishedVersionSwapAndRollback$' -count=1 -v ./...
+          if($LASTEXITCODE -ne 0){throw 'Published update transaction/rollback failed'}
+      - name: Upload sanitized public-release acceptance report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ORCA-Nova-Public-Release-EXE-Acceptance
+          path: WINDOWS_STABLE_V161_LIVE_ACCEPTANCE.json
+          if-no-files-found: warn
