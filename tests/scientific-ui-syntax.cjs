@@ -17,5 +17,8 @@ for (const id of ['viz-profile-kind','viz-profile-energy','viz-role-a','viz-role
 assert(html.includes("D3ZERO"),'Hartmann published D3zero keyword missing');
 assert(html.includes("def2-QZVPPD"),'Hartmann published SP basis missing');
 assert(html.includes("10.1002/anie.9565676"),'DOI provenance missing');
-assert(html.includes("data-class=\"${p.tag.includes(\"추천\")"),'preset class styling missing');
+assert(html.includes('function presetClass(p)'),'preset category classification missing');
+assert(html.includes('const PRESET_CATEGORIES='),'ordered preset sections missing');
+assert(html.includes('preset-group-grid'),'two-column preset grouping missing');
+assert(html.includes('id="library-toggle"'),'default-folded calculation library toggle missing');
 console.log(`Inline JS parsed: ${scripts.length} scripts; profile controls and DOI present.`);

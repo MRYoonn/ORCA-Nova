@@ -10,6 +10,7 @@ on:
       - 'tests/batch-presets-summary-ui.cjs'
       - 'tests/si-ui.cjs'
       - 'tests/update-channels-ui.cjs'
+      - 'tests/preset-layout-library-fold-ui.cjs'
       - '.github/workflows/xyz-manager-browser.yml'
   workflow_dispatch:
 permissions:
@@ -39,3 +40,12 @@ jobs:
         run: node tests/si-ui.cjs
       - name: Browser regression — Stable/Beta update channels and release notes
         run: node tests/update-channels-ui.cjs
+      - name: Browser regression — preset-first layout and collapsible library
+        run: node tests/preset-layout-library-fold-ui.cjs
+      - name: Attach visual UI screenshots for review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ORCA-Nova-Preset-Layout-Screenshots
+          path: ui-screenshots/*.png
+          if-no-files-found: ignore
