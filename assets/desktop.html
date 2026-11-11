@@ -1785,5 +1785,224 @@ $('si-compute').onclick=async()=>{
 $('si-comp-export').onclick=()=>{if(siCompositeReport)download('SI_Opt_SP_Gibbs.txt',siCompositeReport,'text/plain;charset=utf-8')};
 </script>
 
+
+<script>
+/* Triplet transfer intentionally uses the existing local authenticated API and
+   Batch Scheduler. It does not modify the old W2/W5 workflow implementations. */
+const tripState={reference:'',targets:[],draft:null,mapping:null,lastResult:null,lastComparison:null};
+const tripRingLabels=['C2','N3','C4','C5','C6','N1','S2','O4','H1','H3','H5','H6'];
+const tripFixedNames=['C2','N3','C4','C5','C6','N1','S2','O4','H1','H3','H5','H6'];
+function tripStatus(message,bad=false){$('trip-status').textContent=message;$('trip-status').style.color=bad?'#ffb5c0':'#aacbdf'}
+function tripElement(tag,text,parent){let e=document.createElement(tag);if(text!==undefined)e.textContent=String(text);if(parent)parent.append(e);return e}
+function tripControls(){
+ const fixed=[...document.querySelectorAll('#trip-fixed input:checked')].map(x=>x.value);
+ return {charge:Number($('trip-charge').value),referenceCharge:Number($('trip-refcharge').value),multiplicity:3,
+  constrained:$('trip-constrained').checked,unconstrained:$('trip-unconstrained').checked,spin:$('trip-spin').checked,frequency:$('trip-frequency').checked,
+  fixedRoles:fixed,functional:$('trip-functional').value,basis:$('trip-basis').value,dispersion:$('trip-dispersion').value,
+  solvent:$('trip-solvent').value,cores:Number($('trip-cores').value),maxcore:Number($('trip-memory').value)}
+}
+for(const role of tripFixedNames){
+ const label=tripElement('label',undefined,$('trip-fixed'));
+ label.title=role.startsWith('H')?'고리에 직접 붙은 H의 Reference↔Target 좌표를 추가 이식·고정합니다. 양쪽 구조 모두 해당 원자를 가져야 합니다.':role+'의 Reference Triplet 좌표를 Target에 이식하고 STEP 1 Cartesian Constraints에 넣습니다.';
+ const cb=tripElement('input',undefined,label);cb.type='checkbox';cb.value=role;cb.checked=tripRingLabels.slice(0,6).includes(role);
+ tripElement('span',' '+role,label);
+}
+async function tripReadFile(file){
+ if(!file)throw Error('XYZ 파일을 선택해 주세요.');
+ if(file.size>4*1024*1024)throw Error('XYZ는 파일당 4MB를 초과할 수 없습니다.');
+ const txt=await file.text();xyz3DParse(txt);return txt;
+}
+$('trip-ref').addEventListener('change',async e=>{
+ tripState.reference='';tripState.draft=null;$('trip-run').disabled=true;
+ try{tripState.reference=await tripReadFile(e.target.files[0]);$('trip-ref-preview').disabled=false;tripStatus('Reference '+e.target.files[0].name+' 불러옴 · Target을 추가하고 매핑을 검토하세요.');}
+ catch(err){$('trip-ref-preview').disabled=true;tripStatus(err.message,true)}
+});
+$('trip-target').addEventListener('change',async e=>{
+ tripState.targets=[];tripState.draft=null;$('trip-run').disabled=true;
+ try{
+  const files=[...e.target.files];
+  if(!files.length||files.length>24)throw Error('Target XYZ는 1~24개를 선택하세요.');
+  const unique=new Set();
+  for(const file of files){if(unique.has(file.name.toLowerCase()))throw Error('중복 파일명: '+file.name);unique.add(file.name.toLowerCase());tripState.targets.push({name:file.name,xyz:await tripReadFile(file)})}
+  $('trip-target-names').textContent=tripState.targets.map(x=>x.name).join(', ');
+  $('trip-target-preview').disabled=false;
+  tripStatus(tripState.targets.length+'개 Target 등록 완료. 매핑 검토를 진행하세요.');
+ }catch(err){$('trip-target-preview').disabled=true;tripStatus(err.message,true)}
+});
+$('trip-ref-preview').addEventListener('click',()=>{if(tripState.reference)xyz3DOpen('Reference Triplet',tripState.reference)});
+$('trip-target-preview').addEventListener('click',()=>{if(tripState.targets[0])xyz3DOpen(tripState.targets[0].name,tripState.targets[0].xyz)});
+function tripRolesFromInputs(index,reference=false){
+ const selector=reference?'#trip-mapping input.trip-ref-role':'#trip-mapping input.trip-target-role[data-index="'+index+'"]';
+ const fields=[...document.querySelectorAll(selector)];if(!fields.length)return null;
+ const out={};for(const el of fields){
+  if(el.value.trim()==='')continue;
+  const n=Number(el.value);if(!Number.isSafeInteger(n)||n<0)throw Error(el.dataset.role+' 매핑은 0-based 정수 index여야 합니다');
+  out[el.dataset.role]=n;
+ }
+ if(tripRingLabels.slice(0,8).some(r=>!Number.isInteger(out[r])))throw Error('필수 역할 C2/N3/C4/C5/C6/N1/S2/O4의 원자 번호를 모두 지정하세요');
+ return out;
+}
+function tripPayload(confirmed){
+ if(!tripState.reference||!tripState.targets.length)throw Error('Reference 및 Target XYZ를 불러오세요.');
+ const rr=tripRolesFromInputs(0,true);
+ const targets=tripState.targets.map((x,i)=>({name:x.name,xyz:x.xyz,...(tripRolesFromInputs(i,false)?{roles:tripRolesFromInputs(i,false)}:{})}));
+ return {reference:tripState.reference,...(rr?{referenceRoles:rr}:{}),targets,options:tripControls(),confirmed}
+}
+function tripRenderMappings(items,manual=false){
+ const area=$('trip-mapping');area.replaceChildren();
+ if(!items?.length)return;
+ const referenceAtoms=xyz3DParse(tripState.reference).atoms;
+ for(const [targetIndex,item] of items.entries()){
+  const card=tripElement('section',undefined,area);card.className='triplet-mapping-card';
+  tripElement('h4',item.name+' · Chemical Atom Mapping (0-based)',card);
+  const text=tripElement('div','Reference / Target 원자 번호를 확인하세요. 오인식은 직접 수정 후 ② 재검증하세요.',card);text.className='triplet-note';
+  const table=tripElement('table',undefined,card);
+  const tr=tripElement('tr',undefined,table);
+  for(const h of ['Molecular Role','Reference index','Target index'])tripElement('th',h,tr);
+  const targetAtoms=xyz3DParse(tripState.targets[targetIndex].xyz).atoms;
+  for(const role of tripRingLabels){
+   const row=tripElement('tr',undefined,table);
+   tripElement('td',role,row);
+   const ra=tripElement('td',undefined,row),ta=tripElement('td',undefined,row);
+   const reference=tripElement('input',undefined,ra),target=tripElement('input',undefined,ta);
+   reference.type=target.type='number';reference.min=target.min='0';reference.max=String(referenceAtoms.length-1);target.max=String(targetAtoms.length-1);
+   reference.dataset.role=target.dataset.role=role;reference.className='trip-ref-role';target.className='trip-target-role';target.dataset.index=String(targetIndex);
+   reference.value=item.referenceRoles?.[role]===undefined?'':String(item.referenceRoles[role]);
+   target.value=item.targetRoles?.[role]===undefined?'':String(item.targetRoles[role]);
+   reference.title='Reference '+role+' · 0-based 원자 번호 (3D 미리보기에서 index 확인)';
+   target.title='Target '+role+' · 0-based 원자 번호 (원자 순서가 달라도 화학적 역할로 매핑)';
+   if(targetIndex>0){reference.readOnly=true;reference.disabled=true;reference.classList.add('trip-ref-clone')}
+   else reference.addEventListener('input',()=>{for(const el of area.querySelectorAll('.trip-ref-clone[data-role="'+role+'"]'))el.value=reference.value});
+   target.addEventListener('input',()=>{$('trip-run').disabled=true;tripStatus('수동 매핑이 변경되었습니다. ② 재검증 후 계산을 등록하세요.')});
+  }
+  for(const warning of item.warnings||[])tripElement('div','⚠ '+warning,card).className='triplet-warning';
+  if(item.transferredXYZ){
+   const buttons=tripElement('div',undefined,card);buttons.className='triplet-toolbar';
+   const view=tripElement('button','◈ 이식된 초기 구조 3D',buttons);view.type='button';view.className='btn small ghost';view.onclick=()=>xyz3DOpen('transferred_initial.xyz · '+item.name,item.transferredXYZ);
+   const save=tripElement('button','↓ transferred_initial.xyz',buttons);save.type='button';save.className='btn small ghost';save.onclick=()=>download(item.name.replace(/\.xyz$/i,'')+'_transferred_initial.xyz',item.transferredXYZ);
+  }
+ }
+}
+async function tripPreview(){
+ const button=$('trip-preview');button.disabled=true;$('trip-run').disabled=true;
+ try{
+  const payload=tripPayload(false);
+  tripStatus('로컬에서 thiouracil ring mapping과 XYZ geometry transfer를 계산합니다.');
+  const data=await desktopAPI('triplet/prepare',payload);
+  tripState.draft=data;tripRenderMappings(data.items);
+  tripStatus('고리 역할 매핑 '+data.items.length+'건 생성 · 각 원자 번호 및 충돌 경고를 확인한 다음 ③을 눌러 등록하세요.');
+  $('trip-run').disabled=false;
+ }catch(err){
+  tripStatus('Mapping 검증 실패: '+err.message,true);
+  if(tripState.targets.length&&!document.querySelector('.trip-ref-role')){
+   tripRenderMappings(tripState.targets.map(x=>({name:x.name,referenceRoles:{},targetRoles:{},warnings:['자동 식별 실패. 역할별 0-based index를 직접 입력하고 재검증하세요.']})),true);
+  }
+ }finally{button.disabled=false}
+}
+$('trip-preview').onclick=tripPreview;
+$('trip-review').onclick=tripPreview;
+for(const id of ['trip-refcharge','trip-charge','trip-constrained','trip-unconstrained','trip-spin','trip-frequency','trip-cores','trip-memory','trip-functional','trip-basis','trip-dispersion','trip-solvent']){
+ $(id).addEventListener('change',()=>{tripState.draft=null;$('trip-run').disabled=true;tripStatus('계산 설정 변경됨 · ② 매핑 재검증이 필요합니다.')});
+}
+$('trip-fixed').addEventListener('change',()=>{tripState.draft=null;$('trip-run').disabled=true;tripStatus('고정 원자 선택 변경됨 · ② 매핑 재검증이 필요합니다.')});
+$('trip-run').onclick=async()=>{
+ const b=$('trip-run');b.disabled=true;
+ try{
+  if(!tripState.draft)throw Error('① 매핑 미리보기 또는 ② 재검증을 먼저 실행하세요.');
+  if(!confirm('각 Target의 C2/C5/C6 역할과 N1 protonation, Charge(+1/0), Ring Constraints, 원자 충돌 경고를 확인했습니까?\\nUKS Triplet은 최저 T₁ 상태를 자동 보장하지 않습니다.'))return;
+  const payload=tripPayload(true);
+  const prepared=await desktopAPI('triplet/prepare',payload);
+  const warnings=prepared.items.flatMap(x=>x.warnings||[]);
+  if(warnings.length&&!confirm('새 좌표의 결합·충돌 경고 '+warnings.length+'건이 있습니다.\\n'+warnings.slice(0,5).join('\\n').slice(0,900)+'\\n모두 검토했으며 계속 등록할까요?'))return;
+  const jobs=prepared.items.map(x=>x.request);
+  if(jobs.some(x=>!x||!x.triplet?.confirmed))throw Error('확인되지 않은 Triplet Geometry Mapping입니다.');
+  // Use the existing scheduler budgets; this never bypasses queue preflight.
+  const request={jobs,limits:batchLimits()};
+  const check=await desktopAPI('queue/preflight',request);
+  if(!check.ok)throw Error('Batch Preflight 오류: '+JSON.stringify(check.reports));
+  await desktopConfig();
+  await desktopAPI('queue',request);
+  tripStatus(jobs.length+'개 Transfer Job을 기존 Batch Queue에 등록했습니다. 단계별 OUT/XYZ/GBW/CUBE가 원본과 분리된 폴더에 저장됩니다.');
+  await batchPoll();await tripRefreshJobs();
+ }catch(err){tripStatus('Batch 등록 실패: '+err.message,true)}
+ finally{b.disabled=false}
+};
+async function tripRefreshJobs(){
+ try{
+  const data=await desktopAPI('queue');
+  const select=$('trip-result-job'),old=select.value;
+  select.replaceChildren();
+  for(const job of data.jobs||[]){
+   if(!job.request?.triplet)continue;
+   const op=tripElement('option',job.label+' · '+job.state+' · '+(job.job?.stageName||'Pending'),select);
+   op.value=job.id;
+  }
+  if([...select.options].some(x=>x.value===old))select.value=old;
+  else if(select.options.length)select.value=select.options[select.options.length-1].value;
+ }catch(e){tripStatus('Queue 조회 실패: '+e.message,true)}
+}
+$('trip-results-refresh').onclick=tripRefreshJobs;
+function tripFmt(v,digits=5){return v===null||v===undefined||!Number.isFinite(Number(v))?'Not calculated':Number(v).toFixed(digits)}
+function tripShowResult(res){
+ const root=$('trip-result-view');root.replaceChildren();
+ tripElement('div',res.target+' · E='+tripFmt(res.energyEh,9)+' Eh · ⟨S²⟩='+tripFmt(res.s2,4),root);
+ tripElement('div','SCF '+(res.scfConverged?'Converged':'Not verified')+' · Opt '+(res.optimizationConverged?'Converged':'Not verified')+' · Frequency minimum '+(res.minimumVerified?'Verified':'Not verified')+' · CUBE '+(res.cubeAvailable?'Present':'Missing')+' · GBW '+(res.gbwAvailable?'Present':'Missing'),root);
+ const t=tripElement('table',undefined,root);t.className='triplet-spin-table';
+ const hd=tripElement('tr',undefined,t);
+ for(const k of ['Role','0-based index','Mulliken Spin','Löwdin Spin','Hirshfeld Spin'])tripElement('th',k,hd);
+ for(const row of res.spin||[]){
+  const tr=tripElement('tr',undefined,t);
+  for(const val of [row.role,row.index,tripFmt(row.mulliken),tripFmt(row.loewdin),tripFmt(row.hirshfeld)])tripElement('td',val,tr);
+ }
+ for(const [key,value] of Object.entries(res.bonds||{}))tripElement('div',key+': '+tripFmt(value,4)+' Å',root);
+ for(const warning of res.warnings||[])tripElement('div','⚠ '+warning,root).className='triplet-warning';
+ if(res.finalXYZ){const b=tripElement('button','◈ 최종 Triplet 구조 3D',root);b.type='button';b.className='btn small ghost';b.onclick=()=>xyz3DOpen('Triplet final · '+res.target,res.finalXYZ)}
+}
+$('trip-result-load').onclick=async()=>{
+ try{
+  const id=$('trip-result-job').value;if(!id)throw Error('Queue에서 Triplet Transfer Job을 선택하세요.');
+  tripState.lastResult=await desktopAPI('triplet/result?id='+encodeURIComponent(id));
+  tripShowResult(tripState.lastResult);
+ }catch(e){$('trip-result-view').textContent='결과 분석: '+e.message}
+};
+async function tripOptionalText(id){const file=$(id).files[0];if(!file)return '';if(file.size>16*1024*1024)throw Error(file.name+' 크기 제한(16MB)');return file.text()}
+$('trip-compare').onclick=async()=>{
+ const id=$('trip-result-job').value,button=$('trip-compare');button.disabled=true;
+ try{
+  if(!id)throw Error('완료된 Triplet Job을 선택하세요.');
+  const [originalOut,originalInp,originalXYZ,s0Out,s0Inp]=await Promise.all(['trip-original-out','trip-original-inp','trip-original-xyz','trip-s0-out','trip-s0-inp'].map(tripOptionalText));
+  if(!originalOut||!originalInp||!originalXYZ)throw Error('Original W2 OUT/INP/XYZ를 모두 선택하세요.');
+  const comparison=await desktopAPI('triplet/compare',{jobId:id,originalOut,originalInp,originalXYZ,s0Out,s0Inp});
+  tripState.lastComparison=comparison;
+  $('trip-export').disabled=false;$('trip-export-json').disabled=false;
+  const container=$('trip-comparison');container.replaceChildren();
+  tripElement('div','동일 Target 여부: '+(comparison.sameTarget?'YES':'NO')+' · ΔE(Transfer−Original): '+tripFmt(comparison.deltaEnergyKcal,4)+' kcal/mol',container);
+  tripElement('div','Triplet Excitation Energy: '+tripFmt(comparison.excitationKcal,4)+' kcal/mol',container);
+  const table=tripElement('table',undefined,container);table.className='triplet-spin-table';
+  const h=tripElement('tr',undefined,table);
+  for(const name of ['Method','C2 Spin (Mulliken)','C5 Spin','C6 Spin','Energy Eh','⟨S²⟩'])tripElement('th',name,h);
+  for(const [label,r] of [['Original',comparison.original],['Geometry Transfer',comparison.transfer]]){
+   const tr=tripElement('tr',undefined,table);
+   const vals=[label,...['C2','C5','C6'].map(role=>tripFmt(r.spin?.find(v=>v.role===role)?.mulliken)),tripFmt(r.energyEh,9),tripFmt(r.s2,4)];
+   for(const value of vals)tripElement('td',value,tr);
+  }
+  const keyUnion=[...new Set([...Object.keys(comparison.original.bonds||{}),...Object.keys(comparison.transfer.bonds||{})])];
+  for(const key of keyUnion)tripElement('div',key+': Original '+tripFmt(comparison.original.bonds?.[key],4)+' Å / Transfer '+tripFmt(comparison.transfer.bonds?.[key],4)+' Å',container);
+  for(const warning of comparison.warnings||[])tripElement('div','⚠ '+warning,container).className='triplet-warning';
+ }catch(e){$('trip-comparison').textContent='비교 실패: '+e.message}finally{button.disabled=false}
+};
+$('trip-export').onclick=()=>{
+ const r=tripState.lastComparison;if(!r)return;
+ const header=['Method','Role','Atom index','Mulliken Spin','Loewdin Spin','Hirshfeld Spin','Electronic energy Eh','S2','Delta E kcal/mol'];
+ const records=[header];
+ for(const [label,item]of [['Original',r.original],['Geometry Transfer',r.transfer]]){
+  for(const x of item.spin||[])records.push([label,x.role,x.index,tripFmt(x.mulliken),tripFmt(x.loewdin),tripFmt(x.hirshfeld),tripFmt(item.energyEh,9),tripFmt(item.s2,4),tripFmt(r.deltaEnergyKcal,4)]);
+ }
+ const csv=records.map(row=>row.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\r\n');
+ download('triplet_original_vs_transfer.csv',csv,'text/csv;charset=utf-8')
+};
+$('trip-export-json').onclick=()=>{if(tripState.lastComparison)download('triplet_original_vs_transfer.json',JSON.stringify(tripState.lastComparison,null,2),'application/json')};
+</script>
+
 </body>
 </html>
