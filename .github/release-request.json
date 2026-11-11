@@ -1,8 +1,10 @@
 {
-  "tag": "v1.7.0-rc.1",
-  "prerelease": true,
+  "tag": "v1.7.0",
+  "prerelease": false,
   "source": "approved-main-merge",
-  "summary": "User-requested public Beta for Triplet Geometry Transfer + Spin. Windows/Chromium/Mock-ORCA regression tests passed; actual licensed ORCA6/MPI Triplet state, optimization, CUBE, Frequency and spin-population values not validated. Keep v1.6.1 latest Stable and do not promote this release to stable.",
-  "release_type": "beta",
-  "stable_release_blocked": true
+  "summary": "User-approved v1.7.0 Stable promotion of tested Triplet Geometry Transfer + Spin RC. Windows build, public ZIP audit, updater replacement and rollback passed. Actual ORCA 6.x/MPI scientific calculations remain unvalidated and are disclosed in release notes. Preserve v1.6.1 and v1.7.0-rc.1 releases.",
+  "release_type": "stable",
+  "stable_release_blocked": false,
+  "previous_stable": "v1.6.1",
+  "rollback": "Automatic updater retains .ORCA_Nova_backup_<timestamp> of all replaced installed application files and restores on failed replacement or launch. Existing user calculations/settings are not cloud backed up."
 }
