@@ -60,6 +60,27 @@ end
 - Trial workflow는 **정식 Stable 배포되지 않았고, 실제 연구실 Windows ORCA 6.x/MPI로 재계산된 정답 검증이 필요합니다.** GitHub Windows 빌드·Mock 계산 통과는 **real ORCA scientific run**과 다릅니다.
 - 매핑은 현재 **C2–S / C4–O가 있는 thiouracil pyrimidine 고리**를 대상으로 합니다. 축합고리·교차 결합·잘못 표기된 수소/원소·서로 다른 protonation 위치는 거절하거나 수동 검증이 필요합니다. 일반적인 임의 분자 scaffold matching 도구가 아닙니다.
 
+## 실제 Windows ORCA 6.x 통합 검증 (로컬 연구실 PC)
+
+`tests/windows-triplet-transfer-acceptance.ps1`은 앱에서 생성된 Job의 OUT/XYZ/GBW/CUBE를 **읽기 전용으로 검사**합니다. 새로 추가한 `tests/Windows-Triplet-RealORCA-Acceptance.ps1`은 세 단계의 원본 INP를 검사하고, 사용자가 명시적으로 `-Execute`를 붙였을 때에만 로컬 ORCA를 실제 실행할 수 있습니다.
+
+```powershell
+# 기존 결과만 검증 (ORCA 실행 없음)
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tests\Windows-Triplet-RealORCA-Acceptance.ps1 -OrcaExe "C:\ORCA\orca.exe" -JobFolders "D:\ORCA_Nova\Jobs\TGT_Target_01"
+
+# 새로운 Job 폴더에서만 실제 3단계 ORCA 실행 (기존 OUT 덮어쓰기 금지)
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tests\Windows-Triplet-RealORCA-Acceptance.ps1 -OrcaExe "C:\ORCA\orca.exe" -JobFolders "D:\ORCA_Nova\Jobs\TGT_Target_02" -Execute -TimeoutSecondsPerStage 14400
+```
+
+`-Execute`는 기존 OUT이 존재하면 기존 연구 데이터를 보호하려고 즉시 중단합니다. 각 단계의 정상 종료·SCF/Geometry 수렴, Stage 1 Constraints, Stage 2 무제약, `step2_triplet.gbw`, Stage 3 Mulliken/Löwdin/Hirshfeld, `step3_spin.cube`, 최종 `⟨S²⟩`를 확인합니다. 단계 실패 시 다음 단계를 진행하지 않고 로컬 `BUILD_FAILURE_ANALYSIS.md`를 작성합니다. 보고서는 `Triplet_RealORCA_Acceptance.json`으로 **로컬에만 보존**됩니다. 전자배치 일치/T₁ 최소점/Spin 설명은 별도 과학 검증이 필요합니다.
+
+실사용 검증 때 최소한 다음 2개를 **동일 Target**에서 비교하세요.
+
+1. 기존 W2 Triplet 구조 및 OUT
+2. Reference 구조를 이식한 뒤 얻은 STEP 2/3 Triplet 결과 (가능하면 서로 다른 Reference에서도 1회 반복)
+
+두 계산의 `C2/C5/C6 Spin`, `⟨S²⟩`, 결합 길이와 같은 기질/같은 계산 방법에서만 허용되는 `ΔE`를 함께 검토합니다. Frequency를 끄면 최소점 검증 미완료로 판단합니다.
+
 ## 테스트 및 릴리스 제한
 
 `triplet_transfer_test.go`: 0-based mapping/permutation, protonation and charge guards, 고리 이식 및 Constraints.
