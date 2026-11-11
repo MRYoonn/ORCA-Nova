@@ -7,6 +7,7 @@ import (
  "encoding/json"
  "fmt"
  "math"
+ "regexp"
  "net/http"
  "io"
  "sort"
@@ -285,6 +286,23 @@ func tripORCAInput(stage,source string,opt tripOptions,freeze []int)string{
  }
  fmt.Fprintf(&b,"\n* xyzfile %d 3 %s\n",opt.Charge,source)
  return b.String()
+}
+// Keep the global Queue deny-by-default for external orbitals. Only the
+// internally generated STEP2 .gbw in the same target job folder is allowed.
+// Reusing previous orbitals is an SCF initial guess, not proof of T1 identity.
+func tripAllowInternalMORead(req RunRequest,st Stage,inp string)bool{
+ if req.Triplet==nil||!req.Triplet.Confirmed||len(req.Stages)!=3||st.Input!="step3_spin.inp"||st.Source!="step2_triplet.xyz"{return false}
+ if req.Stages[0].Input!="step1_constrained.inp"||req.Stages[0].Source!="transferred_initial.xyz"||!req.Stages[0].Opt {return false}
+ if req.Stages[1].Input!="step2_triplet.inp"||req.Stages[1].Source!="step1_constrained.xyz"||!req.Stages[1].Opt {return false}
+ if req.Stages[2].Input!=st.Input||req.Stages[2].Source!=st.Source||req.Stages[2].Opt {return false}
+ if regexp.MustCompile(`(?im)^\s*(?:%\s*(?:base|compound)|\$new_job)`).MatchString(inp){return false}
+ moinp:=regexp.MustCompile(`(?im)^\s*%moinp\s+"step2_triplet\.gbw"\s*$`)
+ if len(moinp.FindAllStringIndex(inp,-1))!=1{return false}
+ if len(regexp.MustCompile(`(?im)^\s*%moinp\b`).FindAllStringIndex(inp,-1))!=1{return false}
+ if len(regexp.MustCompile(`(?i)\bMOREAD\b`).FindAllStringIndex(inp,-1))!=1{return false}
+ if !regexp.MustCompile(`(?im)^\s*![^\n]*\bMOREAD\b`).MatchString(inp){return false}
+ if !regexp.MustCompile(`(?im)^\s*\*\s+xyzfile\s+[-+]?\d+\s+3\s+step2_triplet\.xyz\s*$`).MatchString(inp){return false}
+ return true
 }
 func tripBuildRequest(name,initial string,target tripMolecule,role tripRoles,opts tripOptions)RunRequest{
  indices:=[]int{}
