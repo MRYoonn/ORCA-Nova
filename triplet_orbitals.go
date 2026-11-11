@@ -24,7 +24,7 @@ func tripMethodFingerprint(inp string)string{
   for _,word:=range strings.Fields(strings.TrimSpace(strings.TrimPrefix(row,"!"))){
    upper:=strings.ToUpper(word)
    switch upper{
-   case "RKS","UKS","RHF","UHF","OPT","SP","FREQ","NUMFREQ","ANFREQ","OPTTS","XYZFILE","XYZOUTPUT","PRINTMOS":
+   case "RKS","UKS","RHF","UHF","OPT","SP","FREQ","NUMFREQ","ANFREQ","OPTTS","MOREAD","NOAUTOSTART","XYZFILE","XYZOUTPUT","PRINTMOS":
     continue
    }
    words=append(words,upper)
