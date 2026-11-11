@@ -46,9 +46,9 @@ end
 * xyzfile 1 3 transferred_initial.xyz
 ```
 
-각 제약 index는 Target의 **실제 chemical role mapping에 따라 자동 생성**됩니다. STEP 2에는 `%geom Constraints`가 존재하지 않습니다. STEP 3에는 ORCA 6용 `%output Print[P_Mulliken/P_Loewdin/P_Hirshfeld]`와 `%plots Format Gaussian_Cube, SpinDens("step3_spin.cube")`가 들어갑니다.
+각 제약 index는 Target의 **실제 chemical role mapping에 따라 자동 생성**됩니다. STEP 2에는 `%geom Constraints`가 존재하지 않습니다. STEP 3에는 STEP 2에서 생성한 `step2_triplet.gbw`를 `! MOREAD`와 `%moinp "step2_triplet.gbw"`로 불러와 **이전 UKS orbitals를 SCF 초기값으로 사용**합니다. 같은 Job 폴더의 승인된 STEP 2 GBW만 허용하며 일반 Batch의 외부 `%moinp`/MOREAD 차단은 유지합니다. 또한 ORCA 6용 `%output Print[P_Mulliken/P_Loewdin/P_Hirshfeld]`와 `%plots Format Gaussian_Cube, SpinDens("step3_spin.cube")`가 들어갑니다. **MOREAD는 전자상태가 유지되었다는 증명이 아니며**, STEP 2·3의 Occupation/⟨S²⟩/Spin 분포를 비교해야 합니다.
 
-[ORCA 6.1 Geometry Constraints 공식 매뉴얼](https://www.faccts.de/docs/orca/6.1/manual/contents/structurereactivity/optimizations.html) · [ORCA Population Analysis](https://www.faccts.de/docs/orca/6.1/manual/contents/spectroscopyproperties/population.html) · [ORCA Spin Density Cube](https://www.faccts.de/docs/orca/6.1/manual/contents/utilitiesvisualization/plots.html)
+[ORCA 6.1 MORead/GBW 공식 매뉴얼](https://www.faccts.de/docs/orca/6.1/manual/contents/essentialelements/initialguess.html) · [ORCA 6.1 Geometry Constraints 공식 매뉴얼](https://www.faccts.de/docs/orca/6.1/manual/contents/structurereactivity/optimizations.html) · [ORCA Population Analysis](https://www.faccts.de/docs/orca/6.1/manual/contents/spectroscopyproperties/population.html) · [ORCA Spin Density Cube](https://www.faccts.de/docs/orca/6.1/manual/contents/utilitiesvisualization/plots.html)
 
 ## 과학적 한계와 검증 경계
 
