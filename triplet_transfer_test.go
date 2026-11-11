@@ -146,3 +146,34 @@ func TestTripletInternalGBWReuseNeverAllowsExternalOrbitalInjection(t *testing.T
  copyJob:=job;copyJob.Triplet=nil
  if _,_,err:=resources(copyJob);err==nil{t.Fatal("ordinary Batch allowed MOREAD")}
 }
+
+
+func tripReplicateTwoRings(raw string)string{
+ atoms,xyz,err:=xyzGeometry(raw)
+ if err!=nil{panic(err)}
+ var b strings.Builder
+ fmt.Fprintf(&b,"%d\nSynthetic double-ring mapping ambiguity fixture\n",len(atoms)*2)
+ for pass:=0;pass<2;pass++{
+  for i,el:=range atoms{
+   shift:=0.0
+   if pass==1{shift=24}
+   fmt.Fprintf(&b,"%s %.6f %.6f %.6f\n",el,xyz[i][0]+shift,xyz[i][1],xyz[i][2])
+  }
+ }
+ return b.String()
+}
+func TestTripletAmbiguousScaffoldRequiresUserRoleReview(t *testing.T){
+ raw:=tripReplicateTwoRings(exampleTripletXYZ(false,false,true))
+ mol,err:=parseTripletXYZ(raw);if err!=nil{t.Fatal(err)}
+ candidates,err:=tripTryRoles(mol)
+ if err!=nil||len(candidates)!=2{t.Fatalf("expected two unambiguous ring *candidates*: %d, %v",len(candidates),err)}
+ opts:=standardTripOpts()
+ req:=tripPrepareRequest{Reference:raw,Options:opts,
+  Targets:[]tripTargetRequest{{Name:"ambiguous.xyz",XYZ:raw}},Confirmed:false}
+ if _,err:=prepareTriplet(req);err==nil||!strings.Contains(err.Error(),"모호"){t.Fatal("unreviewed two-ring reference was auto-accepted:",err)}
+ req.ReferenceRoles=candidates[0]
+ if _,err:=prepareTriplet(req);err==nil||!strings.Contains(err.Error(),"후보"){t.Fatal("unreviewed two-ring target was auto-accepted:",err)}
+ req.Targets[0].Roles=candidates[0]
+ prepared,err:=prepareTriplet(req);if err!=nil{t.Fatal(err)}
+ if len(prepared.Items)!=1||!prepared.NeedsConfirmation||prepared.Items[0].Request!=nil{t.Fatal("manual ring mapping should remain preview-only until explicit approval")}
+}
