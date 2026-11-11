@@ -17,7 +17,7 @@ type tripVec [3]float64
 type tripMolecule struct { Atoms []string; XYZ []tripVec; Bond [][]bool }
 type tripRoles map[string]int
 var tripRingRoles=[]string{"C2","N3","C4","C5","C6","N1"}
-var tripExtraRoles=[]string{"S2","O4"}
+var tripExtraRoles=[]string{"S2","O4","H1","H3","H5","H6"}
 var tripRadii=map[string]float64{"H":0.31,"C":0.76,"N":0.71,"O":0.66,"F":0.57,"S":1.05,"Cl":1.02,"Br":1.20,"P":1.07,"B":0.84,"Si":1.11}
 func vecAdd(a,b tripVec)tripVec{return tripVec{a[0]+b[0],a[1]+b[1],a[2]+b[2]}}
 func vecSub(a,b tripVec)tripVec{return tripVec{a[0]-b[0],a[1]-b[1],a[2]-b[2]}}
@@ -91,6 +91,9 @@ func tripTryRoles(m tripMolecule)([]tripRoles,error){
        oxygens:=tripExternalNeighbor(m,c4,"O",seen)
        if len(sulfurs)!=1||len(oxygens)!=1{continue}
        roles:=tripRoles{"C2":c2,"N3":n3,"C4":c4,"C5":c5,"C6":c6,"N1":n1,"S2":sulfurs[0],"O4":oxygens[0]}
+       for role,atom:=range map[string]int{"H1":n1,"H3":n3,"H5":c5,"H6":c6}{
+        h:=tripNeighbors(m,atom,"H");if len(h)==1{roles[role]=h[0]}
+       }
        key:=fmt.Sprint(ring)
        unique[key]=roles
       }
@@ -116,6 +119,11 @@ func tripCheckRoles(m tripMolecule,r tripRoles)error{
  cycle:=[]string{"C2","N3","C4","C5","C6","N1"}
  for k:=0;k<len(cycle);k++{if !tripLinked(m,r[cycle[k]],r[cycle[(k+1)%len(cycle)]]){return fmt.Errorf("%s-%s 결합이 XYZ에서 식별되지 않습니다",cycle[k],cycle[(k+1)%len(cycle)])}}
  if !tripLinked(m,r["C2"],r["S2"])||!tripLinked(m,r["C4"],r["O4"]){return fmt.Errorf("C2–S / C4–O 접속이 일치하지 않습니다")}
+ for label,parent:=range map[string]string{"H1":"N1","H3":"N3","H5":"C5","H6":"C6"}{
+  if index,ok:=r[label];ok{
+   if index<0||index>=len(m.Atoms)||m.Atoms[index]!="H"||!tripLinked(m,index,r[parent]){return fmt.Errorf("%s의 고리 H 연결성이 다릅니다",label)}
+  }
+ }
  // Fused rings or missing attachment might change the role meaning.
  for _,key:=range cycle{
   num:=0;for _,role:=range cycle{if tripLinked(m,r[key],r[role]){num++}}
@@ -306,6 +314,9 @@ func prepareTriplet(req tripPrepareRequest)(tripPrepareResponse,error){
   rr=candidates[0]
  }
  if err:=tripCheckRoles(reference,rr);err!=nil{return response,err}
+ for _,role:=range req.Options.FixedRoles{
+  if _,ok:=rr[role];!ok{return response,fmt.Errorf("Reference에는 선택한 %s 원자가 없습니다",role)}
+ }
  response.Warnings=append(response.Warnings,"원자 연결성은 XYZ 좌표의 공유결합 반지름으로 추정했습니다. 전하, N1 protonation, Thiouracil tautomer, UKS Triplet state identity는 사람이 검증해야 합니다.")
  for _,entry:=range req.Targets{
   if !safeName(entry.Name)||!strings.HasSuffix(strings.ToLower(entry.Name),".xyz"){return response,fmt.Errorf("안전한 Target XYZ 파일명이 필요합니다: %s",entry.Name)}
@@ -317,6 +328,7 @@ func prepareTriplet(req tripPrepareRequest)(tripPrepareResponse,error){
    tr=candidate[0]
   }
   if err:=tripValidatePair(reference,target,rr,tr,req.Options.ReferenceCharge,req.Options.Charge);err!=nil{return response,fmt.Errorf("%s: %w",entry.Name,err)}
+  for _,role:=range req.Options.FixedRoles{if _,ok:=tr[role];!ok{return response,fmt.Errorf("%s: Target에 선택한 %s 원자가 없습니다",entry.Name,role)} }
   aligned,warn,err:=tripTransfer(reference,target,rr,tr,req.Options.FixedRoles)
   if err!=nil{return response,fmt.Errorf("%s: %w",entry.Name,err)}
   initial:=tripXYZText(aligned,"Transfer Target="+entry.Name+"; original Target identity/order preserved; Mapping confirmed="+fmt.Sprint(req.Confirmed))
