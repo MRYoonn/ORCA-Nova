@@ -154,6 +154,10 @@ func (a *App) guard(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 func (a *App) route(w http.ResponseWriter, r *http.Request) {
+	if strings.HasPrefix(r.URL.Path, "/api/triplet/") {
+		a.tripletRoute(w, r)
+		return
+	}
 	if strings.HasPrefix(r.URL.Path, "/api/si/") {
 		a.siRoute(w, r)
 		return
