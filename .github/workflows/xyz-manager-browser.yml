@@ -11,6 +11,7 @@ on:
       - 'tests/si-ui.cjs'
       - 'tests/update-channels-ui.cjs'
       - 'tests/preset-layout-library-fold-ui.cjs'
+      - 'tests/triplet-transfer-ui.cjs'
       - '.github/workflows/xyz-manager-browser.yml'
   workflow_dispatch:
 permissions:
@@ -42,6 +43,8 @@ jobs:
         run: node tests/update-channels-ui.cjs
       - name: Browser regression — preset-first layout and collapsible library
         run: node tests/preset-layout-library-fold-ui.cjs
+      - name: Browser regression — Triplet Transfer mapping, Batch and C5/C6 spin UI
+        run: node tests/triplet-transfer-ui.cjs
       - name: Attach visual UI screenshots for review
         if: always()
         uses: actions/upload-artifact@v4
