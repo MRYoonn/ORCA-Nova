@@ -231,6 +231,11 @@
      <label data-help="STEP 2에 Frequency를 추가합니다. 꺼두면 허수 모드로 최저점 여부를 검증하지 못합니다."><input id="trip-frequency" type="checkbox"> Frequency</label>
     </div>
     <div class="triplet-note">Constraints 선택 · 기본은 <b>고리 heavy atoms 6개</b>. S2, O4, 고리의 H는 필요할 때만 선택하세요. 모두 ORCA 0-based index로 변환됩니다.</div>
+    <div class="triplet-controls">
+     <label data-help="동시에 실행할 독립 Target 수입니다. Batch Scheduler는 자원 초과시 다음 작업을 대기시킵니다.">동시 Target Job <input id="trip-concurrency" class="control" type="number" value="1" min="1" max="24"></label>
+     <label data-help="모든 병렬 작업에 배분할 CPU 총합 예산입니다. 각 Target의 %pal nprocs보다 작으면 실행 불가합니다.">Batch 전체 CPU <input id="trip-budget-cpu" class="control" type="number" value="16" min="1"></label>
+     <label data-help="모든 병렬 작업에 배분할 예약 RAM 예산입니다. 예약 RAM은 MaxCore x cores x 1.25를 기준으로 계산하고 실제 RSS 상한은 아닙니다.">Batch 전체 RAM (MB) <input id="trip-budget-ram" class="control" type="number" value="56000" min="1"></label>
+    </div>
     <div id="trip-fixed" class="triplet-fixed"></div>
    </section>
    <div class="triplet-toolbar">
@@ -255,6 +260,7 @@
      <label>Original W2 최종 XYZ <input id="trip-original-xyz" type="file" accept=".xyz,text/plain"></label>
      <label>Target S₀ OUT (선택) <input id="trip-s0-out" type="file" accept=".out,.log,text/plain"></label>
      <label>Target S₀ INP (선택) <input id="trip-s0-inp" type="file" accept=".inp,text/plain"></label>
+     <label>Target S₀ 최종 XYZ (선택) <input id="trip-s0-xyz" type="file" accept=".xyz,text/plain"></label>
     </div>
     <div class="triplet-toolbar"><button id="trip-compare" type="button" class="btn small primary">Original / Transfer 비교</button><button id="trip-export" type="button" class="btn small ghost" disabled>비교 CSV 저장</button><button id="trip-export-json" type="button" class="btn small ghost" disabled>보고서 JSON</button></div>
     <div id="trip-comparison" class="triplet-readout"></div>
@@ -1813,12 +1819,12 @@ async function tripReadFile(file){
  const txt=await file.text();xyz3DParse(txt);return txt;
 }
 $('trip-ref').addEventListener('change',async e=>{
- tripState.reference='';tripState.draft=null;$('trip-run').disabled=true;
+ tripState.reference='';tripState.draft=null;$('trip-run').disabled=true;$('trip-mapping').replaceChildren();
  try{tripState.reference=await tripReadFile(e.target.files[0]);$('trip-ref-preview').disabled=false;tripStatus('Reference '+e.target.files[0].name+' 불러옴 · Target을 추가하고 매핑을 검토하세요.');}
  catch(err){$('trip-ref-preview').disabled=true;tripStatus(err.message,true)}
 });
 $('trip-target').addEventListener('change',async e=>{
- tripState.targets=[];tripState.draft=null;$('trip-run').disabled=true;
+ tripState.targets=[];tripState.draft=null;$('trip-run').disabled=true;$('trip-mapping').replaceChildren();
  try{
   const files=[...e.target.files];
   if(!files.length||files.length>24)throw Error('Target XYZ는 1~24개를 선택하세요.');
@@ -1901,7 +1907,7 @@ async function tripPreview(){
 }
 $('trip-preview').onclick=tripPreview;
 $('trip-review').onclick=tripPreview;
-for(const id of ['trip-refcharge','trip-charge','trip-constrained','trip-unconstrained','trip-spin','trip-frequency','trip-cores','trip-memory','trip-functional','trip-basis','trip-dispersion','trip-solvent']){
+for(const id of ['trip-refcharge','trip-charge','trip-constrained','trip-unconstrained','trip-spin','trip-frequency','trip-cores','trip-memory','trip-functional','trip-basis','trip-dispersion','trip-solvent','trip-concurrency','trip-budget-cpu','trip-budget-ram']){
  $(id).addEventListener('change',()=>{tripState.draft=null;$('trip-run').disabled=true;tripStatus('계산 설정 변경됨 · ② 매핑 재검증이 필요합니다.')});
 }
 $('trip-fixed').addEventListener('change',()=>{tripState.draft=null;$('trip-run').disabled=true;tripStatus('고정 원자 선택 변경됨 · ② 매핑 재검증이 필요합니다.')});
@@ -1917,7 +1923,7 @@ $('trip-run').onclick=async()=>{
   const jobs=prepared.items.map(x=>x.request);
   if(jobs.some(x=>!x||!x.triplet?.confirmed))throw Error('확인되지 않은 Triplet Geometry Mapping입니다.');
   // Use the existing scheduler budgets; this never bypasses queue preflight.
-  const request={jobs,limits:batchLimits()};
+  const request={jobs,limits:{concurrency:Number($('trip-concurrency').value),cpu:Number($('trip-budget-cpu').value),ramMB:Number($('trip-budget-ram').value)}};
   const check=await desktopAPI('queue/preflight',request);
   if(!check.ok)throw Error('Batch Preflight 오류: '+JSON.stringify(check.reports));
   await desktopConfig();
@@ -1970,9 +1976,9 @@ $('trip-compare').onclick=async()=>{
  const id=$('trip-result-job').value,button=$('trip-compare');button.disabled=true;
  try{
   if(!id)throw Error('완료된 Triplet Job을 선택하세요.');
-  const [originalOut,originalInp,originalXYZ,s0Out,s0Inp]=await Promise.all(['trip-original-out','trip-original-inp','trip-original-xyz','trip-s0-out','trip-s0-inp'].map(tripOptionalText));
+  const [originalOut,originalInp,originalXYZ,s0Out,s0Inp,s0Xyz]=await Promise.all(['trip-original-out','trip-original-inp','trip-original-xyz','trip-s0-out','trip-s0-inp','trip-s0-xyz'].map(tripOptionalText));
   if(!originalOut||!originalInp||!originalXYZ)throw Error('Original W2 OUT/INP/XYZ를 모두 선택하세요.');
-  const comparison=await desktopAPI('triplet/compare',{jobId:id,originalOut,originalInp,originalXYZ,s0Out,s0Inp});
+  const comparison=await desktopAPI('triplet/compare',{jobId:id,originalOut,originalInp,originalXYZ,s0Out,s0Inp,s0Xyz});
   tripState.lastComparison=comparison;
   $('trip-export').disabled=false;$('trip-export-json').disabled=false;
   const container=$('trip-comparison');container.replaceChildren();
