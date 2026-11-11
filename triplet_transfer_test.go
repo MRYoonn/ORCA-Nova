@@ -85,6 +85,7 @@ func TestTripletStagesConstrainedAndUnconstrained(t *testing.T){
  if job.Stages[1].Source!="step1_constrained.xyz"||job.Stages[2].Source!="step2_triplet.xyz"{t.Fatal("optimized geometry was not chained")}
  if !strings.Contains(third,"Print[ P_Hirshfeld ]")||!strings.Contains(third,"SpinDens(\"step3_spin.cube\")"){t.Fatal("Spin Density/Populations not requested")}
  if strings.Contains(third,"%geom"){t.Fatal("stage3 should use fully relaxed geometry")}
+ if !strings.Contains(third,"MOREAD")||!strings.Contains(third,`%moinp "step2_triplet.gbw"`){t.Fatal("Step3 must reuse converged UKS orbitals from Step2 GBW")}
  report:=preflight(*job);if !report.OK{t.Fatal(report.Errors)}
  cpu,mem,err:=resources(*job);if err!=nil||cpu!=8||mem<20000{t.Fatalf("scheduler reservation invalid %d %d %v",cpu,mem,err)}
 }
@@ -119,4 +120,29 @@ func TestTripletNoImplicitScientificStateConclusion(t *testing.T){
  req:=tripPrepareRequest{Reference:exampleTripletXYZ(false,false,true),Targets:[]tripTargetRequest{{Name:"S-Me.xyz",XYZ:exampleTripletXYZ(false,false,true)}},Options:standardTripOpts(),Confirmed:true}
  res,err:=prepareTriplet(req);if err!=nil{t.Fatal(err)}
  if len(res.Warnings)==0||!strings.Contains(strings.Join(res.Warnings,""),"UKS Triplet state identity"){t.Fatal("must disclose unverified triplet electronic state")}
+}
+
+func TestTripletInternalGBWReuseNeverAllowsExternalOrbitalInjection(t *testing.T){
+ opts:=standardTripOpts();opts.Cores=2;opts.MaxCore=200
+ req:=tripPrepareRequest{Reference:exampleTripletXYZ(false,false,true),Options:opts,
+  Targets:[]tripTargetRequest{{Name:"test.xyz",XYZ:exampleTripletXYZ(true,false,true)}},Confirmed:true}
+ result,err:=prepareTriplet(req);if err!=nil{t.Fatal(err)}
+ job:=*result.Items[0].Request
+ if !tripAllowInternalMORead(job,job.Stages[2],job.Files[3].Content){t.Fatal("safe internal STEP2 .gbw rejected")}
+ if _,_,err:=resources(job);err!=nil{t.Fatal("safe internal STEP2 .gbw broke scheduler",err)}
+ malicious:=[]string{
+   strings.Replace(job.Files[3].Content,"step2_triplet.gbw","..\\other_molecule.gbw",1),
+   job.Files[3].Content+"\n%moinp \"external.gbw\"\n",
+   job.Files[3].Content+"\n$new_job\n",
+   strings.Replace(job.Files[3].Content,"step2_triplet.gbw","step3_spin.gbw",1),
+ }
+ for i,content:=range malicious{
+  copyJob:=job
+  copyJob.Files=append([]JobFile(nil),job.Files...)
+  copyJob.Files[3].Content=content
+  if _,_,err:=resources(copyJob);err==nil{t.Errorf("malicious MORead input #%d accepted",i)}
+ }
+ // No global exceptions: ordinary Batch calculations cannot access orbitals.
+ copyJob:=job;copyJob.Triplet=nil
+ if _,_,err:=resources(copyJob);err==nil{t.Fatal("ordinary Batch allowed MOREAD")}
 }
