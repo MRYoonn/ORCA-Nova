@@ -34,7 +34,7 @@ foreach($job in $JobFolders){
   $outPath=Join-Path $folder ($stem+'.out')
   $xyzOut=Join-Path $folder ($stem+'.xyz')
   $state=[ordered]@{Stage=$stem;InputSource=$stage.Source;InputExists=$false;InputValid=$false;Run='NOT_REQUESTED';Normal=$false;SCF=$false;Opt=$null;OutputXYZ=$false;ElapsedSeconds=$null}
-  if(-not(Test-Path -LiteralPath $inpPath -PathType Leaf)){ $issues.Add("$stem: INP missing");$stageReport.Add($state);break }
+  if(-not(Test-Path -LiteralPath $inpPath -PathType Leaf)){ $issues.Add("${stem}: INP missing");$stageReport.Add($state);break }
   $state.InputExists=$true
   $inp=Get-Content -LiteralPath $inpPath -Raw
   $validMult=[regex]::IsMatch($inp,'(?im)^\s*\*\s*xyzfile\s+[+-]?\d+\s+3\s+')
@@ -43,13 +43,13 @@ foreach($job in $JobFolders){
   $constraints=[regex]::IsMatch($inp,'(?is)%geom\s+Constraints\b')
   $mustConstrain=$stem -eq 'step1_constrained'
   $state.InputValid=$validMult -and $validSource -and $validUKS -and ($constraints -eq $mustConstrain)
-  if(-not $state.InputValid){$issues.Add("$stem: UKS Triplet / XYZ source / Cartesian constraints input does not match expected workflow")}
-  if(-not(Test-Path -LiteralPath $sourcePath -PathType Leaf)){$issues.Add("$stem: Required source XYZ missing: $($stage.Source)")}
+  if(-not $state.InputValid){$issues.Add("${stem}: UKS Triplet / XYZ source / Cartesian constraints input does not match expected workflow")}
+  if(-not(Test-Path -LiteralPath $sourcePath -PathType Leaf)){$issues.Add("${stem}: Required source XYZ missing: $($stage.Source)")}
   if($issues.Count -gt 0){$stageReport.Add($state);break}
   if($Execute){
    # Refuse to overwrite any old scientific results on disk.
    if(Test-Path -LiteralPath $outPath -PathType Leaf){
-    $issues.Add("$stem: existing OUT would be overwritten. Use a newly prepared, empty target JobFolder. No existing scientific data were changed.")
+    $issues.Add("${stem}: existing OUT would be overwritten. Use a newly prepared, empty target JobFolder. No existing scientific data were changed.")
     $stageReport.Add($state);break
    }
    $stderrPath=Join-Path $folder ($stem+'.stderr.txt')
@@ -60,20 +60,20 @@ foreach($job in $JobFolders){
     if(-not $proc.WaitForExit($TimeoutSecondsPerStage*1000)){
      & taskkill.exe /PID $proc.Id /T /F 2>$null|Out-Null
      $state.Run='TIMEOUT'
-     $issues.Add("$stem: timeout after $TimeoutSecondsPerStage seconds; ORCA/MPI tree terminated")
+     $issues.Add("${stem}: timeout after $TimeoutSecondsPerStage seconds; ORCA/MPI tree terminated")
     }elseif($proc.ExitCode -ne 0){
      $state.Run="EXIT_$($proc.ExitCode)"
-     $issues.Add("$stem: ORCA exit code $($proc.ExitCode)")
+     $issues.Add("${stem}: ORCA exit code $($proc.ExitCode)")
     }else{$state.Run='EXIT_0'}
    }catch{
-    $issues.Add("$stem: ORCA process error: "+[string]$_.Exception.Message)
+    $issues.Add("${stem}: ORCA process error: "+[string]$_.Exception.Message)
    }finally{
     $state.ElapsedSeconds=[math]::Round(((Get-Date)-$start).TotalSeconds,1)
     if($null -ne $proc){$proc.Dispose()}
    }
   }
   if(-not(Test-Path -LiteralPath $outPath -PathType Leaf)){
-   $issues.Add("$stem: OUT file missing")
+   $issues.Add("${stem}: OUT file missing")
    $stageReport.Add($state);break
   }
   $out=Get-Content -LiteralPath $outPath -Raw
@@ -83,10 +83,10 @@ foreach($job in $JobFolders){
    $state.Opt=$out.Contains('THE OPTIMIZATION HAS CONVERGED')
    $state.OutputXYZ=Test-Path -LiteralPath $xyzOut -PathType Leaf
   }
-  if(-not $state.Normal){$issues.Add("$stem: ORCA normal termination missing")}
-  if(-not $state.SCF){$issues.Add("$stem: SCF convergence not verified")}
-  if($stage.Opt -and -not $state.Opt){$issues.Add("$stem: Geometry Optimization not converged")}
-  if($stage.Opt -and -not $state.OutputXYZ){$issues.Add("$stem: final optimized XYZ missing")}
+  if(-not $state.Normal){$issues.Add("${stem}: ORCA normal termination missing")}
+  if(-not $state.SCF){$issues.Add("${stem}: SCF convergence not verified")}
+  if($stage.Opt -and -not $state.Opt){$issues.Add("${stem}: Geometry Optimization not converged")}
+  if($stage.Opt -and -not $state.OutputXYZ){$issues.Add("${stem}: final optimized XYZ missing")}
   if($stem -eq 'step2_triplet'){
    $gbw=Join-Path $folder 'step2_triplet.gbw'
    if(-not(Test-Path -LiteralPath $gbw -PathType Leaf) -or (Test-Path -LiteralPath $gbw -PathType Leaf) -and (Get-Item -LiteralPath $gbw).Length -eq 0){
