@@ -78,6 +78,37 @@ func TestMain(m *testing.M) {
 				_ = os.WriteFile(strings.TrimSuffix(os.Args[1], ".inp")+".xyz", b, 0600)
 			}
 		}
+        if os.Getenv("ORCA_NOVA_TRIPLET_MOCK")=="1" {
+            stem:=strings.TrimSuffix(os.Args[1], ".inp")
+            if strings.Contains(stem,"step2_triplet"){
+                _=os.WriteFile("step2_triplet.gbw",[]byte("mock GBW, not a real ORCA wavefunction"),0600)
+                if strings.Contains(s," Freq "){
+                    fmt.Println("VIBRATIONAL FREQUENCIES\n  0:   123.4500 cm**-1")
+                }
+            }
+            if strings.Contains(stem,"step3_spin"){
+                if os.Getenv("ORCA_NOVA_TRIPLET_NO_CUBE")!="1"{
+                    _=os.WriteFile("step3_spin.cube",[]byte("synthetic cube for mock testing only"),0600)
+                }
+                fmt.Println("Expectation value of <S**2> : 2.019")
+                fmt.Println("ORBITAL ENERGIES\nSPIN UP ORBITALS\n NO OCC E(Eh) E(eV)\n  0 1.0000 -0.8000 -21.77\n  1 1.0000 -0.3500 -9.52\n  2 1.0000 -0.2000 -5.44\nSPIN DOWN ORBITALS\n NO OCC E(Eh) E(eV)\n  0 1.0000 -0.7500 -20.40\n  1 0.0000 -0.1100 -2.99\n  2 0.0000 0.1200 3.26")
+                xyzMatch:=xyzHeader.FindStringSubmatch(s)
+                if len(xyzMatch)>3{
+                    raw,_:=os.ReadFile(xyzMatch[3])
+                    symbols,_,parseErr:=xyzGeometry(string(raw))
+                    if parseErr==nil{
+                        for _,scheme:=range []string{"MULLIKEN ATOMIC CHARGES AND SPIN POPULATIONS","LOEWDIN ATOMIC CHARGES AND SPIN POPULATIONS","HIRSHFELD ANALYSIS"}{
+                            fmt.Println(scheme)
+                            for i,e:=range symbols{
+                                if scheme=="HIRSHFELD ANALYSIS"{fmt.Printf("%d %s 0.000000 %.6f\n",i,e,float64(i)*0.007)}
+                                else{fmt.Printf("%d %s : 0.000000 %.6f\n",i,e,float64(i)*0.009)}
+                            }
+                            fmt.Println()
+                        }
+                    }
+                }
+            }
+        }
 		fmt.Println("FINAL SINGLE POINT ENERGY -75.1234\nORCA TERMINATED NORMALLY")
 		os.Exit(0)
 	}
