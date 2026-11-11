@@ -1,0 +1,22 @@
+name: Audit v1.7.0-rc.1 Public Beta
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/audit-v1.7.0-rc.1.yml'
+  push:
+    branches: ['main', 'audit/rc1-public-triplet-20261112']
+    paths:
+      - '.github/workflows/audit-v1.7.0-rc.1.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify-public-beta:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify public beta source, ZIP checksum/CRC, safety and unmodified latest stable
+        run: |
+          bash tests/audit-public-rc-release.sh v1.7.0-rc.1 025eb8fdb86f3a8d7b8b601e2d73f3bff3835b3f v1.6.1
+          curl --fail --silent --show-error https://api.github.com/repos/MRYoonn/ORCA-Nova/releases/tags/v1.6.1 | jq -e '.tag_name=="v1.6.1" and .prerelease==false and (.assets|length)>=2' > /dev/null
