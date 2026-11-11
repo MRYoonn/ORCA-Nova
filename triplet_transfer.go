@@ -214,6 +214,16 @@ type tripOptions struct{
  Cores int `json:"cores"`
  MaxCore int `json:"maxcore"`
 }
+type tripJobMeta struct{
+ TargetName string `json:"targetName"`
+ Roles tripRoles `json:"roles"`
+ ReferenceRoles tripRoles `json:"referenceRoles"`
+ Charge int `json:"charge"`
+ Multiplicity int `json:"multiplicity"`
+ Frequency bool `json:"frequency"`
+ SelectedRoles []string `json:"selectedRoles"`
+ Confirmed bool `json:"confirmed"`
+}
 type tripPrepareRequest struct{
  Reference string `json:"reference"`
  ReferenceRoles tripRoles `json:"referenceRoles,omitempty"`
@@ -273,7 +283,7 @@ func tripBuildRequest(name,initial string,target tripMolecule,role tripRoles,opt
  first:=tripORCAInput("fixed","transferred_initial.xyz",opts,indices)
  second:=tripORCAInput("free","step1_constrained.xyz",opts,nil)
  third:=tripORCAInput("spin","step2_triplet.xyz",opts,nil)
- return RunRequest{Label:"TGT_"+tripCovalentSafeName(name),Files:[]JobFile{
+ return RunRequest{Label:"TGT_"+tripCovalentSafeName(name),Triplet:&tripJobMeta{TargetName:name,Roles:role,Charge:opts.Charge,Multiplicity:3,Frequency:opts.Frequency,SelectedRoles:append([]string(nil),opts.FixedRoles...),Confirmed:true},Files:[]JobFile{
   {Name:"transferred_initial.xyz",Content:initial},
   {Name:"step1_constrained.inp",Content:first},
   {Name:"step2_triplet.inp",Content:second},
@@ -313,6 +323,7 @@ func prepareTriplet(req tripPrepareRequest)(tripPrepareResponse,error){
   p:=tripPrepared{Name:entry.Name,ReferenceRoles:rr,TargetRoles:tr,TransferredXYZ:initial,Warnings:warn}
   if req.Confirmed{
    run:=tripBuildRequest(entry.Name,initial,target,tr,req.Options)
+   run.Triplet.ReferenceRoles=rr
    pf:=preflight(run);if !pf.OK{return response,fmt.Errorf("%s: 계산 전 검사 실패: %s",entry.Name,strings.Join(pf.Errors,"; "))}
    p.Request=&run
   }
