@@ -100,8 +100,7 @@ func TestMain(m *testing.M) {
                         for _,scheme:=range []string{"MULLIKEN ATOMIC CHARGES AND SPIN POPULATIONS","LOEWDIN ATOMIC CHARGES AND SPIN POPULATIONS","HIRSHFELD ANALYSIS"}{
                             fmt.Println(scheme)
                             for i,e:=range symbols{
-                                if scheme=="HIRSHFELD ANALYSIS"{fmt.Printf("%d %s 0.000000 %.6f\n",i,e,float64(i)*0.007)}
-                                else{fmt.Printf("%d %s : 0.000000 %.6f\n",i,e,float64(i)*0.009)}
+                                if scheme=="HIRSHFELD ANALYSIS"{fmt.Printf("%d %s 0.000000 %.6f\n",i,e,float64(i)*0.007)} else{fmt.Printf("%d %s : 0.000000 %.6f\n",i,e,float64(i)*0.009)}
                             }
                             fmt.Println()
                         }
