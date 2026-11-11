@@ -44,6 +44,7 @@ type RunRequest struct {
 	Label  string    `json:"label"`
 	Files  []JobFile `json:"files"`
 	Stages []Stage   `json:"stages"`
+	Triplet *tripJobMeta `json:"triplet,omitempty"`
 }
 type Job struct {
 	ID              string   `json:"id"`
@@ -154,6 +155,10 @@ func (a *App) guard(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 func (a *App) route(w http.ResponseWriter, r *http.Request) {
+	if strings.HasPrefix(r.URL.Path, "/api/triplet/") {
+		a.tripletRoute(w, r)
+		return
+	}
 	if strings.HasPrefix(r.URL.Path, "/api/si/") {
 		a.siRoute(w, r)
 		return
@@ -596,6 +601,9 @@ func (a *App) failure(j *Job, msg string, outputPath string) {
 }
 func (a *App) runJob(ctx context.Context, orcaExe string, req RunRequest, j *Job) {
 	defer func() {
+		if req.Triplet != nil {
+			if err := writeTripletSummary(j.Folder, req); err != nil { a.updateJob(j, func(j *Job) { j.Message += " (Triplet 비교 보고서: "+err.Error()+")" }) }
+		}
 		path, err := writeAnalysisReports(j.Folder, req)
 		if err == nil {
 			a.updateJob(j, func(j *Job) { j.ReportFile = path })
@@ -615,6 +623,12 @@ func (a *App) runJob(ctx context.Context, orcaExe string, req RunRequest, j *Job
 			if err := validateStage(j.Folder, stage); err != nil {
 				a.failure(j, "완료 단계 재검증 실패: "+err.Error(), "")
 				return
+			}
+			if req.Triplet != nil {
+				if err := validateTripletStage(j.Folder, stage); err != nil {
+					a.failure(j, "완료 Triplet 단계 검사 실패: "+err.Error(), "")
+					return
+				}
 			}
 			continue
 		}
@@ -699,6 +713,12 @@ func (a *App) runJob(ctx context.Context, orcaExe string, req RunRequest, j *Job
 		if err := validateStage(j.Folder, stage); err != nil {
 			a.failure(j, err.Error(), outPath)
 			return
+		}
+		if req.Triplet != nil {
+			if err := validateTripletStage(j.Folder, stage); err != nil {
+				a.failure(j, "Triplet Transfer 단계 검사 실패: "+err.Error(), outPath)
+				return
+			}
 		}
 		a.updateJob(j, func(j *Job) { j.CompletedStages = append(j.CompletedStages, stage.Input) })
 		if i < len(j.stageKeys) {

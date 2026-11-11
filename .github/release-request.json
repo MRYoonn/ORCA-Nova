@@ -1,8 +1,8 @@
 {
-  "tag": "v1.6.1",
-  "prerelease": false,
+  "tag": "v1.7.0-rc.1",
+  "prerelease": true,
   "source": "approved-main-merge",
-  "summary": "UX patch: quick presets grouped Literature -> Recommended -> Preset, two-column row-major, wider calculation pane and single-line headings at standard desktop width. Calculation Library and W/A/B/C/D/E accordion groups default folded. Chromium layout screenshots, prior Batch/SI/update regression tests, Windows backend + native host + packaged EXE authenticated API smoke passed. All ORCA scientific execution limitations from v1.6.0 remain.",
-  "release_type": "stable",
-  "stable_release_blocked": false
+  "summary": "User-requested public Beta for Triplet Geometry Transfer + Spin. Windows/Chromium/Mock-ORCA regression tests passed; actual licensed ORCA6/MPI Triplet state, optimization, CUBE, Frequency and spin-population values not validated. Keep v1.6.1 latest Stable and do not promote this release to stable.",
+  "release_type": "beta",
+  "stable_release_blocked": true
 }

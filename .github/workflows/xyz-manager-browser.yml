@@ -11,6 +11,7 @@ on:
       - 'tests/si-ui.cjs'
       - 'tests/update-channels-ui.cjs'
       - 'tests/preset-layout-library-fold-ui.cjs'
+      - 'tests/triplet-transfer-ui.cjs'
       - '.github/workflows/xyz-manager-browser.yml'
   workflow_dispatch:
 permissions:
@@ -27,7 +28,7 @@ jobs:
       - name: Install pinned Playwright browser test tools
         run: |
           npm install --no-save playwright@1.56.1
-          npx playwright install --with-deps chromium
+          npx playwright install chromium
       - name: Validate embedded app JavaScript syntax
         run: node tests/scientific-ui-syntax.cjs
       - name: Browser regression — XYZ removal and Multi-XYZ Batch
@@ -42,6 +43,8 @@ jobs:
         run: node tests/update-channels-ui.cjs
       - name: Browser regression — preset-first layout and collapsible library
         run: node tests/preset-layout-library-fold-ui.cjs
+      - name: Browser regression — Triplet Transfer mapping, Batch and C5/C6 spin UI
+        run: node tests/triplet-transfer-ui.cjs
       - name: Attach visual UI screenshots for review
         if: always()
         uses: actions/upload-artifact@v4

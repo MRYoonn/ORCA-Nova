@@ -72,8 +72,8 @@ func resources(req RunRequest) (cpu, ram int, err error) {
 			}
 		}
 		inp := files[s.Input]
-		if regexp.MustCompile(`(?im)^\s*(?:%\s*(?:base|moinp|compound)|\$new_job)|\bMOREAD\b`).MatchString(inp) {
-			return 0, 0, fmt.Errorf("%s: Queue에서는 %%base, 외부 orbital 및 compound 입력을 지원하지 않습니다", s.Input)
+		if regexp.MustCompile(`(?im)^\s*(?:%\s*(?:base|moinp|compound)|\$new_job)|\bMOREAD\b`).MatchString(inp) && !tripAllowInternalMORead(req,s,inp) {
+			return 0, 0, fmt.Errorf("%s: Queue는 외부 MORead/%%moinp 입력을 거부합니다. 승인된 Triplet STEP2→STEP3 내부 GBW만 허용합니다", s.Input)
 		}
 		if len(xyzHeader.FindAllStringSubmatch(inp, -1)) != 1 {
 			return 0, 0, fmt.Errorf("%s: Queue는 * xyzfile 입력 한 개가 필요합니다", s.Input)

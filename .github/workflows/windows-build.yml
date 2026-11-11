@@ -32,8 +32,15 @@ jobs:
         run: |
           $tokens = $null
           $errors = $null
-          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path 'tests/windows-orca6-smoke-check.ps1').Path, [ref]$tokens, [ref]$errors) | Out-Null
-          if ($errors.Count -gt 0) { $errors | Format-List | Out-String | Write-Output; exit 1 }
+          foreach ($script in @('tests/windows-orca6-smoke-check.ps1','tests/windows-triplet-transfer-acceptance.ps1','tests/Windows-Triplet-RealORCA-Acceptance.ps1','tests/Windows-Triplet-Audit-Safety-Test.ps1')) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $script).Path, [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) { $errors | Format-List | Out-String | Write-Output; exit 1 }
+          }
+      - name: Verify Triplet Real-ORCA audit refuses to overwrite prior research output
+        shell: pwsh
+        run: pwsh -NoProfile -NonInteractive -File tests/Windows-Triplet-Audit-Safety-Test.ps1
       - name: Validate embedded browser JavaScript and provenance
         run: node tests/scientific-ui-syntax.cjs
       - name: Vet Go backend
