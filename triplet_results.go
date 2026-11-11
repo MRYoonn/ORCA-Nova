@@ -267,12 +267,18 @@ func (a *App) tripletExtraRoute(w http.ResponseWriter,r *http.Request){
   if err!=nil{fail(w,422,err.Error());return}
   comparison,err:=tripCompareResult(body.OriginalXYZ,body.OriginalOUT,body.OriginalINP,body.OriginalRoles,result,false)
   if err!=nil{fail(w,422,err.Error());return}
-  if body.S0OUT!=""&&body.S0INP!=""{
+  if body.S0OUT!=""&&body.S0INP!=""&&body.S0XYZ!=""{
+   groundXYZ,geomErr:=parseTripletXYZ(body.S0XYZ)
+   groundRoles,rolesErr:=tripTryRoles(groundXYZ)
+   targetXYZ,targetErr:=parseTripletXYZ(result.FinalXYZ)
    scf,e:=ParseOrcaOutput(strings.NewReader(body.S0OUT),"original_S0.out",body.S0INP)
-   if e==nil&&scf.Electronic!=nil&&scf.Normal&&scf.SCFConverged&&scf.Multiplicity==1&&scf.Charge==result.Charge&&scf.Method==result.Method&&result.EnergyEh!=nil&&result.Converged{
+   sameTarget:=geomErr==nil&&rolesErr==nil&&targetErr==nil&&len(groundRoles)==1&&tripSameFormula(groundXYZ,targetXYZ)&&tripGraphFingerprint(groundXYZ,groundRoles[0])==tripGraphFingerprint(targetXYZ,result.Roles)
+   if e==nil&&sameTarget&&scf.Electronic!=nil&&scf.Normal&&scf.SCFConverged&&scf.Optimized&&scf.Multiplicity==1&&scf.Charge==result.Charge&&tripMethodFingerprint(body.S0INP)==result.MethodFingerprint&&result.EnergyEh!=nil&&result.Converged&&result.OptimizationConverged{
     delta:=(*result.EnergyEh-*scf.Electronic)*ehToKcal;comparison.ExcitationKcal=&delta
-    comparison.Warnings=append(comparison.Warnings,"S₀/T₁ electronic gap (kcal/mol)만 계산했습니다. 서로 다른 최적화 기하에서 측정되었는지, 두 상태가 같은 Method/Target인지 별도 확인하세요.")
-   }else{comparison.Warnings=append(comparison.Warnings,"S₀ 에너지 또는 Method/Charge/Spin/수렴 조건이 맞지 않아 Excitation Energy를 표시하지 않습니다")}
+    comparison.Warnings=append(comparison.Warnings,"S₀/T₁ 서로 최적화된 구조 간 Electronic Gap (kcal/mol)입니다. 진동수, thermal correction 및 state identity는 별도 검증이 필요합니다.")
+   }else{comparison.Warnings=append(comparison.Warnings,"S₀/Target XYZ 및 Method/Charge/Multiplicity/SCF/Opt 수렴 조건이 충족되지 않아 Excitation Energy 미표시")}
+  }else if body.S0OUT!=""||body.S0INP!=""||body.S0XYZ!="" {
+   comparison.Warnings=append(comparison.Warnings,"S₀ 비교는 S₀ OUT/INP/XYZ 세 파일이 모두 필요합니다")
   }
   respond(w,200,comparison)
  default:http.NotFound(w,r)
