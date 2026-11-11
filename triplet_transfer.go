@@ -269,7 +269,7 @@ func (o tripOptions) validate()error{
  return nil
 }
 func tripORCAInput(stage,source string,opt tripOptions,freeze []int)string{
- task:="Opt";if stage=="spin"{task="SP"}else if stage=="free"&&opt.Frequency{task="Opt Freq"}
+ task:="Opt";if stage=="spin"{task="SP MOREAD"}else if stage=="free"&&opt.Frequency{task="Opt Freq"}
  var b strings.Builder
  fmt.Fprintf(&b,"! UKS %s %s %s TightSCF %s SMD(%s)\n",opt.Functional,opt.Dispersion,opt.Basis,task,opt.Solvent)
  fmt.Fprintf(&b,"%%pal\n nprocs %d\nend\n\n%%maxcore %d\n",opt.Cores,opt.MaxCore)
@@ -279,6 +279,7 @@ func tripORCAInput(stage,source string,opt tripOptions,freeze []int)string{
   b.WriteString(" end\nend\n")
  }
  if stage=="spin"{
+  b.WriteString("\n%moinp \"step2_triplet.gbw\"\n")
   b.WriteString("\n%output\n Print[ P_Mulliken ] 1\n Print[ P_Loewdin ] 1\n Print[ P_Hirshfeld ] 1\nend\n")
   b.WriteString("\n%plots\n Format Gaussian_Cube\n dim1 64\n dim2 64\n dim3 64\n SpinDens(\"step3_spin.cube\");\nend\n")
  }
