@@ -32,7 +32,7 @@ jobs:
         run: |
           $tokens = $null
           $errors = $null
-          foreach ($script in @('tests/windows-orca6-smoke-check.ps1','tests/windows-triplet-transfer-acceptance.ps1')) {
+          foreach ($script in @('tests/windows-orca6-smoke-check.ps1','tests/windows-triplet-transfer-acceptance.ps1','tests/Windows-Triplet-RealORCA-Acceptance.ps1')) {
             $tokens = $null
             $errors = $null
             [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $script).Path, [ref]$tokens, [ref]$errors) | Out-Null
