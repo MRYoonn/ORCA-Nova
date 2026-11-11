@@ -27,6 +27,8 @@ type tripRoleSpin struct{
 type tripResult struct{
  Target string `json:"target"`
  Method string `json:"method"`
+ MethodFingerprint string `json:"methodFingerprint"`
+ SOMOCandidates []tripSOMO `json:"somoCandidates"`
  Charge int `json:"charge"`
  Multiplicity int `json:"multiplicity"`
  Converged bool `json:"converged"`
@@ -53,6 +55,7 @@ type tripCompareRequest struct{
  OriginalRoles tripRoles `json:"originalRoles,omitempty"`
  S0OUT string `json:"s0Out,omitempty"`
  S0INP string `json:"s0Inp,omitempty"`
+ S0XYZ string `json:"s0Xyz,omitempty"`
 }
 type tripComparison struct{
  Original tripResult `json:"original"`
@@ -117,6 +120,9 @@ func tripReadResult(folder string,req RunRequest)(tripResult,error){
  m,err:=parseTripletXYZ(string(xyz));if err!=nil{return result,err}
  a,err:=ParseOrcaOutput(strings.NewReader(string(out)),outPath,string(inp));if err!=nil{return result,err}
  result=tripInspect(m,meta.Roles,a,string(xyz),meta.TargetName,meta.Frequency)
+ result.MethodFingerprint=tripMethodFingerprint(string(inp))
+ result.SOMOCandidates=tripSOMOCandidates(string(out))
+ if len(result.SOMOCandidates)==0{result.Warnings=append(result.Warnings,"UKS α/β orbital occupations에서 SOMO 후보를 식별하지 못했습니다. GBW와 OUT을 확인하세요.")}
  optOut,err:=os.ReadFile(filepath.Join(folder,"step2_triplet.out"))
  if err==nil{
   optInp,_:=os.ReadFile(filepath.Join(folder,"step2_triplet.inp"))
@@ -210,6 +216,8 @@ func tripCompareResult(originalXYZ,originalOUT,originalINP string,roles tripRole
  if originalINP==""||originalOUT==""{return c,fmt.Errorf("Original W2 OUT와 INP가 필요합니다")}
  a,err:=ParseOrcaOutput(strings.NewReader(originalOUT),"original.out",originalINP);if err!=nil{return c,err}
  c.Original=tripInspect(m,roles,a,originalXYZ,"Original",frequency)
+ c.Original.MethodFingerprint=tripMethodFingerprint(originalINP)
+ c.Original.SOMOCandidates=tripSOMOCandidates(originalOUT)
  c.Transfer=transfer
  if transfer.FinalXYZ==""{return c,fmt.Errorf("Transfer 최종 XYZ가 누락됐습니다")}
  t,err:=parseTripletXYZ(transfer.FinalXYZ);if err!=nil{return c,err}
@@ -220,9 +228,9 @@ func tripCompareResult(originalXYZ,originalOUT,originalINP string,roles tripRole
   return c,fmt.Errorf("Original과 Transfer의 원자 연결성/고리 역할이 일치하지 않습니다")
  }
  c.SameTarget=true
- if a.Method!=transfer.Method {
-  c.Warnings=append(c.Warnings,"Method가 다릅니다. 같은 Target이라도 상대 에너지를 산출하지 않습니다.")
- }else if a.Electronic!=nil&&transfer.EnergyEh!=nil&&a.Normal&&a.SCFConverged&&transfer.Converged&&transfer.OptimizationConverged {
+ if c.Original.MethodFingerprint==""||transfer.MethodFingerprint==""||c.Original.MethodFingerprint!=transfer.MethodFingerprint {
+  c.Warnings=append(c.Warnings,"Functional/Basis/Dispersion/Solvent/SCF 설정이 다릅니다. 상대 에너지를 산출하지 않습니다.")
+ }else if a.Electronic!=nil&&transfer.EnergyEh!=nil&&a.Normal&&a.SCFConverged&&a.Optimized&&transfer.Converged&&transfer.OptimizationConverged {
   delta:=*transfer.EnergyEh-*a.Electronic;deltaKcal:=delta*ehToKcal
   c.DeltaEnergyEh=&delta;c.DeltaEnergyKcal=&deltaKcal
  }else{c.Warnings=append(c.Warnings,"최종 에너지 또는 수렴 조건이 미확인이라 ΔE를 계산하지 않습니다")}
