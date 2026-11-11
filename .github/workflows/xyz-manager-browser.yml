@@ -28,7 +28,7 @@ jobs:
       - name: Install pinned Playwright browser test tools
         run: |
           npm install --no-save playwright@1.56.1
-          npx playwright install --with-deps chromium
+          npx playwright install chromium
       - name: Validate embedded app JavaScript syntax
         run: node tests/scientific-ui-syntax.cjs
       - name: Browser regression — XYZ removal and Multi-XYZ Batch
