@@ -340,7 +340,7 @@ func (a *App) tripletRoute(w http.ResponseWriter,r *http.Request){
   res,err:=prepareTriplet(req)
   if err!=nil{fail(w,422,err.Error());return}
   respond(w,200,res)
- default:http.NotFound(w,r)
+ default:a.tripletExtraRoute(w,r)
  }
 }
 var _ io.Reader
