@@ -1953,6 +1953,7 @@ function tripShowResult(res){
  const root=$('trip-result-view');root.replaceChildren();
  tripElement('div',res.target+' · E='+tripFmt(res.energyEh,9)+' Eh · ⟨S²⟩='+tripFmt(res.s2,4),root);
  tripElement('div','SCF '+(res.scfConverged?'Converged':'Not verified')+' · Opt '+(res.optimizationConverged?'Converged':'Not verified')+' · Frequency minimum '+(res.minimumVerified?'Verified':'Not verified')+' · CUBE '+(res.cubeAvailable?'Present':'Missing')+' · GBW '+(res.gbwAvailable?'Present':'Missing'),root);
+ tripElement('div','SOMO candidates (UKS α occupied / β unoccupied): '+((res.somoCandidates||[]).length?(res.somoCandidates||[]).map(m=>'MO '+m.orbitalIndex+' · α='+tripFmt(m.alphaOccupation,2)+' β='+tripFmt(m.betaOccupation,2)+' · Eα='+tripFmt(m.alphaEnergyEh,5)+' Eh').join(' | '):'Not calculated')+' · 이는 초기 orbital occupation 후보이며 최저 T₁ 전자배치의 증명이 아닙니다.',root);
  const t=tripElement('table',undefined,root);t.className='triplet-spin-table';
  const hd=tripElement('tr',undefined,t);
  for(const k of ['Role','0-based index','Mulliken Spin','Löwdin Spin','Hirshfeld Spin'])tripElement('th',k,hd);
