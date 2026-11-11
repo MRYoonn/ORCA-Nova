@@ -78,7 +78,7 @@ const roles={C2:0,N3:1,C4:2,C5:3,C6:4,N1:5,S2:6,O4:7};
   await page.locator('#trip-review').click();
   await page.waitForFunction(()=>tripState.draft?.items?.length===2);
   await page.locator('#trip-run').click();
-  await page.waitForFunction(()=>queued.some(x=>x.type==='run'));
+  await page.waitForFunction(()=>document.querySelector('#trip-status')?.textContent.includes('Queue에 등록했습니다'));
   assert(dialogs.some(x=>x.includes('C2/C5/C6')),'user confirmation was skipped');
   const submitted=queued.find(x=>x.type==='run').payload;
   assert.equal(submitted.jobs.length,2);
