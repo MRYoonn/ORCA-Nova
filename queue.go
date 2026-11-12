@@ -347,6 +347,53 @@ func (q *JobQueue) action(id, action string) (actionErr error) {
 		}
 		return q.saveLocked()
 	}
+	// History cleanup only removes persisted queue entries. Result folders and
+	// running/pending tasks are never deleted or cancelled by these actions.
+	if action == "remove" || action == "clearFailed" || action == "clearCompleted" || action == "clearAll" {
+		if action == "remove" && id == "" {
+			return fmt.Errorf("삭제할 Job ID가 없습니다")
+		}
+		remaining := make([]*QueueEntry, 0, len(q.Jobs))
+		removed, found := 0, false
+		for _, e := range q.Jobs {
+			terminal := e.worker == nil && e.cancel == nil && (e.State == "Failed" || e.State == "Interrupted" || e.State == "Cancelled" || e.State == "Completed")
+			matched := false
+			switch action {
+			case "remove":
+				if e.ID == id {
+					found = true
+					if !terminal {
+						return fmt.Errorf("대기 또는 실행 중인 작업은 삭제할 수 없습니다. 먼저 취소하거나 완료하세요")
+					}
+					matched = true
+				}
+			case "clearFailed":
+				matched = terminal && (e.State == "Failed" || e.State == "Interrupted" || e.State == "Cancelled")
+			case "clearCompleted":
+				matched = terminal && e.State == "Completed"
+			case "clearAll":
+				matched = terminal
+			}
+			if matched {
+				removed++
+			} else {
+				remaining = append(remaining, e)
+			}
+		}
+		if action == "remove" && !found {
+			return fmt.Errorf("Job을 찾을 수 없습니다")
+		}
+		if removed == 0 {
+			return nil
+		}
+		original := q.Jobs
+		q.Jobs = remaining
+		if err := q.saveLocked(); err != nil {
+			q.Jobs = original
+			return err
+		}
+		return nil
+	}
 	for i, e := range q.Jobs {
 		if e.ID != id {
 			continue

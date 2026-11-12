@@ -961,6 +961,12 @@ setInterval(()=>{if(lastDesktopState?.update)desktopUpdateShow(lastDesktopState.
 <div class="batch-controls"><button class="btn small ghost" id="batch-check">전체 Preflight</button><button class="btn primary" id="batch-start">▶ Batch 계산 시작</button><button class="btn small ghost" id="batch-pause">대기 작업 보류</button><button class="btn small ghost" id="batch-resume">대기 작업 재개</button><button class="btn small danger" id="batch-stop">■ 전체 중단</button><button class="btn small ghost" id="batch-csv" data-help="원본 OUT를 검증해 생성한 전체 Batch CSV를 내려받아요. 각 단계의 수렴, Energy(Eh), S₁/T₁ Vertical(kcal/mol·eV), Spin과 누락 항목을 포함해요.">↓ 전체 CSV</button><button class="btn small ghost" id="batch-txt" data-help="분자·단계별 계산 상태, Electronic/Gibbs/Enthalpy, Frequency, Vertical S₁/T₁과 원자별 Spin을 한글 설명과 함께 TXT로 저장해요.">↓ 전체 TXT</button></div>
 <pre id="batch-status" class="batch-status" role="status">XYZ 파일을 등록하세요. 실제 ORCA 6.x 실행 결과와 Mock 검증은 구분됩니다.</pre>
 <div class="batch-note" id="batch-queue-info">Job Queue · 아직 등록된 작업 없음</div>
+<div class="batch-controls" aria-label="Queue 작업 기록 정리">
+<button class="btn small ghost" id="batch-clear-failed-jobs" title="실패·중단·취소 기록만 목록에서 제거합니다.">실패·중단 기록 삭제</button>
+<button class="btn small ghost" id="batch-clear-completed-jobs" title="완료된 작업 기록만 목록에서 제거합니다.">완료 기록 삭제</button>
+<button class="btn small danger" id="batch-clear-history" title="완료된 작업만 기록에서 삭제하며 진행 중인 계산과 결과 폴더는 유지합니다.">전체 기록 비우기</button>
+<span class="batch-note">대기·실행 작업과 실제 계산 파일은 유지됩니다.</span>
+</div>
 <div class="batch-table-wrap"><table class="batch-table"><thead><tr><th>Molecule / 계산</th><th>Status / 단계</th><th>CPU / RAM</th><th>경과 / ETA</th><th>작업 관리</th></tr></thead><tbody id="batch-queue"></tbody></table></div>
 <details class="batch-comparison" open style="margin-top:18px"><summary style="cursor:pointer;color:#b7d9fa">다중 분자 결과 비교 · 실제 OUT 추출값</summary>
 <div class="batch-note">ORCA 원자 번호는 0부터 시작합니다. 아래 번호는 분자 고리의 C5 / C6 명칭과 자동으로 대응하지 않습니다. 각 XYZ의 원자 순서를 직접 확인하세요. Spin Population만으로 반응 선택성을 확정할 수 없습니다.</div>
@@ -1143,13 +1149,20 @@ async function batchSubmit(start){
  }catch(e){batchMessage(e.message,true)}finally{batchRequestBusy=false;$('batch-start').disabled=false;$('batch-check').disabled=false;batchUpdateSelection();}
 }
 async function batchAction(action,id=''){
+ const cleanupPrompts={
+  remove:'선택한 작업 기록을 삭제할까요?',
+  clearFailed:'실패·중단·취소 작업 기록을 모두 삭제할까요?',
+  clearCompleted:'완료된 작업 기록을 모두 삭제할까요?',
+  clearAll:'완료·실패·중단·취소된 작업 기록을 모두 비울까요?'
+ };
+ if(cleanupPrompts[action]&&!confirm(cleanupPrompts[action]+'\n실제 OUT / INP / XYZ와 결과 폴더는 그대로 유지됩니다.'))return;
  try{await desktopAPI('queue/action',{action,id});await batchPoll()}catch(e){batchMessage(e.message,true)}
 }
 function batchSeconds(s){s=Math.max(0,Math.floor(Number(s)||0));return Math.floor(s/3600)+'h '+Math.floor(s%3600/60)+'m '+s%60+'s';}
 async function batchPoll(){
  try{
   const d=await desktopAPI('queue');batchQueueState=d;
-  const jobs=d.jobs||[],running=jobs.filter(j=>j.state==='Running'),cpuUsed=running.reduce((n,j)=>n+(j.cpu||0),0),ramUsed=running.reduce((n,j)=>n+(j.ramMB||0),0);const budget=d.limits?(' · 예약 '+cpuUsed+'/'+d.limits.cpu+' CPU, '+ramUsed+'/'+d.limits.ramMB+' MB RAM (실사용량 아님)'):'';$('batch-queue-info').textContent='Job Queue · '+jobs.length+'개 · 실행 중 '+running.length+'개 · '+(d.paused?'대기 작업 보류':'Scheduler 실행')+budget+' · 전체 Batch ETA: '+(typeof d.batchEta==='string'?d.batchEta:'추정 중')+' (자원 대기·실패 재시작에 따라 변동)'+(d.error?' · '+d.error:'');
+  const jobs=d.jobs||[],running=jobs.filter(j=>j.state==='Running'),cpuUsed=running.reduce((n,j)=>n+(j.cpu||0),0),ramUsed=running.reduce((n,j)=>n+(j.ramMB||0),0);const terminal=jobs.filter(j=>['Failed','Cancelled','Interrupted','Completed'].includes(j.state));$('batch-clear-failed-jobs').disabled=!terminal.some(j=>j.state!=='Completed');$('batch-clear-completed-jobs').disabled=!terminal.some(j=>j.state==='Completed');$('batch-clear-history').disabled=!terminal.length;const budget=d.limits?(' · 예약 '+cpuUsed+'/'+d.limits.cpu+' CPU, '+ramUsed+'/'+d.limits.ramMB+' MB RAM (실사용량 아님)'):'';$('batch-queue-info').textContent='Job Queue · '+jobs.length+'개 · 실행 중 '+running.length+'개 · '+(d.paused?'대기 작업 보류':'Scheduler 실행')+budget+' · 전체 Batch ETA: '+(typeof d.batchEta==='string'?d.batchEta:'추정 중')+' (자원 대기·실패 재시작에 따라 변동)'+(d.error?' · '+d.error:'');
   const body=$('batch-queue');body.replaceChildren();
   for(const j of jobs){
    const row=document.createElement('tr'),cells=Array.from({length:5},()=>document.createElement('td'));row.append(...cells);
@@ -1165,12 +1178,16 @@ async function batchPoll(){
    if(j.state==='Pending'){button(j.held?'보류 해제':'보류',j.held?'release':'hold');button('↑','up');button('↓','down');button('취소','cancel');}
    if(j.state==='Running')button('중단','cancel');
    if(['Failed','Cancelled','Interrupted'].includes(j.state))button('재시작','retry');
+   if(['Failed','Cancelled','Interrupted','Completed'].includes(j.state))button('기록 삭제','remove');
    if(j.job?.folder)button('폴더','reveal');
    if(j.job?.reportFile){const b=document.createElement('button');b.className='btn small ghost';b.textContent='TXT';b.onclick=async()=>{try{const r=await fetch('/api/queue/report?id='+encodeURIComponent(j.id)+'&session='+encodeURIComponent(desktopSession));if(!r.ok)throw Error('TXT 보고서를 읽지 못했습니다.');download((j.label||j.id)+'_analysis.txt',await r.text())}catch(e){batchMessage(e.message,true)}};cells[4].append(b);}
    body.append(row);
   }
  }catch(e){batchMessage('Job Queue 연결 실패: '+e.message,true)}
 }
+$('batch-clear-failed-jobs').onclick=()=>batchAction('clearFailed');
+$('batch-clear-completed-jobs').onclick=()=>batchAction('clearCompleted');
+$('batch-clear-history').onclick=()=>batchAction('clearAll');
 $('batch-select-all').onclick=()=>{
  const allSelected=batchMolecules.length>0&&batchMolecules.every(m=>m.selected);
  for(const m of batchMolecules)m.selected=!allSelected;
