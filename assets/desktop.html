@@ -1155,7 +1155,7 @@ async function batchAction(action,id=''){
   clearCompleted:'완료된 작업 기록을 모두 삭제할까요?',
   clearAll:'완료·실패·중단·취소된 작업 기록을 모두 비울까요?'
  };
- if(cleanupPrompts[action]&&!confirm(cleanupPrompts[action]+'\\n실제 OUT / INP / XYZ와 결과 폴더는 그대로 유지됩니다.'))return;
+ if(cleanupPrompts[action]&&!confirm(cleanupPrompts[action]+'\n실제 OUT / INP / XYZ와 결과 폴더는 그대로 유지됩니다.'))return;
  try{await desktopAPI('queue/action',{action,id});await batchPoll()}catch(e){batchMessage(e.message,true)}
 }
 function batchSeconds(s){s=Math.max(0,Math.floor(Number(s)||0));return Math.floor(s/3600)+'h '+Math.floor(s%3600/60)+'m '+s%60+'s';}
