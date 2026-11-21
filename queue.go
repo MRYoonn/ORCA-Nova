@@ -591,7 +591,7 @@ func (q *JobQueue) action(id, action string) (actionErr error) {
 			if e.Job == nil || e.Job.Folder == "" {
 				return fmt.Errorf("결과 폴더가 없습니다")
 			}
-			revealFolder(e.Job.Folder)
+			return revealFolder(e.Job.Folder)
 		default:
 			return fmt.Errorf("지원하지 않는 Queue 동작")
 		}
