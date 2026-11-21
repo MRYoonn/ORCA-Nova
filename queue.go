@@ -586,7 +586,10 @@ func (a *App) queueRoute(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	switch r.URL.Path {
-	case "/api/queue/resources":
+	case "/api/queue/monitor":
+        if r.Method != "GET" {fail(w,405,"Method not allowed");return}
+        respond(w,200,systemUsage())
+    case "/api/queue/resources":
 		if r.Method != "GET" { fail(w,405,"Method not allowed"); return }
 		respond(w,200,systemResources())
 	case "/api/queue/action":
