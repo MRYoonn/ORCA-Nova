@@ -67,7 +67,24 @@ func TestMain(m *testing.M) {
 		if strings.Contains(s, "MOCK_SLOW") {
 			time.Sleep(10 * time.Second)
 		}
-		if !strings.Contains(s, "MOCK_NO_SCF") {
+		if os.Getenv("ORCA_NOVA_GLORIUS_MOCK")=="1" {
+            k:=keywordLine(s)
+            if k["goat"]{
+                h:=xyzHeader.FindStringSubmatch(s)
+                if len(h)<4{os.Exit(2)}
+                b,e:=os.ReadFile(h[3]);if e!=nil{os.Exit(3)}
+                stem:=strings.TrimSuffix(os.Args[1],".inp")
+                if !strings.Contains(s,"MOCK_NO_GOAT_XYZ"){if e=os.WriteFile(stem+".globalminimum.xyz",b,0600);e!=nil{os.Exit(4)}}
+                fmt.Println("Global minimum found!\n# Final ensemble info #\nORCA TERMINATED NORMALLY")
+                os.Exit(0)
+            }
+            if k["freq"]{
+                fmt.Println("VIBRATIONAL FREQUENCIES")
+                if k["optts"]||strings.Contains(s,"MOCK_IMAGINARY"){fmt.Println("  0: -123.45 cm**-1   ***imaginary mode***")}else{fmt.Println("  0: 123.45 cm**-1")}
+                fmt.Println("  1: 999.99 cm**-1\nNORMAL MODES\nFinal Gibbs free energy ... -75.10000000 Eh")
+            }
+        }
+        if !strings.Contains(s, "MOCK_NO_SCF") {
 			fmt.Println("SCF CONVERGED AFTER 10 CYCLES")
 		}
 		if strings.Contains(s, "Opt") {
