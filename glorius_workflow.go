@@ -77,6 +77,7 @@ type gloriusCompositeRow struct{
  Stage string
  Source string
  Stationary string
+ InitialSource string
  Result *SICompositeResult
  Error string
 }
@@ -94,7 +95,7 @@ func gloriusComposites(folder string,req RunRequest) []gloriusCompositeRow{
  for _,s:=range req.Stages{
   if s.CompositeFrom!=""{
    low,ok:=earlier[strings.ToLower(s.CompositeFrom)]
-   row:=gloriusCompositeRow{Stage:s.Name,Source:s.Input,Stationary:low.Stationary}
+   row:=gloriusCompositeRow{Stage:s.Name,Source:s.Input,Stationary:low.Stationary,InitialSource:low.Source}
    if !ok||!strings.EqualFold(stageGeometry(low),s.Source){row.Error="invalid stage mapping";rows=append(rows,row);earlier[strings.ToLower(s.Input)]=s;continue}
    lowStem:=strings.TrimSuffix(low.Input,filepath.Ext(low.Input));highStem:=strings.TrimSuffix(s.Input,filepath.Ext(s.Input))
    names:=[]string{low.Input,lowStem+".out",stageGeometry(low),s.Input,highStem+".out",s.Source}
@@ -127,7 +128,7 @@ func gloriusCompositeReport(rows []gloriusCompositeRow) string{
  // Do not treat this as an independently verified triplet-state assignment.
  if len(rows)==2&&rows[0].Result!=nil&&rows[1].Result!=nil&&rows[0].Stationary=="minimum"&&rows[1].Stationary=="minimum"{
   a,c:=rows[0].Result,rows[1].Result
-  if a.Multiplicity==1&&c.Multiplicity==3&&a.Charge==c.Charge&&a.Atoms==c.Atoms{
+  if a.Multiplicity==1&&c.Multiplicity==3&&a.Charge==c.Charge&&a.Atoms==c.Atoms&&rows[0].InitialSource!=""&&strings.EqualFold(rows[0].InitialSource,rows[1].InitialSource){
    d:=c.CompositeGibbsEh-a.CompositeGibbsEh
    if !math.IsNaN(d)&&!math.IsInf(d,0){fmt.Fprintf(&b,"Triplet - Singlet composite ΔG (same starting species must be confirmed): %.10f Eh / %.4f kcal/mol\n",d,d*627.509474)}
   }
