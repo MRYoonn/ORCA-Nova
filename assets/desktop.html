@@ -238,7 +238,7 @@
     </div>
     <div class="triplet-note">Constraints 선택 · 기본은 <b>고리 heavy atoms 6개</b>. S2, O4, 고리의 H는 필요할 때만 선택하세요. 모두 ORCA 0-based index로 변환됩니다.</div>
     <div class="triplet-controls">
-     <label class="trip-auto-label" data-help="자동 모드에서는 일반 Batch와 동일한 Scheduler가 Target별 CPU / MaxCore를 배분합니다."><input id="trip-auto" type="checkbox" disabled> CPU/RAM 자동 배분</label>
+     <label class="trip-auto-label" data-help="자동 모드에서는 일반 Batch와 동일한 Scheduler가 Target별 CPU / MaxCore를 배분합니다."><input id="trip-auto" type="checkbox" disabled> CPU/RAM 자동 배분</label><label class="trip-auto-label"><input type="checkbox" id="trip-append"> 기존 Queue에 추가</label>
      <label class="trip-manual-resource" data-help="동시에 실행할 독립 Target 수입니다. Batch Scheduler는 자원 초과시 다음 작업을 대기시킵니다.">동시 Target Job <input id="trip-concurrency" class="control" type="number" value="1" min="1" max="24"></label>
      <label data-help="모든 병렬 작업에 배분할 CPU 총합 예산입니다. 각 Target의 %pal nprocs보다 작으면 실행 불가합니다.">Batch 전체 CPU <input id="trip-budget-cpu" class="control" type="number" value="16" min="1"></label>
      <label class="trip-manual-resource" data-help="모든 병렬 작업에 배분할 예약 RAM 예산입니다. 예약 RAM은 MaxCore x cores x 1.25를 기준으로 계산하고 실제 RSS 상한은 아닙니다.">Batch 전체 RAM (MB) <input id="trip-budget-ram" class="control" type="number" value="56000" min="1"></label>
@@ -316,14 +316,14 @@
     <div class="addon-hint" id="addon-hint">추천 Triplet 연구: Opt + Freq + Spin Density + Atomic Spin Population. 상단의 Quick Preset으로 한 번에 적용할 수도 있어요.</div>
   </div>
 </div></details>
-<div class="section"><div class="section-head"><span class="section-title">06 · Resources</span><span class="section-desc">PC settings</span></div><div class="fieldset"><div class="three-cols"><div><label class="field-label" for="cores">CPU Cores <span class="help-icon" tabindex="0" data-help="ORCA 계산에 사용할 병렬 프로세스 수예요. %pal 블록의 nprocs에 들어가요.">?</span></label><input class="control" type="number" id="cores" value="16" min="1" max="256"></div><div><label class="field-label" for="maxcore">MaxCore <span class="help-icon" tabindex="0" data-help="ORCA의 프로세스당 최대 메모리(MB)예요. 전체 RAM이 아니라 CPU 프로세스 하나당 값이라는 점에 주의하세요.">?</span></label><input class="control" type="number" id="maxcore" value="2800" min="100" step="100"></div><div><label class="field-label" for="temp">Temp (K) <span class="help-icon" tabindex="0" data-help="Frequency 계산의 열역학 보정에 사용할 온도(K)예요. 기본값은 298.15 K예요.">?</span></label><input class="control" type="number" id="temp" value="298.15" min="1" step="0.01"></div></div><div class="hint" id="memory-hint">이론상 요청 메모리 약 44.8 GB (16 × 2800 MB)</div></div></div>
+<div class="section"><div class="section-head"><span class="section-title">06 · Resources</span><span class="section-desc">PC settings</span></div><label class="single-auto-label"><input type="checkbox" id="single-auto" disabled> CPU/RAM 자동 배분</label><div class="fieldset"><div class="three-cols"><div><label class="field-label" for="cores">CPU Cores <span class="help-icon" tabindex="0" data-help="ORCA 계산에 사용할 병렬 프로세스 수예요. %pal 블록의 nprocs에 들어가요.">?</span></label><input class="control" type="number" id="cores" value="16" min="1" max="256"></div><div id="single-manual-maxcore"><label class="field-label" for="maxcore">MaxCore <span class="help-icon" tabindex="0" data-help="ORCA의 프로세스당 최대 메모리(MB)예요. 전체 RAM이 아니라 CPU 프로세스 하나당 값이라는 점에 주의하세요.">?</span></label><input class="control" type="number" id="maxcore" value="2800" min="100" step="100"></div><div><label class="field-label" for="temp">Temp (K) <span class="help-icon" tabindex="0" data-help="Frequency 계산의 열역학 보정에 사용할 온도(K)예요. 기본값은 298.15 K예요.">?</span></label><input class="control" type="number" id="temp" value="298.15" min="1" step="0.01"></div></div><div class="hint" id="memory-hint">이론상 요청 메모리 약 44.8 GB (16 × 2800 MB)</div></div></div>
 <div class="section"><div class="note" id="calc-note">Geometry Optimization과 Frequency를 한 번에 실행하는 기본 템플릿입니다.</div><div class="footnote">추천은 ORCA 공식 가이드에 기반한 일반적 시작값이에요. Glorius 논문에서 모든 경우에 쓴 조건이라는 뜻은 아닙니다. 논문 SI의 조건을 우선해서 재현하세요.</div><div class="footnote">참고: <a href="https://www.faccts.de/docs/orca/6.1/manual/contents/modelchemistries/3cmethods.html" target="_blank" rel="noopener">ORCA Composite Methods</a> · <a href="https://www.faccts.de/docs/orca/6.1/manual/contents/modelchemistries/dispersioncorrections.html" target="_blank" rel="noopener">Dispersion</a> · <a href="https://www.faccts.de/docs/orca/6.1/manual/contents/essentialelements/solvationmodels.html" target="_blank" rel="noopener">Solvation</a></div><div class="footnote">설정 후 오른쪽 실행 패널에서 ORCA를 실행할 수 있어요. 계산 전 INP와 구조, 전하·스핀 상태를 확인하세요.</div></div>
 </section>
 <section class="content-panel">
 <div id="desktop-app-panel" class="desktop-app-panel">
  <div class="desktop-app-head"><div><b>Windows ORCA Runner</b> <span class="runner-chip">로컬 실행</span><p>ORCA 설치 경로를 한 번 지정하면 INP 생성 → 계산 실행 → OUT 저장까지 할 수 있어요.</p></div><span class="help-icon" tabindex="0" data-title="ORCA Runner" data-help="ORCA 자체는 별도 설치가 필요해요. 이 프로그램은 ORCA를 설치하거나 DFT 계산을 대신하지 않고, 설치된 orca.exe를 실행해요. 계산 중에는 프로그램을 종료하지 마세요.">?</span></div>
  <div class="runner-settings"><label>ORCA.exe 위치 <span class="help-icon" tabindex="0" data-title="ORCA 실행 파일" data-help="예: C:\ORCA\orca.exe. 실행에 사용할 ORCA 설치 폴더의 실제 orca.exe 경로를 입력하세요. Windows에 설치된 ORCA 버전의 MPI 환경이 필요할 수 있어요.">?</span><input id="desktop-orca-path" placeholder="C:\ORCA\orca.exe" spellcheck="false"></label><label>작업 폴더 <span class="help-icon" tabindex="0" data-title="Job Working Directory" data-help="계산 단계별 INP, XYZ, OUT 파일과 실패 보고서를 자동 저장할 폴더예요. 계산마다 새 하위 폴더를 만들어요.">?</span><input id="desktop-work-root" placeholder="C:\Users\...\Documents\ORCA Nova Jobs" spellcheck="false"></label></div>
- <div class="runner-actions"><button id="desktop-save-config" class="btn small ghost">설정 저장</button><button id="desktop-preflight" class="btn small ghost" data-help="실제 ORCA를 실행하지 않고 XYZ 원자수·좌표, INP의 Charge/Multiplicity, Workflow 연결을 먼저 검사해요. 계산 정확성 자체를 보장하지는 않아요.">🔎 계산 전 검사</button><button id="desktop-run" class="btn primary">▶ 현재 INP 실행</button><button id="desktop-run-wf" class="btn small">▶ 전체 Workflow 실행</button><button id="desktop-stop" class="btn small danger">■ 계산 중단</button></div>
+ <div class="runner-actions"><button id="desktop-save-config" class="btn small ghost">설정 저장</button><span id="settings-dirty" class="muted" role="status"></span><button id="desktop-preflight" class="btn small ghost" data-help="실제 ORCA를 실행하지 않고 XYZ 원자수·좌표, INP의 Charge/Multiplicity, Workflow 연결을 먼저 검사해요. 계산 정확성 자체를 보장하지는 않아요.">🔎 계산 전 검사</button><button id="desktop-run" class="btn primary">▶ 현재 INP 실행</button><button id="desktop-run-wf" class="btn small">▶ 전체 Workflow 실행</button><button id="desktop-stop" class="btn small danger">■ 계산 중단</button></div>
  <div class="runner-more"><label class="btn small ghost" for="desktop-extra-xyz" data-help="여기에서 XYZ를 선택해도 돼요. 기본 XYZ가 없다면 첫 파일을 기본 분자로 등록하고, 나머지는 반응물·생성물 등 추가 XYZ로 등록해요.">+ XYZ 선택 / 추가 <span class="help-icon">?</span></label><input id="desktop-extra-xyz" type="file" accept=".xyz" multiple hidden><span id="desktop-extra-info">기본 XYZ 없음 · 추가 XYZ 0개</span><button id="desktop-to-batch" class="btn small ghost" data-help="기본 및 추가 XYZ를 아래 Batch 목록에 복사합니다. 이미 등록한 같은 이름의 파일은 건너뜁니다.">↓ XYZ 전체 → Batch</button><button id="desktop-clear-xyz" class="btn small ghost" data-help="기본·추가 XYZ 등록만 비웁니다. 기존 Job Queue와 디스크 파일은 변경되지 않습니다.">입력 XYZ 모두 비우기</button><span class="spacer"></span><button class="btn small ghost" id="desktop-report" disabled data-help="ORCA 계산 종료 후 Electronic Energy, Enthalpy, Gibbs Free Energy, S₁/T₁, Spin Population 등의 텍스트 해석 파일을 받아요. 중간 단계도 자동 저장해요.">📄 해석 TXT 저장</button><label class="btn small ghost" for="desktop-open-out" data-help="예전에 ORCA에서 계산한 .out 파일도 텍스트 해석 보고서로 변환할 수 있어요. ORCA 설치 없이 분석할 수 있어요.">OUT 분석 <span class="help-icon">?</span></label><input id="desktop-open-out" type="file" accept=".out,.log,text/plain" hidden><button class="btn small ghost" id="desktop-reveal">📁 결과 폴더</button><button class="btn small ghost" id="desktop-quit">앱 종료</button></div>
  <div id="desktop-extra-list" class="xyz-extra-list" aria-label="추가 XYZ 파일 목록"></div>
  <div class="updater-panel" role="group" aria-label="자동 업데이트">
@@ -464,7 +464,7 @@ function applyPreset(id){const p=PRESETS.find(x=>x.id===id);if(!p)return;if(edit
 active=p.calc;activeStage=0;if(!Object.prototype.hasOwnProperty.call(p.settings,'charge'))$('charge').value='0';
 if(!Object.prototype.hasOwnProperty.call(p.settings,'mult'))$('mult').value='1';
 for(const id of ['extra-freq','extra-spin','extra-spinpop']){$(id).dataset.forced='false';$(id).dataset.prior='false'}
-for(const [key,v] of Object.entries(p.settings)){if($(key)){if($(key).type==='checkbox')$(key).checked=Boolean(v);else $(key).value=String(v)}}
+for(const [key,v] of Object.entries(p.settings)){if(key==='cores'&&singleAutoMode())continue;if($(key)){if($(key).type==='checkbox')$(key).checked=Boolean(v);else $(key).value=String(v)}}
 if(!Object.prototype.hasOwnProperty.call(p.settings,'extra-freq'))$('extra-freq').checked=false;
 if(!Object.prototype.hasOwnProperty.call(p.settings,'extra-spin'))$('extra-spin').checked=false;
 if(!Object.prototype.hasOwnProperty.call(p.settings,'extra-spinpop'))$('extra-spinpop').checked=false;
@@ -556,6 +556,30 @@ const GROUPS=[
 {id:'E7',name:'Thermochemical Cycle',desc:'여러 종의 Gibbs Free Energy를 조합해 전체 반응의 ΔG를 계산해요.',guide:'필요한 모든 화학종을 각각 Opt + Freq로 계산합니다. 마지막 단계에서 화학양론, 반응식, 용매 및 표준상태를 반영해 자유에너지를 합산하세요.',kind:'workflow',steps:[['Species A Opt + Freq','A4',null,null,'species_A.xyz'],['Species B Opt + Freq','A4',null,null,'species_B.xyz'],['Thermochemical Cycle Analysis',null,null,null,null]]}]}
 ];
 const DATA=GROUPS.flatMap(g=>g.items.filter(i=>!i.hidden).map(i=>({...i,group:g.id,groupName:g.name})));
+let singleResourceSystem=null;
+function singleAutoMode(){return !!singleResourceSystem?.supported&&$('single-auto').checked}
+function singleDraftResources(){
+ if(!singleAutoMode())return null;
+ const cpu=Math.min(Math.floor(num('cores',1)),singleResourceSystem.cpu,Math.floor(singleResourceSystem.budgetMB/640));
+ if(cpu<1)return null;
+ const maxcore=Math.min(16000,Math.floor((singleResourceSystem.budgetMB*4/5)/cpu/4)*4);
+ return {cpu,maxcore};
+}
+function singleResourceModeChanged(){
+ $('single-manual-maxcore').hidden=singleAutoMode()&&!editorDirty;
+ generate(false);
+}
+async function singleLoadResourceSystem(){
+ try{
+  const sys=await desktopAPI('queue/resources');
+  if(!sys.supported||!Number.isSafeInteger(sys.cpu)||sys.cpu<1||!Number.isFinite(sys.budgetMB))throw Error('자동 자원 감지 불가');
+  singleResourceSystem=sys;
+  const cpu=$('cores');cpu.max=String(sys.cpu);
+  if(!editorDirty){cpu.value=String(Math.min(sys.cpu,Math.max(1,num('cores',sys.cpu))));$('single-auto').checked=true;}
+  $('single-auto').disabled=false;
+ }catch(e){singleResourceSystem=null;$('single-auto').checked=false;$('single-auto').disabled=true;}
+ singleResourceModeChanged();
+}
 let active='A4',activeStage=0,editorDirty=false,loadedXYZ='',xyzOriginal='',xyzAtomCount=null,view='inp',toastTimer=null;
 const $=id=>document.getElementById(id);
 const helpText={};
@@ -580,7 +604,7 @@ function addOnAvailable(base){return ['A1','A2','A3','A4','A5','B3','C1','C2','C
 function addonUserChecked(id){const el=$(id);return el.dataset.forced==='true'?el.dataset.prior==='true':el.checked}
 function addOnChecked(id,base){return addOnAvailable(base)&&addonUserChecked(id)}
 function effectiveChargeMult(st,base){let charge=st[2]===null?num('charge',0):st[2],mult=st[3]===null?num('mult',1):st[3];if(base==='B3')mult=3;if(base==='C7'){charge=num('charge',0)+Number(val('iontype'));if(mult===1)mult=2}return {charge,mult}}
-function buildInput(stageIndex=activeStage){
+function buildInput(stageIndex=activeStage,autoPreview=true){
  const c=calc(active),st=stages()[stageIndex],base=st[1],opts=stageOptions(st),fn=val('functional'),basis=val('basis'),disp=val('dispersion');
  const file=xyzName(stageIndex),{charge,mult}=effectiveChargeMult(st,base);
  let tokens=[fn];if(fn!=='r2SCAN-3c')tokens.push(basis);
@@ -609,7 +633,8 @@ function buildInput(stageIndex=activeStage){
  if(base==='D2')comments.push('# Start from verified TS geometry.');
  if(base==='B5')comments.push('# UV-Vis spectrum plotting requires TD-DFT output postprocessing.');
  if(spin){comments.push('# SpinDens: ground-state SCF / open-shell spin density; not automatically the TD-DFT T1 root density.');comments.push('# Closed-shell singlet typically has zero spin density.');}
- let lines=[...comments,`! ${tokens.join(' ')}`,'','%pal',`  nprocs ${Math.max(1,Math.floor(num('cores',16)))}`,'end','',`%maxcore ${Math.max(100,Math.floor(num('maxcore',2800)))}`];
+ const allocation=autoPreview?singleDraftResources():null;
+ let lines=[...comments, `! ${tokens.join(' ')}`,'','%pal',`  nprocs ${allocation?.cpu??Math.max(1,Math.floor(num('cores',16)))}`,'end','',`%maxcore ${allocation?.maxcore??Math.max(100,Math.floor(num('maxcore',2800)))}`];
  if(baseFreq||extraFreq)lines.push('','%freq',`  Temp ${Math.max(1,num('temp',298.15))}`,'end');
  if(['B1','B4','B5','B7','XS1OPT','XT1ROOTOPT'].includes(base)){
    lines.push('','%tddft',`  NRoots ${Math.max(1,Math.floor(num('nroots',10)))}`);
@@ -654,7 +679,9 @@ function activeInfo(){const c=calc(active),st=currentStage(),base=st[1];$('calc-
  $('guide-title').textContent=c.name;
  renderWorkflow();renderConsole();renderWarning();
 }
-function renderWarning(){const c=calc(active);let w=[];let mem=num('cores',16)*num('maxcore',2800);$('memory-hint').textContent=`요청 최대치 ≈ ${(mem/1024).toFixed(1)} GB (CPU × MaxCore); 실제 소비량과는 다를 수 있어요.`;
+function renderWarning(){const c=calc(active);let w=[];let mem=num('cores',16)*num('maxcore',2800);const a=singleDraftResources();
+ $('single-manual-maxcore').hidden=singleAutoMode()&&!editorDirty;
+ $('memory-hint').textContent=singleAutoMode()?(editorDirty?'직접 수정한 INP는 자동 배분 대상에서 제외됩니다. 수동 설정을 확인하세요.':a?('Auto 초안 · '+a.cpu+' CPU / '+a.maxcore+' MB/core · 예약 '+(a.cpu*a.maxcore*1.25/1024).toFixed(1)+' GB. Run 직전 재계산됩니다.'):'가용 RAM 부족 · 실행 전 자원 재검사 필요'): `요청 최대치 ≈ ${(mem/1024).toFixed(1)} GB (CPU × MaxCore); 실제 소비량과는 다를 수 있어요.`;
  $('solvent').disabled=val('solvmodel')==='Gas phase';$('solvent-note').textContent=val('solvmodel')==='Gas phase'?'Gas phase: 용매 키워드를 추가하지 않습니다.':`INP에 ${solventKeyword()}를 반영해요. 지원되는 solvent 이름은 ORCA 버전에 따라 확인이 필요해요.`;
  if(['B1','W1','W3','W4','W5'].includes(active)&&num('mult',1)!==1)w.push('Vertical T₁ TD-DFT 템플릿은 Singlet 기준 상태가 권장돼요.');
  if(active==='B7'&&num('mult',1)!==1)w.push('이 SOC 템플릿은 닫힌껍질 Singlet 기준 상태에 맞춰져 있어요.');
@@ -665,7 +692,7 @@ function renderWarning(){const c=calc(active);let w=[];let mem=num('cores',16)*n
  if(w.length)$('calc-note').textContent=w.join(' ')+(c.kind==='workflow'?' 여러 단계 계산은 수동 연결이 필요합니다.':'');
 }
 function renderWorkflow(){const st=stages();$('workflow-box').innerHTML=st.map((s,i)=>`<div class="step ${i===activeStage?'active':''} ${s[1]?'step-link':''}" data-stage="${i}" title="${esc(s[0])}"><span class="step-num">${String(i+1).padStart(2,'0')}</span><div style="min-width:0"><div class="step-title">${esc(s[0])}</div><div class="step-detail">${s[1]?'INP 생성 · XYZ: '+esc(xyzName(i)):'출력 결과를 사용자가 비교해야 하는 단계'}</div></div></div>`).join('');for(const e of $('workflow-box').querySelectorAll('.step-link'))e.addEventListener('click',()=>{if(editorDirty&&!confirm('직접 수정한 INP 내용이 사라집니다. 단계를 이동할까요?'))return;activeStage=Number(e.dataset.stage);generate(true)});}
-function updateCode(text,manual=false){$('editor').value=text;editorDirty=manual;renderLines();$('edit-status').textContent=manual?'직접 수정됨 · 저장 필요':'자동 생성됨 · 수정 가능'}
+function updateCode(text,manual=false){$('editor').value=text;editorDirty=manual;renderWarning();renderLines();$('edit-status').textContent=manual?'직접 수정됨 · 저장 필요':'자동 생성됨 · 수정 가능'}
 function generate(force=false){syncAllPickers();if(editorDirty&&!force){$('edit-status').textContent='설정 변경됨 · ↻ 재생성 필요';activeInfo();return}activeInfo();if(!currentStage()[1]){updateCode(`# ${calc(active).name} · Analysis step\n# 이 단계는 개별 ORCA 계산이 아니라 결과 비교 작업입니다.\n# 이전 단계들의 OUT에서 에너지 값을 추출하여 계산하세요.\n# 이 주석 파일은 실행 가능한 INP가 아닙니다.\n`,false);$('download-inp').disabled=true;$('top-inp').disabled=true; $('copy-cmd').disabled=true;$('copy-cmd2').disabled=true}else{updateCode(buildInput(),false);$('download-inp').disabled=false;$('top-inp').disabled=false;$('copy-cmd').disabled=false;$('copy-cmd2').disabled=false}renderConsole()}
 function renderConsole(){let filename=displayName()+'.inp',out=displayName()+'.out';$('console').textContent=`C:\\ORCA\\> "C:\\ORCA\\orca.exe" ${filename} > ${out} 2>&1\n\n# 실제 설치 경로와 작업 폴더를 수정하세요.\n# HTML에서는 ORCA.exe를 실행할 수 없어요.`}
 function selectedCalc(id){if(editorDirty&&!confirm('현재 직접 편집한 INP 내용이 사라집니다. 계산을 변경할까요?'))return;active=id;activeStage=0;renderNav();generate(true)}
@@ -753,7 +780,7 @@ function clearPrimaryXYZ(){
 $('xyz-remove').addEventListener('click',clearPrimaryXYZ);
 function loadXYZFile(file){if(!file)return;if(!file.name.toLowerCase().endsWith('.xyz')){toast('XYZ 파일을 선택해 주세요.');return}const r=new FileReader();r.onload=()=>applyPrimaryXYZ(file.name,String(r.result));r.readAsText(file)}
 $('xyz-load').addEventListener('click',()=>$('xyz-file').click());$('xyz-file').addEventListener('change',e=>loadXYZFile(e.target.files?.[0]));const dz=$('dropzone');dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over')});dz.addEventListener('dragleave',()=>dz.classList.remove('over'));dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');loadXYZFile(e.dataTransfer.files?.[0])});
-$('search').addEventListener('input',renderNav);uiChanges();$('editor').addEventListener('input',()=>{editorDirty=true;$('edit-status').textContent='직접 수정됨 · 저장 필요';renderLines()});$('editor').addEventListener('scroll',()=>{$('line-nums').scrollTop=$('editor').scrollTop});$('editor').addEventListener('keydown',e=>{if(e.key==='Tab'){e.preventDefault();const a=e.target.selectionStart,b=e.target.selectionEnd;e.target.setRangeText('  ',a,b,'end');e.target.dispatchEvent(new Event('input'))}});$('regen').addEventListener('click',()=>{if(editorDirty&&!confirm('직접 수정한 INP 내용을 덮어쓰고 재생성할까요?'))return;generate(true);toast('INP를 재생성했어요.')});
+$('search').addEventListener('input',renderNav);uiChanges();$('editor').addEventListener('input',()=>{editorDirty=true;$('edit-status').textContent='직접 수정됨 · 저장 필요';renderWarning();renderLines()});$('editor').addEventListener('scroll',()=>{$('line-nums').scrollTop=$('editor').scrollTop});$('editor').addEventListener('keydown',e=>{if(e.key==='Tab'){e.preventDefault();const a=e.target.selectionStart,b=e.target.selectionEnd;e.target.setRangeText('  ',a,b,'end');e.target.dispatchEvent(new Event('input'))}});$('regen').addEventListener('click',()=>{if(editorDirty&&!confirm('직접 수정한 INP 내용을 덮어쓰고 재생성할까요?'))return;generate(true);toast('INP를 재생성했어요.')});
 $('download-workflow').addEventListener('click',saveWorkflowZip);$('download-inp').addEventListener('click',save);$('top-inp').addEventListener('click',save);$('copy-inp').addEventListener('click',()=>copyText($('editor').value));$('copy-cmd').addEventListener('click',()=>copyText(cmdText()));$('copy-cmd2').addEventListener('click',()=>copyText(cmdText()));$('cmd-help').addEventListener('click',showModal);$('modal-close').addEventListener('click',closeModal);$('modal-bg').addEventListener('click',e=>{if(e.target.id==='modal-bg')closeModal()});$('modal-copy').addEventListener('click',()=>copyText(cmdText()));document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});$('next-stage').addEventListener('click',()=>{if(editorDirty&&!confirm('직접 수정한 INP 내용이 사라집니다. 단계를 이동할까요?'))return;activeStage=(activeStage+1)%stages().length;generate(true)});
 $('top-manual').addEventListener('click',()=>window.open('https://www.faccts.de/docs/orca/6.1/manual/','_blank','noopener'));
 $('top-workflow').addEventListener('click',()=>{workspaceShow('calculation');document.querySelector('.lower-grid').scrollIntoView({behavior:'smooth',block:'start'});});
@@ -765,7 +792,9 @@ initPresets();initPickers();initTooltip();renderNav();generate(true);
 <script>
 /* Local desktop bridge; the v4 input generator above is intentionally preserved. */
 const desktopSession = new URL(location.href).searchParams.get('session') || '';
-let lastDesktopState=null;
+let lastDesktopState=null,desktopConfigEpoch=0,desktopConfigSaving=false;
+const desktopConfigDirty=new Set();
+for(const id of ['desktop-orca-path','desktop-work-root'])$(id).addEventListener('input',()=>{desktopConfigDirty.add(id);$('settings-dirty').textContent='저장하지 않은 경로 변경이 있습니다.'});
 const desktopXYZ = new Map();
 function desktopXYZStatus(){
  const main=xyzOriginal?`기본 XYZ: ${loadedXYZ} (${xyzAtomCount} atoms)`:'기본 XYZ 없음';
@@ -793,7 +822,18 @@ async function desktopAPI(path, data){
  const res=await fetch(url,options);let payload=await res.json();if(!res.ok)throw new Error(payload.error||'요청 실패');return payload;
 }
 function desktopMessage(msg,bad=false){let el=document.getElementById('desktop-status');el.textContent=msg;el.classList.toggle('error',bad)}
-async function desktopConfig(){return desktopAPI('config',{orcaExe:document.getElementById('desktop-orca-path').value.trim(),workRoot:document.getElementById('desktop-work-root').value.trim()});}
+async function desktopConfig(){
+ if(desktopConfigSaving)throw Error('경로 저장 중입니다.');
+ const p=$('desktop-orca-path'),w=$('desktop-work-root'),rawP=p.value,rawW=w.value;
+ desktopConfigSaving=true;desktopConfigEpoch++;
+ try{
+  const result=await desktopAPI('config',{orcaExe:rawP.trim(),workRoot:rawW.trim()});
+  if(p.value===rawP)desktopConfigDirty.delete(p.id);
+  if(w.value===rawW)desktopConfigDirty.delete(w.id);
+  $('settings-dirty').textContent=desktopConfigDirty.size?'저장하지 않은 경로 변경이 있습니다.':'경로 저장 완료';
+  return result;
+ }finally{desktopConfigSaving=false;desktopConfigEpoch++}
+}
 function desktopSafe(s){return /^[A-Za-z0-9_.-]{1,120}$/.test(s)&&!s.includes('..')}
 function desktopRunData(workflow){
  // An explicitly deleted primary XYZ must never be silently restored from extras.
@@ -803,7 +843,7 @@ function desktopRunData(workflow){
  const generated=[], jobs=[];
  const inputs=workflow?stages().map((s,i)=>({s,i})).filter(v=>v.s[1]):[{s:currentStage(),i:activeStage}];
  for(const {s,i} of inputs){
-  const name=displayName(i)+'.inp';const text=workflow?(editorDirty&&i===activeStage?$('editor').value:buildInput(i)):$('editor').value;
+  const name=displayName(i)+'.inp';const text=workflow?(editorDirty&&i===activeStage?$('editor').value:buildInput(i,!editorDirty)):$('editor').value;
   const source=xyzName(i);
   if(!desktopSafe(name)||!desktopSafe(source))throw Error('파일명에 한글이나 공백이 포함되어 있어요. XYZ를 영문/숫자 이름으로 다시 지정해 주세요: '+source);
   generated.push({name,content:text});
@@ -817,22 +857,25 @@ function desktopRunData(workflow){
   const isFromEarlier=jobs.some((j,index)=>index<jobs.indexOf(st) && j.input.replace(/\.inp$/i,'.xyz')===st.source);
   if(!files.has(st.source)&&!isFromEarlier)throw Error(st.source+' 파일이 필요해요. 추가 XYZ 선택 버튼으로 불러와 주세요.');
  }
- return {label:filenameStem(loadedXYZ||'molecule')+'_'+active,files:[...files].map(([name,content])=>({name,content})),stages:jobs};
+ return {label:filenameStem(loadedXYZ||'molecule')+'_'+active,files:[...files].map(([name,content])=>({name,content})),stages:jobs,...(singleAutoMode()&&!editorDirty?{autoCPU:Math.floor(num('cores',1))}:{})};
 }
 async function desktopRun(workflow){
  try{
   await desktopConfig();
   const req=desktopRunData(workflow);
+  if(singleAutoMode()&&editorDirty&&!confirm('직접 수정된 INP는 자동 자원 배분을 적용하지 않습니다. 현재 INP에 적힌 CPU / MaxCore 그대로 실행할까요?'))return;
   const checked=await desktopAPI('preflight',req);
   if(!checked.ok)throw Error('계산 전 검사 실패: '+checked.errors.join(' / '));
   if(checked.warnings?.length&&!confirm('계산 전 검사에서 주의 사항이 나왔어요.\n\n'+checked.warnings.join('\n')+'\n\n그래도 실행할까요?')){desktopMessage('검사 주의 사항 확인 후 다시 실행하세요.');return}
   if(workflow&&editorDirty&&!confirm('현재 단계에서 수동 수정한 INP만 반영돼요. 다른 단계는 설정값에서 자동 생성됩니다. 실행할까요?'))return;
   desktopMessage('ORCA 실행 요청 중...');
-  const result=await desktopAPI('run',req);desktopMessage('실행 중 — 결과 폴더: '+result.folder);
+  const result=await desktopAPI('run',req);desktopMessage('실행 중 — 결과 폴더: '+result.folder+(result.allocation?' · '+result.allocation.cpu+' CPU / '+(result.allocation.ramMB/1024).toFixed(1)+' GB 예약':''));
+  if(result.allocation)$('single-run-allocation').textContent='실행 배분 · '+result.allocation.cpu+' CPU / '+(result.allocation.ramMB/1024).toFixed(1)+' GB 예약';else $('single-run-allocation').textContent='수동 INP 실행';
   toast('ORCA 계산을 시작했어요.');await desktopPoll();
  }catch(e){desktopMessage('오류: '+e.message,true);toast(e.message);}
 }
 async function desktopPoll(){try{
+ const epoch=desktopConfigEpoch;
  const d=await desktopAPI('status');lastDesktopState=d;
  if(d.eta){
   const e=d.eta;
@@ -842,7 +885,7 @@ async function desktopPoll(){try{
   document.getElementById('eta-workflow').textContent=e.workflowEta||'추정 중';
   document.getElementById('eta-note').textContent=(e.optimizationCycle?'Geometry Optimization cycle '+e.optimizationCycle+' · ':'')+(e.estimateBasis||'')+' · Opt cycle은 진행률(%)이 아니에요.';
  }
- if(d.config){const p=document.getElementById('desktop-orca-path'),w=document.getElementById('desktop-work-root');if(document.activeElement!==p)p.value=d.config.orcaExe||'';if(document.activeElement!==w)w.value=d.config.workRoot||''}
+ if(d.config&&!desktopConfigSaving&&epoch===desktopConfigEpoch){const p=$('desktop-orca-path'),w=$('desktop-work-root');if(document.activeElement!==p&&!desktopConfigDirty.has(p.id))p.value=d.config.orcaExe||'';if(document.activeElement!==w&&!desktopConfigDirty.has(w.id))w.value=d.config.workRoot||'';}
  if(d.job){const j=d.job;let label={running:'실행 중',completed:'정상 종료',failed:'실패',stopped:'중단'}[j.state]||j.state;
  desktopMessage(label+' · '+(j.stageIndex+1)+'/'+j.stageCount+' · '+j.stageName+' — '+j.message,j.state==='failed');
  if(j.lastLog)document.getElementById('desktop-live-log').textContent=j.lastLog;
@@ -861,9 +904,10 @@ document.getElementById('desktop-preflight').addEventListener('click',async()=>{
   for(const msg of report.errors||[])lines.push('오류: '+msg);
   for(const msg of report.warnings||[])lines.push('주의: '+msg);
   lines.push('참고: TD-DFT Root 추적, Method의 타당성 및 수렴 상태는 실제 계산 후 별도 검토해야 합니다.');
-  document.getElementById('desktop-live-log').textContent=lines.join('\n');
-  desktopMessage(report.ok?'입력 검사가 끝났어요. 아래 결과를 확인하세요.':'입력 검사에서 오류를 발견했어요.',!report.ok);
- }catch(e){desktopMessage('입력 검사 실패: '+e.message,true)}
+  if(report.allocation)lines.splice(1,0,'자동 배분 예상: '+report.allocation.cpu+' CPU / '+(report.allocation.ramMB/1024).toFixed(1)+' GB 예약 (실행 직전 재검사)');
+  $('single-preflight-report').textContent=lines.join('\n');$('single-preflight-details').open=true;
+  desktopMessage(report.ok?'입력 검사가 끝났어요. 검사 결과를 확인하세요.':'입력 검사에서 오류를 발견했어요.',!report.ok);
+ }catch(e){desktopMessage('입력 검사 실패: '+e.message,true);$('single-preflight-details').open=true;$('single-preflight-report').textContent=e.message}
 });
 document.getElementById('desktop-run').addEventListener('click',()=>desktopRun(false));
 document.getElementById('desktop-run-wf').addEventListener('click',()=>desktopRun(true));
@@ -994,9 +1038,9 @@ setInterval(()=>{if(lastDesktopState?.update)desktopUpdateShow(lastDesktopState.
  <small>ORCA 외 다른 프로그램 포함 · Job별 예약량과는 다릅니다.</small>
 </div>
 <div class="batch-budget-note" id="batch-budget-note">현재 INP 기준으로 병렬 계산에 필요한 CPU/RAM 예산을 표시합니다.</div>
-<div class="batch-controls"><button class="btn small ghost" id="batch-check">전체 Preflight</button><button class="btn primary" id="batch-start">▶ Batch 계산 시작</button><button class="btn small ghost" id="batch-pause">대기 작업 보류</button><button class="btn small ghost" id="batch-resume">대기 작업 재개</button><button class="btn small danger" id="batch-stop">■ 전체 중단</button><button class="btn small ghost" id="batch-csv" data-help="원본 OUT를 검증해 생성한 전체 Batch CSV를 내려받아요. 각 단계의 수렴, Energy(Eh), S₁/T₁ Vertical(kcal/mol·eV), Spin과 누락 항목을 포함해요.">↓ 전체 CSV</button><button class="btn small ghost" id="batch-txt" data-help="분자·단계별 계산 상태, Electronic/Gibbs/Enthalpy, Frequency, Vertical S₁/T₁과 원자별 Spin을 한글 설명과 함께 TXT로 저장해요.">↓ 전체 TXT</button></div>
+<div class="batch-controls"><label><input id="batch-append" type="checkbox" style="width:auto"> 기존 Queue에 추가</label><button class="btn small ghost" id="batch-check">전체 Preflight</button><button class="btn primary" id="batch-start">▶ Batch 계산 시작</button><button class="btn small ghost" id="batch-pause">대기 작업 보류</button><button class="btn small ghost" id="batch-resume">대기 작업 재개</button><button class="btn small danger" id="batch-stop">■ 전체 중단</button><button class="btn small ghost" id="batch-csv" data-help="원본 OUT를 검증해 생성한 전체 Batch CSV를 내려받아요. 각 단계의 수렴, Energy(Eh), S₁/T₁ Vertical(kcal/mol·eV), Spin과 누락 항목을 포함해요.">↓ 전체 CSV</button><button class="btn small ghost" id="batch-txt" data-help="분자·단계별 계산 상태, Electronic/Gibbs/Enthalpy, Frequency, Vertical S₁/T₁과 원자별 Spin을 한글 설명과 함께 TXT로 저장해요.">↓ 전체 TXT</button></div>
 <pre id="batch-status" class="batch-status" role="status">XYZ 파일을 등록하세요. 실제 ORCA 6.x 실행 결과와 Mock 검증은 구분됩니다.</pre>
-<div class="batch-note" id="batch-queue-info">Job Queue · 아직 등록된 작업 없음</div>
+<div class="batch-controls"><label>작업 상태 <select class="control" id="queue-filter"><option value="all">전체</option><option value="active">대기 / 실행</option><option value="completed">완료</option><option value="failed">실패 / 중단</option></select></label><input class="control" type="search" id="queue-search" placeholder="Job 이름 검색" aria-label="Job 이름 검색" style="min-width:150px"></div><div class="batch-note" id="batch-queue-info">Job Queue · 아직 등록된 작업 없음</div>
 <div class="batch-controls" aria-label="Queue 작업 기록 정리">
 <button class="btn small ghost" id="batch-clear-failed-jobs" title="실패·중단·취소 기록만 목록에서 제거합니다.">실패·중단 기록 삭제</button>
 <button class="btn small ghost" id="batch-clear-completed-jobs" title="완료된 작업 기록만 목록에서 제거합니다.">완료 기록 삭제</button>
@@ -1068,7 +1112,7 @@ function batchCapture(m){
   // earlier stage of this request, never another molecule's working folder.
   for(let i=0;i<stages().length;i++){
    const st=stages()[i];if(!st[1])continue;
-   const name=displayName(i)+'.inp';files.set(name,buildInput(i));
+   const name=displayName(i)+'.inp';files.set(name,buildInput(i,false));
    jobs.push({name:st[0],input:name,source:xyzName(i),opt:['A1','A4','A5','B3','D1','XS1OPT','XT1ROOTOPT'].includes(st[1])});
   }
   for(const st of jobs){if(files.has(st.source)||jobs.some(j=>j.input.replace(/\.inp$/i,'.xyz')===st.source))continue;const other=batchMolecules.find(v=>v.name===st.source);if(other)files.set(other.name,other.xyz);}
@@ -1213,13 +1257,22 @@ async function batchImport(files){
   batchRenderMolecules();batchMessage(batchMolecules.length+'개 분자 등록 · 모든 INP를 검토한 뒤 전체 Preflight를 실행하세요.'+(notes.length?'\n'+notes.join('\n'):''),notes.length>0);
  }catch(e){batchMessage(e.message,true)}finally{batchImporting=false;batchUpdateSelection();}
 }
-function batchPayload(){const included=batchMolecules.filter(m=>m.included),jobs=included.map(m=>m.request);if(!jobs.length)throw Error('실행할 분자를 한 개 이상 포함하세요.');const payload={jobs,limits:batchLimits()};if(batchAutoMode())payload.auto={eligible:included.map(m=>!m.custom&&!!m.presetId)};return payload;}
+function batchPayload(){const included=batchMolecules.filter(m=>m.included),jobs=included.map(m=>m.request);if(!jobs.length)throw Error('실행할 분자를 한 개 이상 포함하세요.');const payload={jobs,limits:batchLimits(),...($('batch-append').checked?{append:true}:{})};if(batchAutoMode())payload.auto={eligible:included.map(m=>!m.custom&&!!m.presetId)};return payload;}
 function batchAllocationLines(result){
  if(!result?.allocations?.length)return '';
  const l=result.limits;
  return '전체 '+l.cpu+' CPU · RAM 예약 '+(l.ramMB/1024).toFixed(1)+' GB · 최대 동시 '+l.concurrency+'개\n'+result.allocations.map(a=>a.label+' · '+a.cpu+' CPU / '+(a.ramMB/1024).toFixed(2)+' GB 예약'+(a.automatic?' · Auto':' · Fixed')).join('\n');
 }
-function batchCheckLines(result){return (batchAllocationLines(result)?batchAllocationLines(result)+'\n\n':'')+JSON.stringify(result.reports??result,null,2)}
+function batchCheckLines(result){
+ const lines=[result.ok?'✓ Preflight 통과':'✕ Preflight 실패',batchAllocationLines(result)].filter(Boolean);
+ for(const [i,report] of (result.reports||[]).entries()){
+  const label=result.allocations?.[i]?.label||'Job '+(i+1);
+  lines.push(label+' · '+(report.ok?'OK':'FAIL')+' · '+(report.stages?.length||0)+' 단계');
+  for(const error of report.errors||[])lines.push('  오류: '+error);
+  for(const warning of report.warnings||[])lines.push('  주의: '+warning);
+ }
+ return lines.join('\n');
+}
 async function batchSubmit(start){
  if(batchRequestBusy)return;batchRequestBusy=true;$('batch-start').disabled=true;$('batch-check').disabled=true;
  try{
@@ -1240,19 +1293,29 @@ async function batchAction(action,id=''){
  try{await desktopAPI('queue/action',{action,id});await batchPoll()}catch(e){batchMessage(e.message,true)}
 }
 function batchSeconds(s){s=Math.max(0,Math.floor(Number(s)||0));return Math.floor(s/3600)+'h '+Math.floor(s%3600/60)+'m '+s%60+'s';}
+let batchPollBusy=false;
 async function batchPoll(){
+ if(batchPollBusy)return;batchPollBusy=true;
  try{
   const d=await desktopAPI('queue');batchQueueState=d;
   const jobs=d.jobs||[],running=jobs.filter(j=>j.state==='Running'),cpuUsed=running.reduce((n,j)=>n+(j.cpu||0),0),ramUsed=running.reduce((n,j)=>n+(j.ramMB||0),0);const terminal=jobs.filter(j=>['Failed','Cancelled','Interrupted','Completed'].includes(j.state));$('batch-clear-failed-jobs').disabled=!terminal.some(j=>j.state!=='Completed');$('batch-clear-completed-jobs').disabled=!terminal.some(j=>j.state==='Completed');$('batch-clear-history').disabled=!terminal.length;const budget=d.limits?(' · 예약 '+cpuUsed+'/'+d.limits.cpu+' CPU, '+ramUsed+'/'+d.limits.ramMB+' MB RAM (실사용량 아님)'):'';$('batch-queue-info').textContent='Job Queue · '+jobs.length+'개 · 실행 중 '+running.length+'개 · '+(d.paused?'대기 작업 보류':'Scheduler 실행')+budget+' · 전체 Batch ETA: '+(typeof d.batchEta==='string'?d.batchEta:'추정 중')+' (자원 대기·실패 재시작에 따라 변동)'+(d.error?' · '+d.error:'');
+  const queued=jobs.filter(j=>j.state==='Pending').length;$('nav-batch').textContent='Batch / Queue'+(queued+running.length?' ('+(queued+running.length)+')':'');
+  $('batch-start').textContent=$('batch-append').checked?'＋ Queue에 추가':'▶ Batch 계산 시작';
+  renderQueueRows(jobs,d.paused);
+ }catch(e){batchMessage('Job Queue 연결 실패: '+e.message,true)}finally{batchPollBusy=false}
+}
+function renderQueueRows(jobs,paused){
+  const filter=$('queue-filter').value,query=$('queue-search').value.trim().toLowerCase();
+  const selected=jobs.filter(j=>(filter==='all'||(filter==='active'&&['Pending','Running'].includes(j.state))||(filter==='completed'&&j.state==='Completed')||(filter==='failed'&&['Failed','Interrupted','Cancelled'].includes(j.state)))&&(!query||String(j.label||j.request?.label||j.id).toLowerCase().includes(query)));
   const body=$('batch-queue');body.replaceChildren();
-  for(const j of jobs){
+  for(const j of selected){
    const row=document.createElement('tr'),cells=Array.from({length:5},()=>document.createElement('td'));row.append(...cells);
    cells[0].textContent=j.label||j.request?.label||j.id;
    const folder=document.createElement('small');folder.textContent=j.job?.folder||'실행 폴더 준비 중';cells[0].append(folder);
    const state=document.createElement('span');state.className='batch-state';state.textContent=j.state+(j.held?' · 보류':'');cells[1].append(state);
    const stage=document.createElement('small');stage.textContent=j.job?.stageName?`${(j.job.stageIndex||0)+1}/${j.job.stageCount||j.request?.stages?.length||'?'} · ${j.job.stageName}`:j.request?.stages?.map(s=>s.name).join(' → ')||'';cells[1].append(stage);
-   const message=document.createElement('small');message.textContent=j.job?.message||'';cells[1].append(message);
-   cells[2].textContent=(j.cpu||'?')+' CPU / '+(j.ramMB||'?')+' MB';
+   const message=document.createElement('small');message.textContent=j.state==='Pending'?(j.held?'사용자 보류':paused?'Queue 일시정지':j.waitReason||'실행 대기'):j.job?.message||'';cells[1].append(message);
+   cells[2].textContent=(j.cpu||'?')+' CPU / '+(j.ramMB||'?')+' MB';if(j.autoResources){const mode=document.createElement('small');mode.textContent=j.autoEligible?'Auto · 예약량':'Fixed INP · 예약량';cells[2].append(mode);}
    cells[3].textContent=batchSeconds(j.eta?.elapsedSeconds);const eta=document.createElement('small');eta.textContent=j.eta?.workflowEta||'추정 중';cells[3].append(eta);
    if(j.eta?.optimizationCycle){const cycle=document.createElement('small');cycle.textContent='Opt cycle '+j.eta.optimizationCycle;cells[3].append(cycle);}
    const button=(text,action)=>{const b=document.createElement('button');b.className='btn small ghost';b.textContent=text;b.onclick=()=>batchAction(action,j.id);cells[4].append(b)};
@@ -1264,8 +1327,9 @@ async function batchPoll(){
    if(j.job?.reportFile){const b=document.createElement('button');b.className='btn small ghost';b.textContent='TXT';b.onclick=async()=>{try{const r=await fetch('/api/queue/report?id='+encodeURIComponent(j.id)+'&session='+encodeURIComponent(desktopSession));if(!r.ok)throw Error('TXT 보고서를 읽지 못했습니다.');download((j.label||j.id)+'_analysis.txt',await r.text())}catch(e){batchMessage(e.message,true)}};cells[4].append(b);}
    body.append(row);
   }
- }catch(e){batchMessage('Job Queue 연결 실패: '+e.message,true)}
 }
+for(const id of ['queue-filter','queue-search'])$(id).addEventListener('input',()=>renderQueueRows(batchQueueState?.jobs||[],batchQueueState?.paused));
+$('batch-append').addEventListener('change',()=>{$('batch-start').textContent=$('batch-append').checked?'＋ Queue에 추가':'▶ Batch 계산 시작'});
 $('batch-clear-failed-jobs').onclick=()=>batchAction('clearFailed');
 $('batch-clear-completed-jobs').onclick=()=>batchAction('clearCompleted');
 $('batch-clear-history').onclick=()=>batchAction('clearAll');
@@ -2041,7 +2105,7 @@ $('trip-run').onclick=async()=>{
   if(jobs.some(x=>!x||!x.triplet?.confirmed))throw Error('확인되지 않은 Triplet Geometry Mapping입니다.');
   // Use the existing scheduler budgets; this never bypasses queue preflight.
   const request={jobs,limits:{concurrency:tripAutoMode()?1:Number($('trip-concurrency').value),cpu:Number($('trip-budget-cpu').value),ramMB:tripAutoMode()?128:Number($('trip-budget-ram').value)}};
-  if(tripAutoMode())request.auto={eligible:jobs.map(()=>true)};
+  if(tripAutoMode())request.auto={eligible:jobs.map(()=>true)};if($('trip-append').checked)request.append=true;
   const check=await desktopAPI('queue/preflight',request);
   if(!check.ok)throw Error('Batch Preflight 오류: '+JSON.stringify(check.reports));
   await desktopConfig();
@@ -2154,7 +2218,13 @@ $('trip-export-json').onclick=()=>{if(tripState.lastComparison)download('triplet
 .preset-item{min-height:54px;padding:9px 10px;gap:4px}
 .preset-item .preset-title{font-size:12.5px}
 .quick-card .quick-lead{font-size:12px}
-.trip-auto-label input{accent-color:#5addbb}
+.trip-auto-label input,.single-auto-label input{accent-color:#5addbb}
+.single-auto-label{display:flex;gap:6px;align-items:center;margin:5px 0 10px;font-size:12px;color:#b7d1e5}
+.calculation-runbar{position:sticky;bottom:0;z-index:3;background:#142235;border:1px solid #35506a;border-radius:9px;padding:10px;margin:12px 0 0;box-shadow:0 -6px 14px #080e1655}
+.calculation-runbar .btn.primary{flex:1;min-width:130px}
+#single-preflight-report{max-height:240px;white-space:pre-wrap}
+#settings-dirty{font-size:11px;color:#9bc5d6}
+#queue-search{width:min(250px,100%)}
 .resource-live{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px 18px;border:1px solid #2f485c;border-radius:9px;padding:12px;margin:13px 0;background:#142235}
 .resource-live>div{display:grid;grid-template-columns:1fr auto;gap:7px;align-items:center;color:#afc3d9;font-size:12px}
 .resource-live strong{color:#dbeaf6;font-size:13px;font-variant-numeric:tabular-nums}
@@ -2202,7 +2272,7 @@ function workspaceShow(key){
  const settings=workspacePage('settings','Settings','ORCA 실행 경로, 계산 폴더 및 앱 업데이트');
  const settingsPanel=document.createElement('div');settingsPanel.className='desktop-app-panel';
  const settingsActions=document.createElement('div');settingsActions.className='workspace-inline';
- settingsActions.append($('desktop-save-config'),$('desktop-quit'));
+ settingsActions.append($('desktop-save-config'),$('settings-dirty'),$('desktop-quit'));
  settingsPanel.append(document.querySelector('.runner-settings'),settingsActions,document.querySelector('.updater-panel'));
  settings.append(settingsPanel);
  const runner=document.getElementById('desktop-app-panel');
@@ -2211,10 +2281,15 @@ function workspaceShow(key){
   const b=document.createElement('button');b.type='button';b.className='btn small ghost';b.textContent=label;b.onclick=()=>workspaceShow(key);shortcut.append(b);
  }
  runner.append(shortcut);
+ const actions=document.querySelector('.runner-actions');actions.classList.add('calculation-runbar');
+ const details=document.createElement('details');details.id='single-preflight-details';details.className='advanced-options';details.innerHTML='<summary>계산 전 검사 결과</summary><pre class="runner-log" id="single-preflight-report">Preflight를 실행하세요.</pre>';
+ const allocation=document.createElement('div');allocation.id='single-run-allocation';allocation.className='muted';runner.append(allocation,details);
+ document.querySelector('.content-panel').append(actions);
+ $('single-auto').addEventListener('change',singleResourceModeChanged);
  for(const b of nav.querySelectorAll('[data-page]'))b.addEventListener('click',()=>workspaceShow(b.dataset.page));
  // Keep scientific controls and input state unchanged during navigation.
  workspaceShow('calculation');
- tripLoadResourceSystem();
+ tripLoadResourceSystem();singleLoadResourceSystem();
  setInterval(batchMonitorResources,3000);
 })();
 </script>
