@@ -2,8 +2,9 @@ const {chromium}=require('playwright');
 const fs=require('fs'),assert=require('assert');
 (async()=>{const browser=await chromium.launch({headless:true,...(process.env.CHROMIUM_PATH?{executablePath:process.env.CHROMIUM_PATH}:{}),args:['--no-sandbox']});try{
  const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
- let submitted=null,compareMode=false,txtRequests=0;await page.route('http://orca.test/**',async route=>{
+ let submitted=null,compareMode=false,txtRequests=0,autoProbe=false;await page.route('http://orca.test/**',async route=>{
  const u=new URL(route.request().url());if(u.pathname==='/')return route.fulfill({contentType:'text/html',body:fs.readFileSync(require('path').join(__dirname,'../assets/desktop.html'),'utf8')});
+ if(u.pathname==='/api/queue/resources')return route.fulfill({json:autoProbe?{supported:true,cpu:16,totalMB:65536,availableMB:62500,budgetMB:50000}:{supported:false}});
  if(u.pathname==='/api/queue/export'&&u.searchParams.get('format')==='txt'){txtRequests++;return route.fulfill({contentType:'text/plain',body:'ORCA Nova | Batch Research Summary\n'})}
  if(u.pathname==='/api/queue'&&route.request().method()==='POST'){submitted=route.request().postDataJSON();return route.fulfill({json:{ok:true}})}
  if(u.pathname==='/api/queue')return route.fulfill({json:{jobs:compareMode?[{id:'j1',label:'Test molecule',state:'Completed',request:{stages:[{name:'S0 Opt',input:'first.inp',source:'mol1.xyz',opt:true}]}}]:[],paused:false,limits:{concurrency:2,cpu:4,ramMB:8192},batchEta:'약 2분 ~ 약 5분'}});
@@ -96,5 +97,26 @@ const fs=require('fs'),assert=require('assert');
  assert.equal(await page.evaluate(()=>desktopXYZ.size),0);
  assert.equal(await page.evaluate(()=>batchMolecules.length),2);
 
+ // Automatic mode hides manual controls and distinguishes generated from edited INPs.
+ autoProbe=true;
+ await page.evaluate(()=>batchLoadResourceSystem());
+ assert(await page.locator('#batch-auto').isChecked());
+ assert(!(await page.locator('#batch-manual-options').isVisible()));
+ await page.locator('#batch-cpu').fill('16');
+ let autoPayload=await page.evaluate(()=>batchPayload());
+ assert.equal(autoPayload.limits.cpu,16);
+ assert.deepEqual(autoPayload.auto.eligible,[true,true]);
+ const detail=page.locator('#batch-molecules tr').first().locator('details').first();
+ await detail.locator('summary').click();
+ const text=detail.locator('textarea');
+ await text.fill((await text.inputValue())+'\n# user edit\n');
+ autoPayload=await page.evaluate(()=>batchPayload());
+ assert.deepEqual(autoPayload.auto.eligible,[false,true]);
+ await page.locator('#batch-start').click();
+ await page.waitForFunction(()=>document.querySelector('#batch-status').textContent.includes('등록했습니다'));
+ assert.deepEqual(submitted.auto.eligible,[false,true]);
+ await page.locator('#batch-auto').uncheck();
+ assert(await page.locator('#batch-manual-options').isVisible());
+ assert(!(await page.evaluate(()=>batchPayload())).auto);
  assert.deepEqual(errors,[]);console.log('PASS browser: multi XYZ batch, deletion, transfers, parallel budget, live queue untouched and no JS errors');
 }finally{await browser.close()}})().catch(e=>{console.error(e);process.exit(1)});
