@@ -65,3 +65,16 @@ func TestETANoWorkflowPredictionIfAnyUnknown(t *testing.T) {
 		t.Fatal(v.StageETA)
 	}
 }
+
+func TestWorkflowETAUsesRemainingTimeBounds(t *testing.T){
+ h:=newDurationHistory(filepath.Join(t.TempDir(),"config.json"))
+ h.observe("known",600)
+ a:=&App{history:h}
+ now:=time.Now()
+ j:=&Job{State:"running",Started:now.Add(-10*time.Minute).Format(time.RFC3339),StageCount:1,stageStarted:now.Add(-10*time.Minute),stageKey:"known",stageKeys:[]string{"known"}}
+ v:=a.currentETA(j)
+ if v.WorkflowETA!=v.StageETA||strings.Contains(v.WorkflowETA,"1분 이내 ~ 1분 이내"){t.Fatal(v)}
+ j.stageStarted=now.Add(-20*time.Minute)
+ v=a.currentETA(j)
+ if !strings.Contains(v.WorkflowETA,"예측 불안정"){t.Fatal(v)}
+}
