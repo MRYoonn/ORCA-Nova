@@ -30,7 +30,7 @@ const fs=require('fs'),path=require('path'),assert=require('assert');
   assert(await wb.evaluate(el=>el.classList.contains('library-collapsed')),'library must be folded by default');
   assert.equal(await toggle.getAttribute('aria-expanded'),'false');
   assert(!(await page.locator('#library-content').isVisible()),'library lists should not occupy space initially');
-  assert.equal(await page.locator('#calc-nav details.nav-category').count(),6);
+  assert.equal(await page.locator('#calc-nav details.nav-category').count(),7);
   assert.equal(await page.locator('#calc-nav details[open]').count(),0,'all calculation groups should start collapsed');
   assert(await page.locator('.preset-group[data-kind="recommended"]').isVisible());
   assert(!(await page.locator('.preset-group[data-kind="literature"]').isVisible()));
@@ -45,7 +45,7 @@ const fs=require('fs'),path=require('path'),assert=require('assert');
   const expected=await page.evaluate(()=>PRESET_CATEGORIES.flatMap(cat=>PRESETS.filter(p=>presetClass(p)===cat.id).map(p=>p.id)));
   assert.deepEqual(uiOrder,expected);
   assert.equal(new Set(uiOrder).size,await page.evaluate(()=>PRESETS.length),'preset duplication or omission');
-  assert.equal(await page.locator('#preset-grid .preset-group[data-kind="literature"] .preset-item').count(),2);
+  assert.equal(await page.locator('#preset-grid .preset-group[data-kind="literature"] .preset-item').count(),13);
   // CSS grid must be row-major, not column-major.
   for(const group of await page.locator('#preset-grid .preset-group').all()){
    const cards=group.locator('.preset-item');if(await cards.count()<2)continue;
@@ -64,10 +64,30 @@ const fs=require('fs'),path=require('path'),assert=require('assert');
   await page.screenshot({path:path.join(__dirname,'../ui-screenshots/preset-default-1600.png')});
   // Original Method selection must remain functional.
   await page.locator('[data-preset="glorius-hartmann-opt"]').click();
-  assert.equal(await page.evaluate(()=>active),'A4');
+  assert.equal(await page.evaluate(()=>active),'G2');
   assert.equal(await page.locator('#functional').inputValue(),'M06-2X');
   assert.equal(await page.locator('[data-preset="glorius-hartmann-opt"]').getAttribute('data-picked'),'true');
   assert.equal(await toggle.getAttribute('aria-expanded'),'false','selecting preset must not expand library');
+  // All SI templates, workflow topology and high/low levels.
+  assert((await page.locator('#editor').inputValue()).includes('def2-TZVP def2/J RIJCOSX D3ZERO CPCM(acetonitrile)'));
+  assert(await page.locator('#picker-functional button').isDisabled());
+  await page.locator('#xyz-file').setInputFiles({name:'mock.xyz',mimeType:'text/plain',buffer:Buffer.from('3\nwater\nO 0 0 0\nH 0.76 0.58 0\nH -0.76 0.58 0\n')});
+  await page.waitForFunction(()=>loadedXYZ==='mock.xyz');
+  await page.locator('[data-preset="glorius-s0-t1"]').click();
+  const pair=await page.evaluate(()=>desktopRunData(true));
+  assert.equal(pair.stages.length,5);assert(pair.stages[0].goat);assert(!pair.stages[0].opt);
+  assert.equal(pair.stages[1].source,'mock_G11_step1.globalminimum.xyz');assert.equal(pair.stages[3].source,pair.stages[1].source);
+  assert.equal(pair.stages[2].compositeFrom,pair.stages[1].input);
+  assert.equal(pair.stages[4].compositeFrom,pair.stages[3].input);
+  assert(pair.files.find(f=>f.name===pair.stages[0].input).content.includes('! GOAT XTB2'));
+  assert(pair.files.find(f=>f.name===pair.stages[4].input).content.includes('UKS M06-2X def2-QZVPPD def2/J RIJCOSX'));
+  assert(pair.files.find(f=>f.name===pair.stages[3].input).content.includes('* xyzfile 0 3'));
+  assert(pair.files.find(f=>f.name===pair.stages[3].input).content.includes('P_Mulliken'));
+  assert(!(pair.files.find(f=>f.name===pair.stages[2].input).content.includes(' Freq')));
+  await page.locator('[data-preset="glorius-ts-composite"]').click();
+  const ts=await page.evaluate(()=>desktopRunData(true));assert.equal(ts.stages[0].stationary,'ts');assert(ts.stages[0].opt);
+  assert.equal(ts.stages[2].source,ts.stages[1].source);assert(ts.files.find(f=>f.name===ts.stages[0].input).content.includes('Calc_Hess true'));
+  await page.locator('[data-preset="glorius-hartmann-opt"]').click();
   // Expand sidebar, then expand only W category.
   await toggle.click();
   assert(await page.locator('#library-content').isVisible());
