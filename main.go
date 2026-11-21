@@ -29,6 +29,7 @@ type Config struct {
 	ORCAExe       string `json:"orcaExe"`
 	WorkRoot      string `json:"workRoot"`
 	UpdateChannel string `json:"updateChannel,omitempty"`
+	AutoCPU int `json:"autoCPU,omitempty"`
 }
 type JobFile struct {
 	Name    string `json:"name"`
@@ -77,6 +78,7 @@ type App struct {
 	token    string
 	updates  *updater
 	cfgPath  string
+	cfgWriteMu sync.Mutex
 	history  *durationHistory
 }
 
@@ -112,6 +114,7 @@ func newApp() *App {
 				a.cfg.WorkRoot = cfg.WorkRoot
 			}
 			a.cfg.ORCAExe = cfg.ORCAExe
+			if cfg.AutoCPU>0{a.cfg.AutoCPU=min(cfg.AutoCPU,runtime.NumCPU())}
 			if cfg.UpdateChannel == "beta" { a.cfg.UpdateChannel = "beta" }
 		}
 	}
@@ -127,14 +130,24 @@ func newApp() *App {
 	return a
 }
 func (a *App) saveConfig() error {
+    a.cfgWriteMu.Lock()
+    defer a.cfgWriteMu.Unlock()
 	a.mu.Lock()
 	cfg := a.cfg
 	a.mu.Unlock()
-	if err := os.MkdirAll(filepath.Dir(a.cfgPath), 0700); err != nil {
+    dir:=filepath.Dir(a.cfgPath)
+	if err := os.MkdirAll(dir, 0700); err != nil {
 		return err
 	}
-	b, _ := json.MarshalIndent(cfg, "", "  ")
-	return os.WriteFile(a.cfgPath, b, 0600)
+	b, err := json.MarshalIndent(cfg, "", "  ")
+    if err!=nil{return err}
+    temp,err:=os.CreateTemp(dir,".orca-config-*")
+    if err!=nil{return err}
+    name:=temp.Name()
+    defer os.Remove(name)
+    if _,err=temp.Write(b);err!=nil{_ = temp.Close();return err}
+    if err=temp.Close();err!=nil{return err}
+    return os.Rename(name,a.cfgPath)
 }
 func respond(w http.ResponseWriter, status int, v interface{}) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -302,11 +315,17 @@ func (a *App) route(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-		a.mu.Lock()
-		cfg.UpdateChannel = a.cfg.UpdateChannel
+		if cfg.AutoCPU<0||cfg.AutoCPU>runtime.NumCPU(){fail(w,400,"자동 CPU 설정 범위를 확인하세요");return}
+        a.mu.Lock()
+        previous:=a.cfg
+		cfg.UpdateChannel = previous.UpdateChannel
+        if cfg.AutoCPU==0{cfg.AutoCPU=previous.AutoCPU}
 		a.cfg = cfg
 		a.mu.Unlock()
 		if err := a.saveConfig(); err != nil {
+            a.mu.Lock()
+            if a.cfg==cfg{a.cfg=previous}
+            a.mu.Unlock()
 			fail(w, 500, err.Error())
 			return
 		}
