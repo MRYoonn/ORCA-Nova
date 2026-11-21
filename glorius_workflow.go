@@ -31,7 +31,13 @@ func keywordLine(inp string) map[string]bool {
 func gloriusLevel(inp string, high bool) bool {
  k:=keywordLine(inp)
  basis:="def2-tzvp";if high{basis="def2-qzvppd"}
- for _,v:=range []string{"m06-2x",basis,"def2/j","rijcosx","d3zero","cpcm(acetonitrile)"}{if !k[v]{return false}}
+ required:=[]string{"m06-2x",basis,"def2/j","rijcosx","d3zero","cpcm(acetonitrile)"}
+ allowed:=map[string]bool{}
+ for _,v:=range required{if !k[v]{return false};allowed[v]=true}
+ for _,v:=range []string{"uks","rks","tightscf","normalscf","verytightscf","opt","optts","freq","irc"}{allowed[v]=true}
+ for v:=range k{if !allowed[v]{return false}}
+ // Additional calculations cannot silently change the fixed SI level.
+ if k["uks"]&&k["rks"]{return false}
  return true
 }
 // Validate explicit metadata, never infer a successful stage from its UI name.
