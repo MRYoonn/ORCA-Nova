@@ -4,6 +4,7 @@ const fs=require('fs'),assert=require('assert');
  const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
  let submitted=null,compareMode=false,txtRequests=0,autoProbe=false;await page.route('http://orca.test/**',async route=>{
  const u=new URL(route.request().url());if(u.pathname==='/')return route.fulfill({contentType:'text/html',body:fs.readFileSync(require('path').join(__dirname,'../assets/desktop.html'),'utf8')});
+ if(u.pathname==='/api/queue/monitor')return route.fulfill({json:{cpuPercent:37.5,ramUsedMB:24576,ramTotalMB:65536,ramAvailableMB:40960}});
  if(u.pathname==='/api/queue/resources')return route.fulfill({json:autoProbe?{supported:true,cpu:16,totalMB:65536,availableMB:62500,budgetMB:50000}:{supported:false}});
  if(u.pathname==='/api/queue/export'&&u.searchParams.get('format')==='txt'){txtRequests++;return route.fulfill({contentType:'text/plain',body:'ORCA Nova | Batch Research Summary\n'})}
  if(u.pathname==='/api/queue'&&route.request().method()==='POST'){submitted=route.request().postDataJSON();return route.fulfill({json:{ok:true}})}
@@ -13,6 +14,9 @@ const fs=require('fs'),assert=require('assert');
  if(u.pathname==='/api/status')return route.fulfill({json:{config:{orcaExe:'/tmp/orca',workRoot:'/tmp/jobs'}}});
  return route.fulfill({json:{ok:true}});
  });await page.goto('http://orca.test/?session=mock');await page.locator('#nav-batch').click();
+ await page.waitForFunction(()=>document.querySelector('#live-cpu').textContent==='37.5%');
+ assert.equal(await page.locator('#live-ram').innerText(),'24.0 / 64.0 GB');
+ assert.equal(await page.locator('#live-ram-bar').evaluate(el=>el.value),37.5);
  await page.evaluate(()=>{active='W2';$('cores').value='2';$('maxcore').value='100';});
  const xyz='3\nwater\nO 0 0 0\nH 0.757 0.586 0\nH -0.757 0.586 0\n';
  await page.locator('#batch-files').setInputFiles([1,2,3,4].map(n=>({name:'mol'+n+'.xyz',mimeType:'text/plain',buffer:Buffer.from(xyz)})));
