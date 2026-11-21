@@ -468,7 +468,7 @@ for(const [key,v] of Object.entries(p.settings)){if(key==='cores'&&singleAutoMod
 if(!Object.prototype.hasOwnProperty.call(p.settings,'extra-freq'))$('extra-freq').checked=false;
 if(!Object.prototype.hasOwnProperty.call(p.settings,'extra-spin'))$('extra-spin').checked=false;
 if(!Object.prototype.hasOwnProperty.call(p.settings,'extra-spinpop'))$('extra-spinpop').checked=false;
-selectedPreset=p.id;refreshPresetHighlight();syncAllPickers();renderNav();generate(true);
+selectedPreset=p.id;$('triplet-panel').hidden=p.id!=='triplet-transfer';refreshPresetHighlight();syncAllPickers();renderNav();generate(true);
 $('preset-context').innerHTML='<strong>적용 완료 · '+esc(p.title)+'</strong><br>'+esc(p.desc)+'<br><span style="color:#94abc2">※ ORCA에 실제로 계산을 실행한 것은 아니며 INP 생성 설정만 바뀌었어요.</span>';
 $('triplet-panel').hidden=p.id!=='triplet-transfer';
 if(p.id==='triplet-transfer'){
@@ -599,6 +599,11 @@ function restoreAutoCPUPreference(cfg){
 }
 let singleResourceSystem=null;
 function singleAutoMode(){return !!singleResourceSystem?.supported&&$('single-auto').checked}
+function singleSelectedCPU(){
+ const n=Number($('cores').value);
+ if(!Number.isSafeInteger(n)||n<1||n>singleResourceSystem.cpu)throw Error('사용할 CPU 수를 1–'+singleResourceSystem.cpu+'개 범위의 정수로 선택하세요.');
+ return n;
+}
 function singleDraftResources(){
  if(!singleAutoMode())return null;
  const cpu=Math.min(Math.floor(num('cores',1)),singleResourceSystem.cpu,Math.floor(singleResourceSystem.budgetMB/640));
@@ -698,7 +703,8 @@ function buildInput(stageIndex=activeStage,autoPreview=true){
  lines.push('',`* xyzfile ${charge} ${mult} ${file}`,'');
  return lines.join('\n')
 }
-function activeInfo(){const c=calc(active),st=currentStage(),base=st[1];$('calc-title').textContent=c.name;$('calc-desc').textContent=c.desc;$('crumb').textContent=c.group+'. '+c.groupName;$('calc-mode').textContent=c.kind==='workflow'?'◉ MULTI-STEP WORKFLOW':'● SINGLE INPUT';$('calc-mode').style.background=c.kind==='workflow'?'#2c3248':'#1d344a';$('calc-note').textContent=c.kind==='workflow'?'이 Workflow는 ORCA 실행을 위한 여러 INP를 생성해요. ZIP으로 받으면 Windows CMD에서 순차 실행할 수 있지만, 계산 결과와 상태 검증은 직접 해야 해요.':c.guide;
+function activeInfo(){const c=calc(active),st=currentStage(),base=st[1];const transfer=!$('triplet-panel').hidden;
+ $('desktop-run').hidden=c.kind==='workflow'||transfer;$('desktop-run-wf').hidden=c.kind!=='workflow'||transfer;$('desktop-preflight').hidden=transfer;$('calc-title').textContent=c.name;$('calc-desc').textContent=c.desc;$('crumb').textContent=c.group+'. '+c.groupName;$('calc-mode').textContent=c.kind==='workflow'?'◉ MULTI-STEP WORKFLOW':'● SINGLE INPUT';$('calc-mode').style.background=c.kind==='workflow'?'#2c3248':'#1d344a';$('calc-note').textContent=c.kind==='workflow'?'이 Workflow는 ORCA 실행을 위한 여러 INP를 생성해요. ZIP으로 받으면 Windows CMD에서 순차 실행할 수 있지만, 계산 결과와 상태 검증은 직접 해야 해요.':c.guide;
  const allowAddons=addOnAvailable(base),opts=stageOptions(st);
  for(const [id,forced] of [['extra-spin',opts.spin===true],['extra-spinpop',opts.spinpop===true]]){const el=$(id),wasForced=el.dataset.forced==='true';if(forced&&!wasForced){el.dataset.prior=String(el.checked);el.checked=true;el.dataset.forced='true'}else if(!forced&&wasForced){el.checked=el.dataset.prior==='true';el.dataset.forced='false'}}
  for(const id of ['extra-freq','extra-spin','extra-spinpop'])$(id).disabled=!allowAddons;
@@ -736,7 +742,7 @@ function renderWorkflow(){const st=stages();$('workflow-box').innerHTML=st.map((
 function updateCode(text,manual=false){$('editor').value=text;editorDirty=manual;renderWarning();renderLines();$('edit-status').textContent=manual?'직접 수정됨 · 저장 필요':'자동 생성됨 · 수정 가능'}
 function generate(force=false){syncAllPickers();if(editorDirty&&!force){$('edit-status').textContent='설정 변경됨 · ↻ 재생성 필요';activeInfo();return}activeInfo();if(!currentStage()[1]){updateCode(`# ${calc(active).name} · Analysis step\n# 이 단계는 개별 ORCA 계산이 아니라 결과 비교 작업입니다.\n# 이전 단계들의 OUT에서 에너지 값을 추출하여 계산하세요.\n# 이 주석 파일은 실행 가능한 INP가 아닙니다.\n`,false);$('download-inp').disabled=true;$('top-inp').disabled=true; $('copy-cmd').disabled=true;$('copy-cmd2').disabled=true}else{updateCode(buildInput(),false);$('download-inp').disabled=false;$('top-inp').disabled=false;$('copy-cmd').disabled=false;$('copy-cmd2').disabled=false}renderConsole()}
 function renderConsole(){let filename=displayName()+'.inp',out=displayName()+'.out';$('console').textContent=`C:\\ORCA\\> "C:\\ORCA\\orca.exe" ${filename} > ${out} 2>&1\n\n# 실제 설치 경로와 작업 폴더를 수정하세요.\n# HTML에서는 ORCA.exe를 실행할 수 없어요.`}
-function selectedCalc(id){if(editorDirty&&!confirm('현재 직접 편집한 INP 내용이 사라집니다. 계산을 변경할까요?'))return;active=id;activeStage=0;renderNav();generate(true)}
+function selectedCalc(id){if(editorDirty&&!confirm('현재 직접 편집한 INP 내용이 사라집니다. 계산을 변경할까요?'))return;active=id;activeStage=0;selectedPreset='';$('triplet-panel').hidden=true;refreshPresetHighlight();renderNav();generate(true)}
 // Menu is hidden by default; when expanded each category is also closed by default.
 const openNavGroups=new Set();
 function setLibraryOpen(open){
@@ -899,7 +905,7 @@ function desktopRunData(workflow){
   const isFromEarlier=jobs.some((j,index)=>index<jobs.indexOf(st) && j.input.replace(/\.inp$/i,'.xyz')===st.source);
   if(!files.has(st.source)&&!isFromEarlier)throw Error(st.source+' 파일이 필요해요. 추가 XYZ 선택 버튼으로 불러와 주세요.');
  }
- return {label:filenameStem(loadedXYZ||'molecule')+'_'+active,files:[...files].map(([name,content])=>({name,content})),stages:jobs,...(singleAutoMode()&&!editorDirty?{autoCPU:Math.floor(num('cores',1))}:{})};
+ return {label:filenameStem(loadedXYZ||'molecule')+'_'+active,files:[...files].map(([name,content])=>({name,content})),stages:jobs,...(singleAutoMode()&&!editorDirty?{autoCPU:singleSelectedCPU()}:{})};
 }
 async function desktopRun(workflow){
  try{
