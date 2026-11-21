@@ -324,7 +324,7 @@
  <div class="desktop-app-head"><div><b>Windows ORCA Runner</b> <span class="runner-chip">로컬 실행</span><p>ORCA 설치 경로를 한 번 지정하면 INP 생성 → 계산 실행 → OUT 저장까지 할 수 있어요.</p></div><span class="help-icon" tabindex="0" data-title="ORCA Runner" data-help="ORCA 자체는 별도 설치가 필요해요. 이 프로그램은 ORCA를 설치하거나 DFT 계산을 대신하지 않고, 설치된 orca.exe를 실행해요. 계산 중에는 프로그램을 종료하지 마세요.">?</span></div>
  <div class="runner-settings"><label>ORCA.exe 위치 <span class="help-icon" tabindex="0" data-title="ORCA 실행 파일" data-help="예: C:\ORCA\orca.exe. 실행에 사용할 ORCA 설치 폴더의 실제 orca.exe 경로를 입력하세요. Windows에 설치된 ORCA 버전의 MPI 환경이 필요할 수 있어요.">?</span><input id="desktop-orca-path" placeholder="C:\ORCA\orca.exe" spellcheck="false"></label><label>작업 폴더 <span class="help-icon" tabindex="0" data-title="Job Working Directory" data-help="계산 단계별 INP, XYZ, OUT 파일과 실패 보고서를 자동 저장할 폴더예요. 계산마다 새 하위 폴더를 만들어요.">?</span><input id="desktop-work-root" placeholder="C:\Users\...\Documents\ORCA Nova Jobs" spellcheck="false"></label></div>
  <div class="runner-actions"><button id="desktop-save-config" class="btn small ghost">설정 저장</button><span id="settings-dirty" class="muted" role="status"></span><button id="desktop-preflight" class="btn small ghost" data-help="실제 ORCA를 실행하지 않고 XYZ 원자수·좌표, INP의 Charge/Multiplicity, Workflow 연결을 먼저 검사해요. 계산 정확성 자체를 보장하지는 않아요.">🔎 계산 전 검사</button><button id="desktop-run" class="btn primary">▶ 현재 INP 실행</button><button id="desktop-run-wf" class="btn small">▶ 전체 Workflow 실행</button><button id="desktop-stop" class="btn small danger">■ 계산 중단</button></div>
- <div class="runner-more"><label class="btn small ghost" for="desktop-extra-xyz" data-help="여기에서 XYZ를 선택해도 돼요. 기본 XYZ가 없다면 첫 파일을 기본 분자로 등록하고, 나머지는 반응물·생성물 등 추가 XYZ로 등록해요.">+ XYZ 선택 / 추가 <span class="help-icon">?</span></label><input id="desktop-extra-xyz" type="file" accept=".xyz" multiple hidden><span id="desktop-extra-info">기본 XYZ 없음 · 추가 XYZ 0개</span><button id="desktop-to-batch" class="btn small ghost" data-help="기본 및 추가 XYZ를 아래 Batch 목록에 복사합니다. 이미 등록한 같은 이름의 파일은 건너뜁니다.">↓ XYZ 전체 → Batch</button><button id="desktop-clear-xyz" class="btn small ghost" data-help="기본·추가 XYZ 등록만 비웁니다. 기존 Job Queue와 디스크 파일은 변경되지 않습니다.">입력 XYZ 모두 비우기</button><span class="spacer"></span><button class="btn small ghost" id="desktop-report" disabled data-help="ORCA 계산 종료 후 Electronic Energy, Enthalpy, Gibbs Free Energy, S₁/T₁, Spin Population 등의 텍스트 해석 파일을 받아요. 중간 단계도 자동 저장해요.">📄 해석 TXT 저장</button><label class="btn small ghost" for="desktop-open-out" data-help="예전에 ORCA에서 계산한 .out 파일도 텍스트 해석 보고서로 변환할 수 있어요. ORCA 설치 없이 분석할 수 있어요.">OUT 분석 <span class="help-icon">?</span></label><input id="desktop-open-out" type="file" accept=".out,.log,text/plain" hidden><button class="btn small ghost" id="desktop-reveal">📁 결과 폴더</button><button class="btn small ghost" id="desktop-quit">앱 종료</button></div>
+ <div class="runner-more"><label class="btn small ghost" for="desktop-extra-xyz" data-help="여기에서 XYZ를 선택해도 돼요. 기본 XYZ가 없다면 첫 파일을 기본 분자로 등록하고, 나머지는 반응물·생성물 등 추가 XYZ로 등록해요.">+ XYZ 선택 / 추가 <span class="help-icon">?</span></label><input id="desktop-extra-xyz" type="file" accept=".xyz" multiple hidden><span id="desktop-extra-info">기본 XYZ 없음 · 추가 XYZ 0개</span><button id="desktop-to-batch" class="btn small ghost" data-help="기본 및 추가 XYZ를 아래 Batch 목록에 복사합니다. 이미 등록한 같은 이름의 파일은 건너뜁니다.">↓ XYZ 전체 → Batch</button><button id="desktop-clear-xyz" class="btn small ghost" data-help="기본·추가 XYZ 등록만 비웁니다. 기존 Job Queue와 디스크 파일은 변경되지 않습니다.">입력 XYZ 모두 비우기</button><span class="spacer"></span><button class="btn small ghost" id="desktop-report" disabled data-help="ORCA 계산 종료 후 Electronic Energy, Enthalpy, Gibbs Free Energy, S₁/T₁, Spin Population 등의 텍스트 해석 파일을 받아요. 중간 단계도 자동 저장해요.">📄 해석 TXT 저장</button><label class="btn small ghost" for="desktop-open-out" data-help="예전에 ORCA에서 계산한 .out 파일도 텍스트 해석 보고서로 변환할 수 있어요. ORCA 설치 없이 분석할 수 있어요.">OUT 분석 <span class="help-icon">?</span></label><input id="desktop-open-out" type="file" accept=".out,.log,text/plain" hidden><button class="btn small folder-open" id="desktop-reveal" disabled>📁 단일 계산 결과 폴더 열기</button><button class="btn small ghost" id="desktop-quit">앱 종료</button></div>
  <div id="desktop-extra-list" class="xyz-extra-list" aria-label="추가 XYZ 파일 목록"></div>
  <div class="updater-panel" role="group" aria-label="자동 업데이트">
  <div class="updater-heading"><span>↻ GitHub 자동업데이트 <span class="help-icon" tabindex="0" data-title="자동업데이트" data-help="Stable은 정식판만, Beta는 시험판(rc)을 포함해 검색해요. 업데이트 설치는 사용자의 승인 후 SHA-256 확인·전체 Portable 파일 백업·앱 재시작 순서로 진행해요. 실행 중인 ORCA 계산은 업데이트하지 않습니다.">?</span></span><span id="update-version">v1.5.0</span></div>
@@ -971,6 +971,7 @@ async function desktopPoll(){try{
   document.getElementById('eta-note').textContent=(e.optimizationCycle?'Geometry Optimization cycle '+e.optimizationCycle+' · ':'')+(e.estimateBasis||'')+' · Opt cycle은 진행률(%)이 아니에요.';
  }
  if(d.config&&!desktopConfigSaving&&epoch===desktopConfigEpoch){restoreAutoCPUPreference(d.config);const p=$('desktop-orca-path'),w=$('desktop-work-root');if(document.activeElement!==p&&!desktopConfigDirty.has(p.id))p.value=d.config.orcaExe||'';if(document.activeElement!==w&&!desktopConfigDirty.has(w.id))w.value=d.config.workRoot||'';}
+ updateSingleFolder(d.job);
  if(d.job){const j=d.job;let label={running:'실행 중',completed:'정상 종료',failed:'실패',stopped:'중단'}[j.state]||j.state;
  desktopMessage(label+' · '+(j.stageIndex+1)+'/'+j.stageCount+' · '+j.stageName+' — '+j.message,j.state==='failed');
  if(j.lastLog)document.getElementById('desktop-live-log').textContent=j.lastLog;
@@ -1019,7 +1020,18 @@ document.getElementById('desktop-open-out').addEventListener('change',async ev=>
  ev.target.value='';
 });
 document.getElementById('desktop-stop').addEventListener('click',async()=>{if(!confirm('진행 중인 ORCA 계산을 중단할까요?'))return;try{await desktopAPI('stop',{});desktopMessage('중단 요청 완료')}catch(e){desktopMessage(e.message,true)}});
-document.getElementById('desktop-reveal').addEventListener('click',async()=>{try{await desktopAPI('reveal',{})}catch(e){desktopMessage(e.message,true)}});
+async function openSingleResultFolder(){
+ try{await desktopAPI('reveal',{});}
+ catch(e){toast('결과 폴더 열기 실패: '+e.message);desktopMessage(e.message,true)}
+}
+function updateSingleFolder(job){
+ for(const id of ['desktop-reveal','desktop-reveal-quick']){
+  const b=$(id);if(!b)continue;b.disabled=!job?.folder;b.title=job?.folder||'아직 실행한 단일 계산이 없습니다.';
+ }
+ const label=$('single-result-path');
+ if(label){label.textContent=job?.folder||'아직 생성된 단일 계산 결과 폴더가 없습니다.';label.title=job?.folder||'';}
+}
+$('desktop-reveal').addEventListener('click',openSingleResultFolder);
 document.getElementById('desktop-quit').addEventListener('click',async()=>{if(lastDesktopState?.job?.state==='running'){toast('진행 중인 계산을 중단한 뒤 종료하세요.');return}try{await desktopAPI('quit',{});window.close();document.body.innerHTML='<div style="font:18px sans-serif;color:white;background:#111;padding:40px">ORCA Nova가 종료됐어요. 이 창을 닫아주세요.</div>';}catch(e){desktopMessage(e.message,true)}});
 $('desktop-clear-xyz').addEventListener('click',()=>{
  if(!xyzOriginal&&!desktopXYZ.size)return;
@@ -1369,6 +1381,10 @@ async function batchSubmit(start){
   if(start){await desktopConfig();const applied=await desktopAPI('queue',payload);batchMessage(payload.jobs.length+'개 Job을 Queue에 등록했습니다.'+(batchAllocationLines(applied)?'\n'+batchAllocationLines(applied):''));await batchPoll();}
  }catch(e){batchMessage(e.message,true)}finally{batchRequestBusy=false;$('batch-start').disabled=false;$('batch-check').disabled=false;batchUpdateSelection();}
 }
+async function openBatchResultFolder(id){
+ try{await desktopAPI('queue/action',{action:'reveal',id});}
+ catch(e){toast('결과 폴더 열기 실패: '+e.message);batchMessage(e.message,true)}
+}
 async function batchAction(action,id=''){
  const cleanupPrompts={
   remove:'선택한 작업 기록을 삭제할까요?',
@@ -1389,7 +1405,27 @@ async function batchPoll(){
   const queued=jobs.filter(j=>j.state==='Pending').length;$('nav-batch').textContent='Batch / Queue'+(queued+running.length?' ('+(queued+running.length)+')':'');
   $('batch-start').textContent=$('batch-append').checked?'＋ Queue에 추가':'▶ Batch 계산 시작';
   renderQueueRows(jobs,d.paused);
+  updateCompletedFolders(jobs);
  }catch(e){batchMessage('Job Queue 연결 실패: '+e.message,true)}finally{batchPollBusy=false}
+}
+function updateCompletedFolders(jobs){
+ const select=$('completed-folder-select'),button=$('completed-folder-open'),path=$('completed-folder-path'),quick=$('completed-folder-shortcut');
+ if(!select||!button||!path||!quick)return;
+ const complete=jobs.filter(j=>j.state==='Completed'&&j.job?.folder).slice().reverse();
+ const previous=select.value;
+ const options=complete.map(j=>new Option((j.label||j.request?.label||j.id),j.id));
+ // Preserve chosen job while polling instead of jumping to the latest item.
+ const signature=JSON.stringify(complete.map(j=>[j.id,j.label,j.job.folder]));
+ if(select.dataset.signature!==signature){
+  select.replaceChildren(...(options.length?options:[new Option('완료된 Batch 결과 없음','')]));
+  if(complete.some(j=>j.id===previous))select.value=previous;
+  select.dataset.signature=signature;
+ }
+ const chosen=complete.find(j=>j.id===select.value);
+ select.disabled=!complete.length;button.disabled=!chosen;
+ path.textContent=chosen?.job.folder||'완료 후 실제 계산 저장 폴더가 여기에 표시됩니다.';
+ path.title=chosen?.job.folder||'';
+ quick.textContent='완료된 Batch 결과 ('+complete.length+')';
 }
 function renderQueueRows(jobs,paused){
   const filter=$('queue-filter').value,query=$('queue-search').value.trim().toLowerCase();
@@ -1410,7 +1446,7 @@ function renderQueueRows(jobs,paused){
    if(j.state==='Running')button('중단','cancel');
    if(['Failed','Cancelled','Interrupted'].includes(j.state))button('재시작','retry');
    if(['Failed','Cancelled','Interrupted','Completed'].includes(j.state))button('기록 삭제','remove');
-   if(j.job?.folder)button('폴더','reveal');
+   if(j.job?.folder){const b=document.createElement('button');b.type='button';b.className='btn small folder-open queue-folder-open';b.textContent='📁 결과 폴더 열기';b.setAttribute('aria-label',(j.label||j.id)+' 결과 폴더 열기');b.title=j.job.folder;b.onclick=()=>openBatchResultFolder(j.id);cells[0].append(b);}
    if(j.job?.reportFile){const b=document.createElement('button');b.className='btn small ghost';b.textContent='TXT';b.onclick=async()=>{try{const r=await fetch('/api/queue/report?id='+encodeURIComponent(j.id)+'&session='+encodeURIComponent(desktopSession));if(!r.ok)throw Error('TXT 보고서를 읽지 못했습니다.');download((j.label||j.id)+'_analysis.txt',await r.text())}catch(e){batchMessage(e.message,true)}};cells[4].append(b);}
    body.append(row);
   }
@@ -2308,6 +2344,11 @@ $('trip-export-json').onclick=()=>{if(tripState.lastComparison)download('triplet
 .single-auto-label{display:flex;gap:6px;align-items:center;margin:5px 0 10px;font-size:12px;color:#b7d1e5}
 .calculation-runbar{position:sticky;bottom:0;z-index:3;background:#142235;border:1px solid #35506a;border-radius:9px;padding:10px;margin:12px 0 0;box-shadow:0 -6px 14px #080e1655}
 .calculation-runbar .btn.primary{flex:1;min-width:130px}
+.folder-open{background:#244759;color:#d9f6ff;border-color:#46758b;white-space:nowrap}
+.folder-open:hover{background:#315c70}
+.queue-folder-open{display:flex;margin:7px 0 0!important}
+.workspace-result-path{color:#a2bbce;font-size:11px;overflow-wrap:anywhere;user-select:text;margin:6px 0 12px}
+#completed-folder-select{min-width:0;max-width:100%;flex:1}
 #single-preflight-report{max-height:240px;white-space:pre-wrap}
 #settings-dirty{font-size:11px;color:#9bc5d6}
 #queue-search{width:min(250px,100%)}
@@ -2347,11 +2388,17 @@ function workspaceShow(key){
  nav.className='workspace-nav';document.querySelector('.topbar').after(nav);
  const batch=workspacePage('batch','Batch / Queue','다중 XYZ 등록 · Job별 계산 선택 · CPU/RAM 자동 배분');
  batch.append($('batch-panel'));
- const res=workspacePage('results','Results','단일 계산 로그, 분석 보고서 및 결과 시각화');
+ const res=workspacePage('results','Results','계산 결과 폴더, 단일 계산 로그 및 결과 시각화');
  const resultPanel=document.createElement('div');resultPanel.className='desktop-app-panel';
  const resultActions=document.createElement('div');resultActions.className='workspace-inline';
  resultActions.append($('desktop-report'),document.querySelector('label[for="desktop-open-out"]'),$('desktop-open-out'),$('desktop-reveal'));
- resultPanel.append(resultActions,$('desktop-eta'),$('desktop-live-log'),$('desktop-report-preview').closest('details'));
+ const path=document.createElement('div');path.id='single-result-path';path.className='workspace-result-path';
+ resultPanel.append(resultActions,path,$('desktop-eta'),$('desktop-live-log'),$('desktop-report-preview').closest('details'));
+ const completed=document.createElement('div');completed.className='desktop-app-panel';
+ completed.innerHTML='<h2 style="font-size:15px;margin:0 0 12px">완료된 Batch 결과</h2><div class="workspace-inline"><select id="completed-folder-select" class="control" aria-label="완료된 Batch 계산" disabled><option value="">완료된 Batch 결과 없음</option></select><button id="completed-folder-open" class="btn small folder-open" disabled>📁 선택한 결과 폴더 열기</button></div><div id="completed-folder-path" class="workspace-result-path"></div>';
+ res.append(completed);
+ $('completed-folder-select').onchange=()=>updateCompletedFolders(batchQueueState?.jobs||[]);
+ $('completed-folder-open').onclick=()=>{const id=$('completed-folder-select').value;if(id)openBatchResultFolder(id)};
  res.append(resultPanel,$('viz-panel'));
  const tools=workspacePage('tools','Tools','논문 SI 기반 Method 검토 및 Composite Gibbs 분석');
  tools.append($('si-panel'));
@@ -2367,8 +2414,11 @@ function workspaceShow(key){
  for(const [label,key] of [['실행 로그 / Results','results'],['ORCA 경로 / Settings','settings']]){
   const b=document.createElement('button');b.type='button';b.className='btn small ghost';b.textContent=label;b.onclick=()=>workspaceShow(key);shortcut.append(b);
  }
+ const quickBatch=document.createElement('button');quickBatch.id='completed-folder-shortcut';quickBatch.type='button';quickBatch.className='btn small ghost';quickBatch.textContent='완료된 Batch 결과 (0)';quickBatch.onclick=()=>{workspaceShow('results');$('completed-folder-select').scrollIntoView({block:'center'});};shortcut.append(quickBatch);
  runner.append(shortcut);
  const actions=document.querySelector('.runner-actions');actions.classList.add('calculation-runbar');
+ const quick=document.createElement('button');quick.id='desktop-reveal-quick';quick.type='button';quick.className='btn small folder-open';quick.textContent='📁 결과 폴더 열기';quick.disabled=true;quick.onclick=openSingleResultFolder;actions.append(quick);
+ updateSingleFolder(lastDesktopState?.job);updateCompletedFolders(batchQueueState?.jobs||[]);
  const details=document.createElement('details');details.id='single-preflight-details';details.className='advanced-options';details.innerHTML='<summary>계산 전 검사 결과</summary><pre class="runner-log" id="single-preflight-report">Preflight를 실행하세요.</pre>';
  const allocation=document.createElement('div');allocation.id='single-run-allocation';allocation.className='muted';runner.append(allocation,details);
  document.querySelector('.content-panel').append(actions);
