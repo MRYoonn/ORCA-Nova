@@ -190,7 +190,7 @@
 <body>
 <div class="app">
 <header class="topbar"><div class="brand"><div class="logo" aria-hidden="true"></div><div><div class="brand-title">ORCA Nova <span style="font-size:10px;color:#83a0be;font-weight:500">/ INPUT BUILDER</span></div><div class="brand-sub">ORCA 입력 생성 · 실행 · 계산 로그</div></div></div>
-<nav class="top-nav" aria-label="메인 메뉴"><button class="on" data-help="계산화학 Input을 생성하고 수정하는 메인 화면이에요.">계산 설정</button><button id="top-workflow" data-help="현재 선택한 계산의 단계별 Workflow를 확인해요.">Workflow</button><button id="top-manual" data-help="ORCA 6.1 공식 매뉴얼을 새 창에서 열어요.">ORCA Manual ↗</button></nav>
+<nav class="top-nav" aria-label="메인 메뉴"><button class="on" id="nav-calculation" data-page="calculation" aria-current="page">Calculation</button><button id="nav-batch" data-page="batch">Batch / Queue</button><button id="nav-results" data-page="results">Results</button><button id="nav-tools" data-page="tools">Tools</button><button id="nav-settings" data-page="settings">Settings</button><button id="top-workflow" data-help="현재 선택한 계산의 단계별 Workflow를 확인해요.">Workflow</button><button id="top-manual" data-help="ORCA 6.1 공식 매뉴얼을 새 창에서 열어요.">ORCA Manual ↗</button></nav>
 <div class="top-actions"><span class="status" data-help="Windows 로컬 앱으로 실행 중입니다. ORCA.exe 경로를 지정하면 계산을 직접 실행할 수 있어요.">Windows Desktop</span><button class="btn ghost small" id="top-inp" data-help="편집기의 내용을 .inp 파일로 저장해요.">↓ INP 저장</button></div></header>
 <div class="workbench library-collapsed" id="workbench">
 <aside class="sidebar"><button type="button" class="library-toggle" id="library-toggle" aria-expanded="false" aria-controls="library-content" data-title="Calculation Library" data-help="평소에는 계산 목록을 접어두고 프리셋 영역을 넓게 사용합니다. 클릭해 목록을 펼치거나 다시 접을 수 있어요."><span class="library-toggle-icon" aria-hidden="true">☰</span><span class="library-toggle-text">계산 목록 열기</span></button><div class="library-content" id="library-content"><div><div class="label-row" style="justify-content:space-between;margin-bottom:12px"><span class="eyebrow">CALCULATION LIBRARY</span><span class="badge">31 OPTIONS · 5 WORKFLOWS</span></div><input class="search" id="search" type="search" placeholder="⌕ 계산 항목 검색 (영어 / 한국어)" aria-label="계산 항목 검색" data-help="검색하면 일치하는 그룹이 자동으로 열립니다. 검색을 지우면 이전 펼침 상태로 돌아갑니다."></div><div class="nav-scroll" id="calc-nav"></div><div class="sidebar-footer"><div style="margin-bottom:6px"><span class="dot"></span> 입력은 ORCA 6.x를 기준으로 설계</div><div>항목에 마우스를 올리면 <strong>한국어 도움말</strong>이 표시돼요.</div><div style="margin-top:9px"><a href="https://www.faccts.de/docs/orca/6.1/manual/" target="_blank" rel="noopener">공식 ORCA Manual ↗</a></div></div></div></aside>
@@ -300,7 +300,7 @@
   <div class="method-safety" id="method-safety" aria-live="polite" style="margin-top:10px">설정된 Functional과 Basis Set의 사용 조건을 확인해 주세요.</div>
 <div class="section"><div class="section-head"><span class="section-title">03 · Solvent</span><span class="section-desc">별도 선택</span></div><div class="fieldset"><div class="two-cols"><div class="field"><label class="field-label" for="solvmodel">Solvation Model <span class="help-icon" tabindex="0" data-title="Solvation Model" data-help="용매가 분자 에너지에 미치는 영향을 근사하는 계산 모델이에요. Gas phase는 용매를 고려하지 않아요.">?</span></label><select class="control" id="solvmodel"><option>SMD</option><option>CPCM</option><option>Gas phase</option></select></div><div class="field"><label class="field-label" for="solvent">Solvent <span class="help-icon" tabindex="0" data-title="Solvent" data-help="사용할 용매를 고르면 ORCA 입력에 맞는 이름으로 자동 반영해요. 모델별 지원 여부는 ORCA 버전에서 확인해야 해요.">?</span></label><select class="control" id="solvent"><option value="acetonitrile">Acetonitrile (ACN)</option><option value="dmf">Dimethylformamide (DMF)</option><option value="dmso">Dimethyl sulfoxide (DMSO)</option><option value="ch2cl2">Dichloromethane (DCM)</option><option value="thf">Tetrahydrofuran (THF)</option><option value="toluene">Toluene</option><option value="methanol">Methanol</option><option value="water">Water</option><option value="ethanol">Ethanol</option><option value="acetone">Acetone</option></select></div></div><div class="hint" id="solvent-note">SMD(acetonitrile) 키워드가 INP에 반영됩니다.</div></div></div>
 <div class="section"><div class="section-head"><span class="section-title">04 · Charge &amp; Spin</span><span class="section-desc">Molecule state</span></div><div class="fieldset"><div class="two-cols"><div class="field"><label class="field-label" for="charge">Charge <span class="help-icon" tabindex="0" data-title="Charge" data-help="분자 전체 전하예요. 중성은 0, Cation은 양수, Anion은 음수로 입력해요.">?</span></label><input class="control" type="number" id="charge" value="0" min="-10" max="10"></div><div class="field"><label class="field-label" for="mult">Multiplicity <span class="help-icon" tabindex="0" data-title="Multiplicity" data-help="전체 Spin 상태를 나타내는 값(2S+1)이에요. 일반적으로 Singlet=1, Doublet=2, Triplet=3이에요. 전자 수와 일치해야 해요.">?</span></label><select class="control" id="mult"><option value="1">1 · Singlet</option><option value="2">2 · Doublet</option><option value="3">3 · Triplet</option><option value="4">4 · Quartet</option><option value="5">5 · Quintet</option></select></div></div><div class="field" id="ion-extra" style="display:none"><label class="field-label" for="iontype">Ionic State <span class="help-icon" tabindex="0" data-help="원래 Charge를 기준으로 전자 하나를 제거하면 Radical Cation(+1), 추가하면 Radical Anion(-1)이 돼요.">?</span></label><select class="control" id="iontype"><option value="1">Radical Cation (+1)</option><option value="-1">Radical Anion (-1)</option></select></div><div class="field" id="tddft-extra" style="display:none"><div class="two-cols"><div><label class="field-label" for="nroots">TD-DFT · NRoots <span class="help-icon" tabindex="0" data-help="계산할 여기 상태의 개수예요. 값이 높아지면 더 많은 상태를 조사하지만 계산량이 증가해요.">?</span></label><input class="control" type="number" id="nroots" min="1" max="100" value="10"></div><div><label class="field-label" for="excstate">Excited States <span class="help-icon" tabindex="0" data-help="Singlets만 계산하거나 Singlets + Triplets를 함께 계산할 수 있어요. 기본 입력은 Singlet 기준 상태에서 출발해요.">?</span></label><select class="control" id="excstate"><option value="both">Singlets + Triplets</option><option value="singlet">Singlets only</option></select></div></div></div><div id="scan-extra" style="display:none"><div class="three-cols"><div><label class="field-label" for="atom1">Atom i <span class="help-icon" tabindex="0" data-help="PES Scan에서 이동시킬 결합의 첫 원자 번호예요. ORCA의 원자 번호는 0부터 시작해요.">?</span></label><input class="control" type="number" id="atom1" min="0" value="0"></div><div><label class="field-label" for="atom2">Atom j <span class="help-icon" tabindex="0" data-help="PES Scan에서 이동시킬 결합의 두 번째 원자 번호예요.">?</span></label><input class="control" type="number" id="atom2" min="0" value="1"></div><div><label class="field-label" for="steps">Steps <span class="help-icon" tabindex="0" data-help="시작 거리부터 끝 거리까지 나눌 단계의 개수예요.">?</span></label><input class="control" type="number" id="steps" min="2" max="100" value="12"></div></div><div class="two-cols" style="margin-top:10px"><div><label class="field-label" for="startdist" data-title="Start Distance" data-help="PES Scan이 시작할 때의 두 원자 사이 거리예요. 단위는 Å입니다.">Start (Å)</label><input class="control" type="number" step=".01" id="startdist" value="1.4"></div><div><label class="field-label" for="enddist" data-title="End Distance" data-help="PES Scan이 끝날 때의 두 원자 사이 거리예요. 단위는 Å입니다.">End (Å)</label><input class="control" type="number" step=".01" id="enddist" value="2.5"></div></div></div></div></div>
-<div class="section" id="outputs-section"><div class="section-head"><span class="section-title">05 · Additional Outputs</span><span class="section-desc">계산 결과 조합</span></div>
+<details class="advanced-options" id="advanced-outputs"><summary>Advanced · Additional Outputs</summary><div class="section" id="outputs-section"><div class="section-head"><span class="section-title">05 · Additional Outputs</span><span class="section-desc">계산 결과 조합</span></div>
   <div class="addon-panel">
     <div class="addon-intro"><b>추가 결과 함께 계산</b><span class="help-icon" tabindex="0" data-title="Additional Outputs" data-help="하나의 INP에서 Geometry Optimization, Frequency, Spin Density를 조합할 수 있어요. 최종 구조의 Spin Density를 출력하도록 %plots 블록을 자동으로 추가합니다. 계산 방식에 따라 사용할 수 없는 옵션은 비활성화돼요.">?</span></div>
     <label class="addon-option"><input type="checkbox" id="extra-freq"><span><strong>Frequency (Freq)</strong><small>현재 계산에 Frequency 추가 · 안정 구조 / 진동수 확인</small></span><span class="help-icon" tabindex="0" data-title="Frequency 추가" data-help="Geometry Optimization과 Frequency를 하나의 INP에서 수행해요. 이미 Freq가 포함된 계산은 중복 추가하지 않습니다.">?</span></label>
@@ -308,7 +308,7 @@
     <label class="addon-option"><input type="checkbox" id="extra-spinpop"><span><strong>Atomic Spin Population</strong><small>각 원자의 Spin Population을 OUT에 출력</small></span><span class="help-icon" tabindex="0" data-title="Atomic Spin Population" data-help="Mulliken 및 Hirshfeld 분석을 요청해 원자별 Spin Population을 확인할 수 있도록 해요. C5/C6 위치를 비교할 때 유용하지만 Spin Population만으로 친핵성을 확정할 수는 없어요.">?</span></label>
     <div class="addon-hint" id="addon-hint">추천 Triplet 연구: Opt + Freq + Spin Density + Atomic Spin Population. 상단의 Quick Preset으로 한 번에 적용할 수도 있어요.</div>
   </div>
-</div>
+</div></details>
 <div class="section"><div class="section-head"><span class="section-title">06 · Resources</span><span class="section-desc">PC settings</span></div><div class="fieldset"><div class="three-cols"><div><label class="field-label" for="cores">CPU Cores <span class="help-icon" tabindex="0" data-help="ORCA 계산에 사용할 병렬 프로세스 수예요. %pal 블록의 nprocs에 들어가요.">?</span></label><input class="control" type="number" id="cores" value="16" min="1" max="256"></div><div><label class="field-label" for="maxcore">MaxCore <span class="help-icon" tabindex="0" data-help="ORCA의 프로세스당 최대 메모리(MB)예요. 전체 RAM이 아니라 CPU 프로세스 하나당 값이라는 점에 주의하세요.">?</span></label><input class="control" type="number" id="maxcore" value="2800" min="100" step="100"></div><div><label class="field-label" for="temp">Temp (K) <span class="help-icon" tabindex="0" data-help="Frequency 계산의 열역학 보정에 사용할 온도(K)예요. 기본값은 298.15 K예요.">?</span></label><input class="control" type="number" id="temp" value="298.15" min="1" step="0.01"></div></div><div class="hint" id="memory-hint">이론상 요청 메모리 약 44.8 GB (16 × 2800 MB)</div></div></div>
 <div class="section"><div class="note" id="calc-note">Geometry Optimization과 Frequency를 한 번에 실행하는 기본 템플릿입니다.</div><div class="footnote">추천은 ORCA 공식 가이드에 기반한 일반적 시작값이에요. Glorius 논문에서 모든 경우에 쓴 조건이라는 뜻은 아닙니다. 논문 SI의 조건을 우선해서 재현하세요.</div><div class="footnote">참고: <a href="https://www.faccts.de/docs/orca/6.1/manual/contents/modelchemistries/3cmethods.html" target="_blank" rel="noopener">ORCA Composite Methods</a> · <a href="https://www.faccts.de/docs/orca/6.1/manual/contents/modelchemistries/dispersioncorrections.html" target="_blank" rel="noopener">Dispersion</a> · <a href="https://www.faccts.de/docs/orca/6.1/manual/contents/essentialelements/solvationmodels.html" target="_blank" rel="noopener">Solvation</a></div><div class="footnote">설정 후 오른쪽 실행 패널에서 ORCA를 실행할 수 있어요. 계산 전 INP와 구조, 전하·스핀 상태를 확인하세요.</div></div>
 </section>
@@ -730,7 +730,7 @@ $('xyz-load').addEventListener('click',()=>$('xyz-file').click());$('xyz-file').
 $('search').addEventListener('input',renderNav);uiChanges();$('editor').addEventListener('input',()=>{editorDirty=true;$('edit-status').textContent='직접 수정됨 · 저장 필요';renderLines()});$('editor').addEventListener('scroll',()=>{$('line-nums').scrollTop=$('editor').scrollTop});$('editor').addEventListener('keydown',e=>{if(e.key==='Tab'){e.preventDefault();const a=e.target.selectionStart,b=e.target.selectionEnd;e.target.setRangeText('  ',a,b,'end');e.target.dispatchEvent(new Event('input'))}});$('regen').addEventListener('click',()=>{if(editorDirty&&!confirm('직접 수정한 INP 내용을 덮어쓰고 재생성할까요?'))return;generate(true);toast('INP를 재생성했어요.')});
 $('download-workflow').addEventListener('click',saveWorkflowZip);$('download-inp').addEventListener('click',save);$('top-inp').addEventListener('click',save);$('copy-inp').addEventListener('click',()=>copyText($('editor').value));$('copy-cmd').addEventListener('click',()=>copyText(cmdText()));$('copy-cmd2').addEventListener('click',()=>copyText(cmdText()));$('cmd-help').addEventListener('click',showModal);$('modal-close').addEventListener('click',closeModal);$('modal-bg').addEventListener('click',e=>{if(e.target.id==='modal-bg')closeModal()});$('modal-copy').addEventListener('click',()=>copyText(cmdText()));document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});$('next-stage').addEventListener('click',()=>{if(editorDirty&&!confirm('직접 수정한 INP 내용이 사라집니다. 단계를 이동할까요?'))return;activeStage=(activeStage+1)%stages().length;generate(true)});
 $('top-manual').addEventListener('click',()=>window.open('https://www.faccts.de/docs/orca/6.1/manual/','_blank','noopener'));
-$('top-workflow').addEventListener('click',()=>document.querySelector('.lower-grid').scrollIntoView({behavior:'smooth',block:'start'}));
+$('top-workflow').addEventListener('click',()=>{workspaceShow('calculation');document.querySelector('.lower-grid').scrollIntoView({behavior:'smooth',block:'start'});});
 $('tab-inp').addEventListener('click',()=>{view='inp';$('tab-inp').classList.add('active');$('tab-guide').classList.remove('active');$('editor-view').style.display='grid';$('guide-view').style.display='none'});$('tab-guide').addEventListener('click',()=>{view='guide';$('tab-guide').classList.add('active');$('tab-inp').classList.remove('active');$('editor-view').style.display='none';$('guide-view').style.display='grid'});
 document.querySelectorAll(".field-label").forEach(el=>{const child=el.querySelector("[data-help]");if(child&&!el.dataset.help){el.dataset.help=child.dataset.help;el.dataset.title=child.dataset.title||el.textContent.replace("?","").trim()}});
 initPresets();initPickers();initTooltip();renderNav();generate(true);
@@ -825,7 +825,7 @@ async function desktopPoll(){try{
  }else{desktopMessage('대기 중 · ORCA 설치 경로를 설정한 뒤 실행할 수 있어요.');document.getElementById('desktop-stop').disabled=true;document.getElementById('desktop-report').disabled=true;}
  }catch(e){desktopMessage('로컬 실행 서비스 연결 오류: '+e.message,true)}
 }
-document.getElementById('desktop-save-config').addEventListener('click',async()=>{try{await desktopConfig();toast('설정을 저장했어요.');desktopMessage('설정 저장 완료')}catch(e){desktopMessage('설정 저장 실패: '+e.message,true)}});
+document.getElementById('desktop-save-config').addEventListener('click',async()=>{try{await desktopConfig();toast('설정을 저장했어요.');desktopMessage('설정 저장 완료')}catch(e){desktopMessage('설정 저장 실패: '+e.message,true);toast('설정 저장 실패: '+e.message)}});
 document.getElementById('desktop-preflight').addEventListener('click',async()=>{
  try{
   const req=desktopRunData(calc(active).kind==='workflow');
@@ -879,6 +879,7 @@ $('desktop-to-batch').addEventListener('click',async()=>{
  for(const [name,content] of desktopXYZ){files.push({name,size:content.length,text:async()=>content});}
  if(!files.length){toast('Batch로 보낼 XYZ를 먼저 불러오세요.');return}
  await batchImport(files);
+ workspaceShow('batch');
  $('batch-panel').scrollIntoView({behavior:'smooth',block:'start'});
 });
 document.getElementById('desktop-extra-xyz').addEventListener('change',async e=>{
@@ -2060,5 +2061,76 @@ $('trip-export').onclick=()=>{
 $('trip-export-json').onclick=()=>{if(tripState.lastComparison)download('triplet_original_vs_transfer.json',JSON.stringify(tripState.lastComparison,null,2),'application/json')};
 </script>
 
+<style>
+/* Workspace routes preserve the existing inputs and listeners; only their layout changes. */
+.workspace-nav{display:flex;align-items:center;gap:5px;padding:8px 16px;overflow-x:auto;flex:none;border-bottom:1px solid var(--line);background:#101722}
+.workspace-nav button{white-space:nowrap;flex:none;font-size:12px;background:transparent;border:1px solid transparent;border-radius:6px;color:#9fb5ca;padding:9px 13px;cursor:pointer}
+.workspace-nav button:hover{color:#e5edf6;background:#1d2c3e}
+.workspace-nav button[aria-current=page]{background:#243c54;color:#f0f6fd;border-color:#3d5b76}
+.workspace-nav #top-workflow,.workspace-nav #top-manual{margin-left:4px;font-size:11px}
+.workspace-page{width:100%;max-width:1500px;margin:0 auto;padding:24px;min-width:0}
+.workspace-page>h1{font-size:21px;margin:0 0 5px;color:#e1ebf6}.workspace-page>.workspace-description{margin:0 0 16px;font-size:12px;color:#9fb5ca}
+.workspace-page .batch-panel,.workspace-page .viz-panel,.workspace-page .si-panel{margin:12px 0}
+.workspace-page .runner-settings{max-width:900px}
+.workspace-page .desktop-app-panel{margin-top:12px}
+.workspace-page .si-panel{max-width:1100px}
+.workspace-page[hidden],#workbench[hidden]{display:none!important}
+#workbench .main{height:calc(100vh - 124px)}
+.advanced-options{margin:12px 0;border:1px solid var(--line);border-radius:8px;padding:10px}
+.advanced-options summary{cursor:pointer;font-size:12px;color:#b5cce1}
+.advanced-options .section{margin-bottom:0}
+.workspace-inline{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0}
+@media(max-width:950px){#workbench .main{height:auto}.workspace-page{padding:16px}.workspace-nav{padding:6px 12px}.workspace-nav button{padding:8px 10px}}
+</style>
+<script>
+const workspacePages={};
+function workspacePage(key,title,description){
+ const section=document.createElement('section');
+ section.className='workspace-page';section.id='page-'+key;section.hidden=true;
+ section.setAttribute('aria-label',title);
+ const heading=document.createElement('h1');heading.textContent=title;
+ const sub=document.createElement('p');sub.className='workspace-description';sub.textContent=description;section.append(heading,sub);
+ document.querySelector('.app').append(section);workspacePages[key]=section;return section;
+}
+function workspaceShow(key){
+ if(key!=='calculation'&&!workspacePages[key])return;
+ $('workbench').hidden=key!=='calculation';
+ for(const [name,section] of Object.entries(workspacePages))section.hidden=name!==key;
+ for(const b of document.querySelectorAll('[data-page]')){
+  if(b.dataset.page===key)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');
+  b.classList.toggle('on',b.dataset.page===key);
+ }
+ window.scrollTo(0,0);
+}
+(function setupWorkspace(){
+ const nav=document.querySelector('.top-nav');
+ nav.className='workspace-nav';document.querySelector('.topbar').after(nav);
+ const batch=workspacePage('batch','Batch / Queue','다중 XYZ 등록 · Job별 계산 선택 · CPU/RAM 자동 배분');
+ batch.append($('batch-panel'));
+ const res=workspacePage('results','Results','단일 계산 로그, 분석 보고서 및 결과 시각화');
+ const resultPanel=document.createElement('div');resultPanel.className='desktop-app-panel';
+ const resultActions=document.createElement('div');resultActions.className='workspace-inline';
+ resultActions.append($('desktop-report'),document.querySelector('label[for="desktop-open-out"]'),$('desktop-open-out'),$('desktop-reveal'));
+ resultPanel.append(resultActions,$('desktop-eta'),$('desktop-live-log'),$('desktop-report-preview').closest('details'));
+ res.append(resultPanel,$('viz-panel'));
+ const tools=workspacePage('tools','Tools','논문 SI 기반 Method 검토 및 Composite Gibbs 분석');
+ tools.append($('si-panel'));
+ const settings=workspacePage('settings','Settings','ORCA 실행 경로, 계산 폴더 및 앱 업데이트');
+ const settingsPanel=document.createElement('div');settingsPanel.className='desktop-app-panel';
+ const settingsActions=document.createElement('div');settingsActions.className='workspace-inline';
+ settingsActions.append($('desktop-save-config'),$('desktop-quit'));
+ settingsPanel.append(document.querySelector('.runner-settings'),settingsActions,document.querySelector('.updater-panel'));
+ settings.append(settingsPanel);
+ const runner=document.getElementById('desktop-app-panel');
+ const shortcut=document.createElement('div');shortcut.className='workspace-inline';
+ for(const [label,key] of [['실행 로그 / Results','results'],['ORCA 경로 / Settings','settings']]){
+  const b=document.createElement('button');b.type='button';b.className='btn small ghost';b.textContent=label;b.onclick=()=>workspaceShow(key);shortcut.append(b);
+ }
+ runner.append(shortcut);
+ for(const b of nav.querySelectorAll('[data-page]'))b.addEventListener('click',()=>workspaceShow(b.dataset.page));
+ // Keep scientific controls and input state unchanged during navigation.
+ workspaceShow('calculation');
+})();
+</script>
 </body>
 </html>
