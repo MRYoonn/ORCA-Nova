@@ -33,6 +33,7 @@ type QueueEntry struct {
 	CPU     int        `json:"cpu"`
 	RAMMB   int        `json:"ramMB"`
 	AutoResources bool `json:"autoResources,omitempty"`
+	AutoEligible bool `json:"autoEligible,omitempty"`
 	Job     *Job       `json:"job"`
 	ETA     etaView    `json:"eta"`
 	worker  *App
@@ -201,6 +202,11 @@ func (a *App) queueBusy() bool {
 	defer a.queue.mu.Unlock()
 	return a.queue.activeLocked()
 }
+func (q *JobQueue) scheduleAutoRetryLocked() {
+ if q.autoRetry { return }
+ q.autoRetry=true
+ time.AfterFunc(10*time.Second,func(){q.mu.Lock();defer q.mu.Unlock();q.autoRetry=false;q.dispatchLocked()})
+}
 func (q *JobQueue) dispatchLocked() {
 	if q.Paused || q.Error != "" {
 		return
@@ -214,20 +220,25 @@ func (q *JobQueue) dispatchLocked() {
 		}
 	}
 	for _, e := range q.Jobs {
-		if e.State != "Pending" || e.Held || n >= q.Limits.Concurrency || cpu+e.CPU > q.Limits.CPU || ram+e.RAMMB > q.Limits.RAMMB {
+		if e.State != "Pending" || e.Held || n >= q.Limits.Concurrency {
 			continue
 		}
 		if e.AutoResources {
-			sys := systemResources()
-			if !sys.Supported || e.RAMMB > sys.BudgetMB {
-				// Do not start another calculation during physical-memory pressure.
-				if !q.autoRetry {
-					q.autoRetry = true
-					time.AfterFunc(10*time.Second, func(){ q.mu.Lock(); defer q.mu.Unlock(); q.autoRetry=false; q.dispatchLocked() })
+			sys:=systemResources()
+			if e.AutoEligible && e.Job==nil {
+				waiting:=0
+				for _, candidate:=range q.Jobs {
+					if candidate.State=="Pending" && !candidate.Held && candidate.AutoEligible && candidate.Job==nil {waiting++}
 				}
-				continue
+				req,c,r,err:=replanPendingAllocation(e.Request,q.Limits.CPU-cpu,q.Limits.RAMMB-ram,q.Limits.Concurrency-n,waiting,sys)
+				if err!=nil {q.scheduleAutoRetryLocked();continue}
+				e.Request,e.CPU,e.RAMMB=req,c,r
+			}
+			if !sys.Supported || e.RAMMB > sys.BudgetMB {
+				q.scheduleAutoRetryLocked();continue
 			}
 		}
+		if cpu+e.CPU>q.Limits.CPU || ram+e.RAMMB>q.Limits.RAMMB {continue}
 		q.app.mu.Lock()
 		cfg := q.app.cfg
 		legacy := q.app.job != nil && q.app.job.State == "running"
@@ -700,7 +711,7 @@ func (a *App) queueRoute(w http.ResponseWriter, r *http.Request) {
 			reports = append(reports, p)
 			automatic := x.Auto != nil && x.Auto.Eligible[i]
 			allocations=append(allocations,allocationView{Label:req.Label,CPU:cpu,RAMMB:ram,Automatic:automatic})
-			entries = append(entries, &QueueEntry{ID: queueID(), Label: req.Label, State: "Pending", Request: req, CPU: cpu, RAMMB: ram, AutoResources: x.Auto != nil})
+			entries = append(entries, &QueueEntry{ID: queueID(), Label: req.Label, State: "Pending", Request: req, CPU: cpu, RAMMB: ram, AutoResources: x.Auto != nil, AutoEligible: automatic})
 		}
 		if r.URL.Path == "/api/queue/preflight" {
 			respond(w, 200, map[string]interface{}{"ok": valid, "reports": reports, "limits":x.Limits, "allocations":allocations})
@@ -747,6 +758,7 @@ func (a *App) queueRoute(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		q.dispatchLocked()
+		for i,e:=range entries {allocations[i].CPU=e.CPU;allocations[i].RAMMB=e.RAMMB}
 		respond(w, 200, map[string]interface{}{"ok": true,"limits":x.Limits,"allocations":allocations})
 	default:
 		http.NotFound(w, r)
