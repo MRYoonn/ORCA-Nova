@@ -73,8 +73,7 @@ func resources(req RunRequest) (cpu, ram int, err error) {
 			return 0, 0, fmt.Errorf("중복 단계 INP: %s", s.Input)
 		}
 		seenStages[key] = true
-		if s.Opt {
-			name := strings.TrimSuffix(s.Input, filepath.Ext(s.Input)) + ".xyz"
+		if name:=stageGeometry(s);name!="" {
 			for _, f := range req.Files {
 				if strings.EqualFold(f.Name, name) {
 					return 0, 0, fmt.Errorf("최적화 산출물 이름이 등록 XYZ와 충돌합니다: %s", name)
@@ -561,9 +560,7 @@ func (q *JobQueue) action(id, action string) (actionErr error) {
 					if !done {
 						stem := strings.TrimSuffix(st.Input, filepath.Ext(st.Input))
 						exts := []string{".out"}
-						if st.Opt {
-							exts = append(exts, ".xyz")
-						}
+						if generated:=stageGeometry(st);generated!="" {exts=append(exts,strings.TrimPrefix(generated,stem))}
 						for _, ext := range exts {
 							if err := os.Remove(filepath.Join(e.Job.Folder, stem+ext)); err != nil && !os.IsNotExist(err) {
 								return err
