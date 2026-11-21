@@ -988,6 +988,11 @@ setInterval(()=>{if(lastDesktopState?.update)desktopUpdateShow(lastDesktopState.
 <label>동시 실행 수 <span class="help-icon" tabindex="0" data-help="기본값은 1입니다. 2, 3 또는 원하는 양수를 입력할 수 있습니다. CPU / RAM 예산이 부족하면 자원이 반환될 때까지 대기합니다.">?</span><input class="control" id="batch-concurrency" type="number" min="1" max="64" value="1" list="batch-concurrency-options"><datalist id="batch-concurrency-options"><option value="1"><option value="2"><option value="3"></datalist></label>
 <button id="batch-two-parallel" class="btn small ghost" data-help="동시 실행 목표만 2개로 설정합니다. 실행 가능한지는 실제 CPU/RAM 예산에 따라 결정됩니다.">동시 2개</button><button id="batch-four-parallel" class="btn small ghost" data-help="동시 실행 목표만 4개로 설정합니다. 시스템 자원이 부족하면 Scheduler가 일부 계산을 대기시킵니다.">동시 4개</button><label>전체 RAM 예산 (MB) <span class="help-icon" tabindex="0" data-help="MaxCore는 코어당 MB입니다. Scheduler는 CPU × MaxCore에 안전 여유 25%를 더해 예약합니다. 실제 메모리 사용량의 절대 상한은 아닙니다. PC와 다른 프로그램에 필요한 RAM을 제외하세요.">?</span><input class="control" id="batch-ram" type="number" min="1" value="8192"></label>
 </div>
+<div class="resource-live" aria-label="PC 전체 실시간 자원 사용량">
+ <div><span>PC CPU 실사용률</span><strong id="live-cpu">—</strong><progress id="live-cpu-bar" max="100" aria-label="전체 PC CPU 사용률"></progress></div>
+ <div><span>PC 물리 RAM 사용량</span><strong id="live-ram">—</strong><progress id="live-ram-bar" max="100" aria-label="전체 PC RAM 사용률"></progress></div>
+ <small>ORCA 외 다른 프로그램 포함 · Job별 예약량과는 다릅니다.</small>
+</div>
 <div class="batch-budget-note" id="batch-budget-note">현재 INP 기준으로 병렬 계산에 필요한 CPU/RAM 예산을 표시합니다.</div>
 <div class="batch-controls"><button class="btn small ghost" id="batch-check">전체 Preflight</button><button class="btn primary" id="batch-start">▶ Batch 계산 시작</button><button class="btn small ghost" id="batch-pause">대기 작업 보류</button><button class="btn small ghost" id="batch-resume">대기 작업 재개</button><button class="btn small danger" id="batch-stop">■ 전체 중단</button><button class="btn small ghost" id="batch-csv" data-help="원본 OUT를 검증해 생성한 전체 Batch CSV를 내려받아요. 각 단계의 수렴, Energy(Eh), S₁/T₁ Vertical(kcal/mol·eV), Spin과 누락 항목을 포함해요.">↓ 전체 CSV</button><button class="btn small ghost" id="batch-txt" data-help="분자·단계별 계산 상태, Electronic/Gibbs/Enthalpy, Frequency, Vertical S₁/T₁과 원자별 Spin을 한글 설명과 함께 TXT로 저장해요.">↓ 전체 TXT</button></div>
 <pre id="batch-status" class="batch-status" role="status">XYZ 파일을 등록하세요. 실제 ORCA 6.x 실행 결과와 Mock 검증은 구분됩니다.</pre>
@@ -1013,6 +1018,25 @@ setInterval(()=>{if(lastDesktopState?.update)desktopUpdateShow(lastDesktopState.
 // Apply/Charge/Multiplicity actions regenerate a molecule's captured request.
 const batchMolecules=[];
 let batchQueueState=null,batchRequestBusy=false,batchImporting=false,batchAutoSystem=null;
+let resourceMonitorBusy=false;
+async function batchMonitorResources(){
+ if(resourceMonitorBusy||$('page-batch')?.hidden!==false)return;
+ resourceMonitorBusy=true;
+ try{
+  const data=await desktopAPI('queue/monitor');
+  const cpu=typeof data.cpuPercent==='number'&&Number.isFinite(data.cpuPercent)&&data.cpuPercent>=0&&data.cpuPercent<=100?data.cpuPercent:null;
+  const used=data.ramUsedMB,total=data.ramTotalMB;
+  const ram=Number.isFinite(used)&&Number.isFinite(total)&&total>0&&used>=0&&used<=total?100*used/total:null;
+  $('live-cpu').textContent=cpu===null?'감지 대기 / 미지원':cpu.toFixed(1)+'%';
+  $('live-ram').textContent=ram===null?'감지 불가':(used/1024).toFixed(1)+' / '+(total/1024).toFixed(1)+' GB';
+  for(const [id,value] of [['live-cpu-bar',cpu],['live-ram-bar',ram]]){
+   const bar=$(id);bar.hidden=value===null;if(value!==null)bar.value=value;
+  }
+ }catch(e){
+  $('live-cpu').textContent=$('live-ram').textContent='감지 불가';
+  $('live-cpu-bar').hidden=$('live-ram-bar').hidden=true;
+ }finally{resourceMonitorBusy=false}
+}
 function batchAutoMode(){return !!batchAutoSystem?.supported && $('batch-auto').checked}
 function batchShowResourceMode(){
  $('batch-manual-options').style.display=batchAutoMode()?'none':'flex';
@@ -2131,6 +2155,12 @@ $('trip-export-json').onclick=()=>{if(tripState.lastComparison)download('triplet
 .preset-item .preset-title{font-size:12.5px}
 .quick-card .quick-lead{font-size:12px}
 .trip-auto-label input{accent-color:#5addbb}
+.resource-live{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px 18px;border:1px solid #2f485c;border-radius:9px;padding:12px;margin:13px 0;background:#142235}
+.resource-live>div{display:grid;grid-template-columns:1fr auto;gap:7px;align-items:center;color:#afc3d9;font-size:12px}
+.resource-live strong{color:#dbeaf6;font-size:13px;font-variant-numeric:tabular-nums}
+.resource-live progress{grid-column:1/-1;width:100%;height:6px;accent-color:#71baa7}
+.resource-live small{grid-column:1/-1;color:#8fa8bf;font-size:11px}
+@media(max-width:650px){.resource-live{grid-template-columns:minmax(0,1fr)}}
 .workspace-page .batch-comparison:not([open]){margin-top:10px}
 .workspace-inline{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0}
 @media(max-width:950px){#workbench .main{height:auto}.workspace-page{padding:16px}.workspace-nav{padding:6px 12px}.workspace-nav button{padding:8px 10px}}
@@ -2154,6 +2184,7 @@ function workspaceShow(key){
   b.classList.toggle('on',b.dataset.page===key);
  }
  window.scrollTo(0,0);
+ if(key==='batch')batchMonitorResources();
 }
 (function setupWorkspace(){
  const nav=document.querySelector('.top-nav');
@@ -2184,6 +2215,7 @@ function workspaceShow(key){
  // Keep scientific controls and input state unchanged during navigation.
  workspaceShow('calculation');
  tripLoadResourceSystem();
+ setInterval(batchMonitorResources,3000);
 })();
 </script>
 </body>
