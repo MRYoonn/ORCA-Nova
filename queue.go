@@ -231,6 +231,7 @@ func (q *JobQueue) dispatchLocked() {
 		if e.State != "Pending" {e.WaitReason="";continue}
 		if e.Held {e.WaitReason="사용자 보류";continue}
 		if n >= q.Limits.Concurrency {e.WaitReason="동시 실행 슬롯 대기";continue}
+		if cpu>=q.Limits.CPU {e.WaitReason="CPU 예약 반환 대기";continue}
 		if e.AutoResources {
 			sys:=q.probeResources()
 			// A newly spawned ORCA process may not have allocated its memory
@@ -456,7 +457,17 @@ func (q *JobQueue) action(id, action string) (actionErr error) {
 			if e.worker != nil || (e.State != "Failed" && e.State != "Interrupted" && e.State != "Cancelled") {
 				return fmt.Errorf("실패·중단·취소 작업만 재시작할 수 있습니다")
 			}
-			if e.Job != nil && e.Job.Folder!="" {
+			// A completed stage can only be resumed with its original resources.
+            // Reject impossible retries instead of leaving them pending forever.
+            if (!e.AutoEligible || (e.Job!=nil&&e.Job.Folder!=""))&&(e.CPU>q.Limits.CPU||e.RAMMB>q.Limits.RAMMB){
+                return fmt.Errorf("기존 Job의 CPU/RAM 예약이 현재 Queue 예산보다 큽니다. 새 Batch로 등록하세요")
+            }
+            for _,other:=range q.Jobs{
+                if other!=e&&(other.worker!=nil||other.State=="Pending")&&other.AutoResources!=e.AutoResources{
+                    return fmt.Errorf("현재 Queue와 자동/수동 자원 모드가 다른 Job은 재시작할 수 없습니다")
+                }
+            }
+            if e.Job != nil && e.Job.Folder!="" {
 				// Retry in a new folder; copy completed stages and all their artifacts. Never truncate old results.
 				old := e.Job
 				oldState, oldHeld := e.State, e.Held
@@ -607,7 +618,7 @@ func (a *App) queueRoute(w http.ResponseWriter, r *http.Request) {
         respond(w,200,systemUsage())
     case "/api/queue/resources":
 		if r.Method != "GET" { fail(w,405,"Method not allowed"); return }
-		respond(w,200,systemResources())
+		respond(w,200,q.probeResources())
 	case "/api/queue/action":
 		if r.Method != "POST" {
 			fail(w, 405, "Method not allowed")
@@ -729,7 +740,12 @@ func (a *App) queueRoute(w http.ResponseWriter, r *http.Request) {
 			jobs,limits,err := planAutoResources(x.Jobs,x.Auto.Eligible,x.Limits.CPU,sys)
 			if err != nil { fail(w,400,err.Error()); return }
 			x.Jobs,x.Limits=jobs,limits
-			if active{x.Limits=q.Limits}
+			if active{
+                x.Limits=q.Limits
+                activeCount:=0
+                for _,e:=range q.Jobs{if e.worker!=nil||e.State=="Pending"{activeCount++}}
+                x.Limits.Concurrency=max(q.Limits.Concurrency,min(autoParallelCap,q.Limits.CPU,q.Limits.RAMMB/(autoMinimumMaxCore*5/4),activeCount+len(x.Jobs)))
+            }
 		}
 		if err:=validLimits(x.Limits); err!=nil { fail(w,400,err.Error());return }
 		reports := []PreflightReport{}
