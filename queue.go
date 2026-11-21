@@ -32,6 +32,9 @@ type QueueEntry struct {
 	Request RunRequest `json:"request"`
 	CPU     int        `json:"cpu"`
 	RAMMB   int        `json:"ramMB"`
+	AutoResources bool `json:"autoResources,omitempty"`
+	AutoEligible bool `json:"autoEligible,omitempty"`
+	WaitReason string `json:"waitReason,omitempty"`
 	Job     *Job       `json:"job"`
 	ETA     etaView    `json:"eta"`
 	worker  *App
@@ -47,6 +50,13 @@ type JobQueue struct {
 	Error       string        `json:"error,omitempty"`
 	path        string
 	app         *App
+	autoRetry bool
+	resourceProbe func() resourceSystem
+}
+
+func (q *JobQueue) probeResources() resourceSystem {
+	if q.resourceProbe!=nil {return q.resourceProbe()}
+	return systemResources()
 }
 
 var palKeyword = regexp.MustCompile(`(?i)\bPAL(\d+)\b`)
@@ -199,11 +209,17 @@ func (a *App) queueBusy() bool {
 	defer a.queue.mu.Unlock()
 	return a.queue.activeLocked()
 }
+func (q *JobQueue) scheduleAutoRetryLocked() {
+ if q.autoRetry { return }
+ q.autoRetry=true
+ time.AfterFunc(10*time.Second,func(){q.mu.Lock();defer q.mu.Unlock();q.autoRetry=false;q.dispatchLocked()})
+}
 func (q *JobQueue) dispatchLocked() {
 	if q.Paused || q.Error != "" {
 		return
 	}
 	cpu, ram, n := 0, 0, 0
+	launchedRAM:=0
 	for _, e := range q.Jobs {
 		if e.worker != nil {
 			cpu += e.CPU
@@ -212,16 +228,38 @@ func (q *JobQueue) dispatchLocked() {
 		}
 	}
 	for _, e := range q.Jobs {
-		if e.State != "Pending" || e.Held || n >= q.Limits.Concurrency || cpu+e.CPU > q.Limits.CPU || ram+e.RAMMB > q.Limits.RAMMB {
-			continue
+		if e.State != "Pending" {e.WaitReason="";continue}
+		if e.Held {e.WaitReason="사용자 보류";continue}
+		if n >= q.Limits.Concurrency {e.WaitReason="동시 실행 슬롯 대기";continue}
+		if cpu>=q.Limits.CPU {e.WaitReason="CPU 예약 반환 대기";continue}
+		if e.AutoResources {
+			sys:=q.probeResources()
+			// A newly spawned ORCA process may not have allocated its memory
+			// when the next live sample is obtained. Account for reservations
+			// made in this dispatch pass (conservative if allocation already began).
+			sys.BudgetMB=max(0,sys.BudgetMB-launchedRAM)
+			if e.AutoEligible && e.Job==nil {
+				waiting:=0
+				for _, candidate:=range q.Jobs {
+					if candidate.State=="Pending" && !candidate.Held && candidate.AutoEligible && candidate.Job==nil {waiting++}
+				}
+				req,c,r,err:=replanPendingAllocation(e.Request,q.Limits.CPU-cpu,q.Limits.RAMMB-ram,q.Limits.Concurrency-n,waiting,sys)
+				if err!=nil {e.WaitReason=err.Error();q.scheduleAutoRetryLocked();continue}
+				e.Request,e.CPU,e.RAMMB=req,c,r
+			}
+			if !sys.Supported || e.RAMMB > sys.BudgetMB {
+				e.WaitReason="가용 물리 RAM 대기";q.scheduleAutoRetryLocked();continue
+			}
 		}
+		if cpu+e.CPU>q.Limits.CPU || ram+e.RAMMB>q.Limits.RAMMB {e.WaitReason="CPU/RAM 예약 반환 대기";continue}
 		q.app.mu.Lock()
 		cfg := q.app.cfg
 		legacy := q.app.job != nil && q.app.job.State == "running"
 		q.app.mu.Unlock()
 		if legacy || cfgUpdating(q.app) {
-			return
+			e.WaitReason="단일 계산 또는 업데이트 종료 대기";return
 		}
+		e.WaitReason=""
 		if err := q.prepareLocked(e, cfg); err != nil {
 			e.State = "Failed"
 			e.Job = &Job{State: "failed", Message: err.Error()}
@@ -239,6 +277,7 @@ func (q *JobQueue) dispatchLocked() {
 		n++
 		cpu += e.CPU
 		ram += e.RAMMB
+		launchedRAM+=e.RAMMB
 		if err := q.saveLocked(); err != nil {
 			cancel()
 			e.worker = nil
@@ -418,7 +457,17 @@ func (q *JobQueue) action(id, action string) (actionErr error) {
 			if e.worker != nil || (e.State != "Failed" && e.State != "Interrupted" && e.State != "Cancelled") {
 				return fmt.Errorf("실패·중단·취소 작업만 재시작할 수 있습니다")
 			}
-			if e.Job != nil {
+			// A completed stage can only be resumed with its original resources.
+            // Reject impossible retries instead of leaving them pending forever.
+            if (!e.AutoEligible || (e.Job!=nil&&e.Job.Folder!=""))&&(e.CPU>q.Limits.CPU||e.RAMMB>q.Limits.RAMMB){
+                return fmt.Errorf("기존 Job의 CPU/RAM 예약이 현재 Queue 예산보다 큽니다. 새 Batch로 등록하세요")
+            }
+            for _,other:=range q.Jobs{
+                if other!=e&&(other.worker!=nil||other.State=="Pending")&&other.AutoResources!=e.AutoResources{
+                    return fmt.Errorf("현재 Queue와 자동/수동 자원 모드가 다른 Job은 재시작할 수 없습니다")
+                }
+            }
+            if e.Job != nil && e.Job.Folder!="" {
 				// Retry in a new folder; copy completed stages and all their artifacts. Never truncate old results.
 				old := e.Job
 				oldState, oldHeld := e.State, e.Held
@@ -523,6 +572,8 @@ func (q *JobQueue) action(id, action string) (actionErr error) {
 					}
 				}
 			}
+			// Failed before creating a working folder: no artifacts to reuse.
+			if e.Job!=nil&&e.Job.Folder=="" {e.Job=nil}
 			e.State = "Pending"
 			e.Held = false
 		case "up":
@@ -562,6 +613,12 @@ func (a *App) queueRoute(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	switch r.URL.Path {
+	case "/api/queue/monitor":
+        if r.Method != "GET" {fail(w,405,"Method not allowed");return}
+        respond(w,200,systemUsage())
+    case "/api/queue/resources":
+		if r.Method != "GET" { fail(w,405,"Method not allowed"); return }
+		respond(w,200,q.probeResources())
 	case "/api/queue/action":
 		if r.Method != "POST" {
 			fail(w, 405, "Method not allowed")
@@ -647,23 +704,55 @@ func (a *App) queueRoute(w http.ResponseWriter, r *http.Request) {
 		var x struct {
 			Jobs   []RunRequest `json:"jobs"`
 			Limits QueueLimits  `json:"limits"`
+			Auto *struct { Eligible []bool `json:"eligible"` } `json:"auto,omitempty"`
+			Append bool `json:"append,omitempty"`
 		}
 		if json.NewDecoder(io.LimitReader(r.Body, 64<<20)).Decode(&x) != nil {
 			fail(w, 400, "입력을 읽지 못했습니다")
-			return
-		}
-		if err := validLimits(x.Limits); err != nil {
-			fail(w, 400, err.Error())
 			return
 		}
 		if len(x.Jobs) == 0 || len(x.Jobs) > 100 {
 			fail(w, 400, "Batch는 1–100개 분자여야 합니다")
 			return
 		}
+		q.mu.Lock()
+		defer q.mu.Unlock()
+		active:=q.activeLocked()
+		if active&&!x.Append{fail(w,409,"실행·대기 작업이 있습니다. 기존 Queue에 추가를 선택하세요");return}
+		if active {
+			if x.Auto!=nil {
+				if x.Limits.CPU!=q.Limits.CPU{fail(w,409,"기존 Queue와 전체 CPU 예산이 같아야 합니다");return}
+				for _,e:=range q.Jobs{
+					if (e.worker!=nil||e.State=="Pending")&&!e.AutoResources{fail(w,409,"수동 Queue에는 자동 모드 작업을 추가할 수 없습니다");return}
+				}
+			}else{
+				if x.Limits!=q.Limits{fail(w,409,"기존 Queue의 CPU/RAM/동시 실행 예산과 일치해야 합니다");return}
+				for _,e:=range q.Jobs{
+					if (e.worker!=nil||e.State=="Pending")&&e.AutoResources{fail(w,409,"자동 Queue에는 수동 모드 작업을 추가할 수 없습니다");return}
+				}
+			}
+		}
+		if x.Auto != nil {
+			sys:=q.probeResources()
+			// An explicit append joins the existing reservation envelope.
+			// Current low free RAM may delay launch, not prevent queueing.
+			if active&&sys.Supported{sys.BudgetMB=q.Limits.RAMMB}
+			jobs,limits,err := planAutoResources(x.Jobs,x.Auto.Eligible,x.Limits.CPU,sys)
+			if err != nil { fail(w,400,err.Error()); return }
+			x.Jobs,x.Limits=jobs,limits
+			if active{
+                x.Limits=q.Limits
+                activeCount:=0
+                for _,e:=range q.Jobs{if e.worker!=nil||e.State=="Pending"{activeCount++}}
+                x.Limits.Concurrency=max(q.Limits.Concurrency,min(autoParallelCap,q.Limits.CPU,q.Limits.RAMMB/(autoMinimumMaxCore*5/4),activeCount+len(x.Jobs)))
+            }
+		}
+		if err:=validLimits(x.Limits); err!=nil { fail(w,400,err.Error());return }
 		reports := []PreflightReport{}
+		allocations := []allocationView{}
 		entries := []*QueueEntry{}
 		valid := true
-		for _, req := range x.Jobs {
+		for i, req := range x.Jobs {
 			p := preflight(req)
 			cpu, ram, err := resources(req)
 			if err != nil {
@@ -678,27 +767,21 @@ func (a *App) queueRoute(w http.ResponseWriter, r *http.Request) {
 				valid = false
 			}
 			reports = append(reports, p)
-			entries = append(entries, &QueueEntry{ID: queueID(), Label: req.Label, State: "Pending", Request: req, CPU: cpu, RAMMB: ram})
+			automatic := x.Auto != nil && x.Auto.Eligible[i]
+			allocations=append(allocations,allocationView{Label:req.Label,CPU:cpu,RAMMB:ram,Automatic:automatic})
+			entries = append(entries, &QueueEntry{ID: queueID(), Label: req.Label, State: "Pending", Request: req, CPU: cpu, RAMMB: ram, AutoResources: x.Auto != nil, AutoEligible: automatic})
 		}
 		if r.URL.Path == "/api/queue/preflight" {
-			respond(w, 200, map[string]interface{}{"ok": valid, "reports": reports})
+			respond(w, 200, map[string]interface{}{"ok": valid, "reports": reports, "limits":x.Limits, "allocations":allocations})
 			return
 		}
 		if !valid {
 			respond(w, 400, map[string]interface{}{"error": "전체 Batch Preflight를 통과해야 합니다", "reports": reports})
 			return
 		}
-		q.mu.Lock()
-		defer q.mu.Unlock()
 		if q.Error != "" {
 			fail(w, 500, q.Error)
 			return
-		}
-		for _, e := range q.Jobs {
-			if e.worker != nil {
-				fail(w, 409, "실행 중에는 새 Batch를 등록하지 마세요")
-				return
-			}
 		}
 		if len(q.Jobs)+len(entries) > 1000 {
 			fail(w, 400, "Queue 최대 1000개입니다")
@@ -715,15 +798,18 @@ func (a *App) queueRoute(w http.ResponseWriter, r *http.Request) {
 			fail(w, 409, "단일 계산이 실행 중입니다")
 			return
 		}
+		previousJobs,previousLimits:=q.Jobs,q.Limits
 		q.Limits = x.Limits
 		q.Jobs = append(q.Jobs, entries...)
-		q.Paused = false
+		if !active{q.Paused=false}
 		if err := q.saveLocked(); err != nil {
+			q.Jobs,q.Limits=previousJobs,previousLimits
 			fail(w, 500, err.Error())
 			return
 		}
 		q.dispatchLocked()
-		respond(w, 200, map[string]bool{"ok": true})
+		for i,e:=range entries {allocations[i].CPU=e.CPU;allocations[i].RAMMB=e.RAMMB}
+		respond(w, 200, map[string]interface{}{"ok": true,"limits":x.Limits,"allocations":allocations})
 	default:
 		http.NotFound(w, r)
 	}

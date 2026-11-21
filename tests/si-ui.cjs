@@ -43,7 +43,7 @@ const fs=require('fs'),path=require('path'),assert=require('assert');
    if(u.pathname==='/api/status')return route.fulfill({json:{config:{orcaExe:'/tmp/orca',workRoot:'/tmp/jobs'}}});
    return route.fulfill({json:{ok:true}});
   });
-  await page.goto('http://orca.test/?session=x');
+  await page.goto('http://orca.test/?session=x');await page.locator('#nav-tools').click();
   await page.locator('#si-panel summary').first().click();
   assert(await page.locator('#si-text').isVisible());
   await page.locator('#si-doi').fill('10.1002/anie.9565676');

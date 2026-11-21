@@ -9,7 +9,7 @@ const roles={C2:0,N3:1,C4:2,C5:3,C6:4,N1:5,S2:6,O4:7};
  try{
   const page=await browser.newPage({viewport:{width:1440,height:940},acceptDownloads:true});
   const errors=[],prepared=[],queued=[],dialogs=[];
-  let jobs=[];
+  let jobs=[],autoProbe=false;
   page.on('pageerror',e=>errors.push(e.message));
   page.on('dialog',d=>{dialogs.push(d.message());d.accept()});
   await page.route('http://orca.test/**',route=>{
@@ -27,6 +27,7 @@ const roles={C2:0,N3:1,C4:2,C5:3,C6:4,N1:5,S2:6,O4:7};
     }));
     return route.fulfill({json:{items:targets,warnings:['mock'],needsConfirmation:!payload.confirmed}})
    }
+   if(url==='/api/queue/resources')return route.fulfill({json:autoProbe?{supported:true,cpu:16,totalMB:65536,availableMB:62500,budgetMB:50000}:{supported:false}});
    if(url==='/api/queue/preflight'){const data=r.postDataJSON();queued.push({type:'preflight',payload:data});return route.fulfill({json:{ok:true,reports:data.jobs.map(()=>({ok:true}))}})}
    if(url==='/api/queue'&&r.method()==='POST'){const data=r.postDataJSON();queued.push({type:'run',payload:data});jobs=data.jobs.map((job,i)=>({id:'T'+i,label:job.label,request:job,state:'Completed',job:{stageName:'Spin Density'}}));return route.fulfill({json:{ok:true}})}
    if(url==='/api/queue')return route.fulfill({json:{jobs,limits:{concurrency:2,cpu:16,ramMB:56000},paused:false}});
@@ -100,6 +101,22 @@ const roles={C2:0,N3:1,C4:2,C5:3,C6:4,N1:5,S2:6,O4:7};
   await page.waitForFunction(()=>tripState.lastComparison?.sameTarget===true);
   assert((await page.locator('#trip-comparison').innerText()).includes('-2.5000'));
   assert(await page.locator('#trip-export').isEnabled());
+  // Reuse the same confirmed scientific workflow with automatic resources.
+  autoProbe=true;await page.evaluate(()=>tripLoadResourceSystem());
+  assert(await page.locator('#trip-auto').isChecked());
+  assert(!(await page.locator('#trip-cores').isVisible()));
+  assert(!(await page.locator('#trip-budget-ram').isVisible()));
+  await page.locator('#trip-budget-cpu').fill('12');
+  await page.locator('#trip-review').click();
+  await page.waitForFunction(()=>tripState.draft?.items?.length===2);
+  await page.locator('#trip-run').click();
+  await page.waitForFunction(()=>document.querySelector('#trip-status')?.textContent.includes('Queue에 등록했습니다'));
+  const auto=queued.filter(x=>x.type==='run').at(-1).payload;
+  assert.equal(auto.limits.cpu,12);assert.deepEqual(auto.auto.eligible,[true,true]);
+  assert(auto.jobs.every(x=>x.triplet?.confirmed&&x.stages.length===3));
+  assert.equal(prepared.at(-1).options.cores,1);assert.equal(prepared.at(-1).options.maxcore,512);
+  await page.locator('#trip-auto').uncheck();
+  assert(await page.locator('#trip-cores').isVisible());assert(await page.locator('#trip-run').isDisabled());
   assert.equal(await page.evaluate(()=>calc('W2').name),w2Before);
   assert.equal(await page.evaluate(()=>calc('W5').name),w5Before);
   assert.deepEqual(errors,[]);

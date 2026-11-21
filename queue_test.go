@@ -752,3 +752,116 @@ func TestRetrySaveFailureRestoresOriginalAttempt(t *testing.T) {
 		t.Fatal("queue did not expose persistence failure and pause")
 	}
 }
+
+func TestAutoQueueAppendKeepsRunningReservationsAndExpandsSlots(t *testing.T) {
+ if runtime.NumCPU()<2 {t.Skip("requires at least 2 CPU")}
+ q:=mockQueue(t)
+ a:=q.app
+ a.token="token"
+ q.resourceProbe=func() resourceSystem{return resourceSystem{CPU:2,Supported:true,BudgetMB:5000}}
+ request:=func(path string,payload any)*httptest.ResponseRecorder{
+  b,_:=json.Marshal(payload);r:=httptest.NewRequest(http.MethodPost,path+"?session=token",bytes.NewReader(b))
+  r.Header.Set("X-ORCA-Session","token")
+  w:=httptest.NewRecorder();a.guard(a.route)(w,r);return w
+ }
+ initial:=resourceTestRequest("original")
+ initial.Files[1].Content+="\n# MOCK_BLOCK\n"
+ payload:=func(j RunRequest,cpu int,appendMode bool)map[string]any{
+  return map[string]any{"jobs":[]RunRequest{j},"limits":QueueLimits{Concurrency:1,CPU:cpu,RAMMB:128},"auto":map[string]any{"eligible":[]bool{true}},"append":appendMode}
+ }
+ w:=request("/api/queue",payload(initial,2,false))
+ if w.Code!=200{t.Fatal(w.Code,w.Body.String())}
+ waitQueue(t,q,func(es []*QueueEntry)bool{return len(es)==1&&es[0].State=="Running"})
+ q.mu.Lock();before:=q.Jobs[0].Request.Files[1].Content;folder:=q.Jobs[0].Job.Folder;cpu,ram:=q.Jobs[0].CPU,q.Jobs[0].RAMMB;q.mu.Unlock()
+ defer func(){_ = os.WriteFile(filepath.Join(a.cfg.WorkRoot,"allow_continue"),[]byte("yes"),0600)}()
+ // Appending is explicit and cannot alter the running CPU/RAM envelope.
+ if w=request("/api/queue",payload(resourceTestRequest("rejected"),2,false));w.Code!=409{t.Fatal(w.Code,w.Body.String())}
+ if w=request("/api/queue",payload(resourceTestRequest("wrong_cpu"),1,true));w.Code!=409{t.Fatal(w.Code,w.Body.String())}
+ w=request("/api/queue",payload(resourceTestRequest("new"),2,true))
+ if w.Code!=200{t.Fatal(w.Code,w.Body.String())}
+ q.mu.Lock()
+ if len(q.Jobs)!=2||q.Limits.CPU!=2||q.Limits.RAMMB!=5000||q.Limits.Concurrency!=2{
+  q.mu.Unlock();t.Fatal("active envelope or append slots incorrect")
+ }
+ if q.Jobs[0].CPU!=cpu||q.Jobs[0].RAMMB!=ram||q.Jobs[0].Request.Files[1].Content!=before||q.Jobs[1].State!="Pending"{
+  q.mu.Unlock();t.Fatal("running allocation modified or pending launched beyond CPU cap")
+ }
+ q.mu.Unlock()
+ stored,err:=os.ReadFile(filepath.Join(folder,"first.inp"));if err!=nil||string(stored)!=before{t.Fatal("running INP changed",err)}
+ if err=os.WriteFile(filepath.Join(a.cfg.WorkRoot,"allow_continue"),[]byte("yes"),0600);err!=nil{t.Fatal(err)}
+ waitQueue(t,q,func(es []*QueueEntry)bool{return es[0].State=="Completed"&&es[1].State=="Completed"})
+ q.mu.Lock();defer q.mu.Unlock()
+ if q.Jobs[0].Job.Folder==q.Jobs[1].Job.Folder{t.Fatal("appended job reused original work folder")}
+ if q.Jobs[1].CPU!=2{t.Fatal("released CPU not reused",q.Jobs[1].CPU)}
+}
+
+func TestAutoQueueLiveMemoryPressureAndRecovery(t *testing.T){
+ q:=mockQueue(t)
+ q.Limits=QueueLimits{Concurrency:1,CPU:1,RAMMB:4000}
+ entry:=addEntry(t,q,resourceTestRequest("pressure"))
+ entry.AutoResources=true;entry.AutoEligible=true
+ budget:=100
+ q.resourceProbe=func()resourceSystem{return resourceSystem{CPU:1,Supported:true,BudgetMB:budget}}
+ q.mu.Lock();q.Paused=false;q.dispatchLocked()
+ if entry.State!="Pending"||entry.Job!=nil||entry.WaitReason==""{q.mu.Unlock();t.Fatal("memory pressure was not blocked")}
+ budget=4000
+ q.dispatchLocked();q.mu.Unlock()
+ waitQueue(t,q,func(es []*QueueEntry)bool{return es[0].State=="Completed"})
+ q.mu.Lock();defer q.mu.Unlock()
+ if entry.RAMMB!=4000||entry.CPU!=1||entry.WaitReason!=""{t.Fatal("reallocation after memory recovery incorrect",entry.RAMMB,entry.WaitReason)}
+}
+
+func TestStandaloneAutoRunWritesAllocatedInputs(t *testing.T){
+ q:=mockQueue(t);a:=q.app;a.token="token"
+ q.resourceProbe=func()resourceSystem{return resourceSystem{CPU:1,Supported:true,BudgetMB:2000}}
+ req:=resourceTestRequest("standalone");req.AutoCPU=1
+ request:=func(path string)*httptest.ResponseRecorder{
+  b,_:=json.Marshal(req);r:=httptest.NewRequest(http.MethodPost,path+"?session=token",bytes.NewReader(b))
+  r.Header.Set("X-ORCA-Session","token");w:=httptest.NewRecorder();a.guard(a.route)(w,r);return w
+ }
+ w:=request("/api/preflight")
+ if w.Code!=200||!strings.Contains(w.Body.String(),"\"ramMB\":2000"){t.Fatal(w.Code,w.Body.String())}
+ w=request("/api/run")
+ if w.Code!=200{t.Fatal(w.Code,w.Body.String())}
+ var started struct{Folder string;Allocation allocationView}
+ if err:=json.Unmarshal(w.Body.Bytes(),&started);err!=nil||started.Allocation.CPU!=1||started.Allocation.RAMMB!=2000{t.Fatal(w.Body.String(),err)}
+ for _,name:=range []string{"first.inp","second.inp"}{
+  b,err:=os.ReadFile(filepath.Join(started.Folder,name))
+  if err!=nil||!strings.Contains(string(b),"nprocs 1")||!strings.Contains(string(b),"%maxcore 1600"){t.Fatal(name,err,string(b))}
+ }
+ deadline:=time.Now().Add(10*time.Second)
+ for time.Now().Before(deadline){
+  a.mu.Lock();state,report:=a.job.State,a.job.ReportFile;a.mu.Unlock()
+  if state=="completed"&&report!=""{return}
+  if state=="failed"{t.Fatal("mock standalone failed")}
+  time.Sleep(20*time.Millisecond)
+ }
+ t.Fatal("mock standalone did not finish")
+}
+
+func TestStoredAutoCPUPreferenceAndConfigFailureRollback(t *testing.T) {
+ q:=mockQueue(t);a:=q.app;a.token="token"
+ a.cfg.ORCAExe=filepath.Join(a.cfg.WorkRoot,"orca.exe");a.cfg.UpdateChannel="stable"
+ if err:=a.saveConfig();err!=nil{t.Fatal(err)}
+ post:=func(payload map[string]any)*httptest.ResponseRecorder{
+  b,_:=json.Marshal(payload);r:=httptest.NewRequest(http.MethodPost,"/api/config?session=token",bytes.NewReader(b));r.Header.Set("X-ORCA-Session","token")
+  w:=httptest.NewRecorder();a.guard(a.route)(w,r);return w
+ }
+ read:=func()Config{
+  b,e:=os.ReadFile(a.cfgPath);if e!=nil{t.Fatal(e)}
+  var cfg Config;if e=json.Unmarshal(b,&cfg);e!=nil{t.Fatal(e)};return cfg
+ }
+ work:=filepath.Join(filepath.Dir(a.cfgPath),"custom")
+ w:=post(map[string]any{"orcaExe":a.cfg.ORCAExe,"workRoot":work,"autoCPU":1})
+ if w.Code!=200{t.Fatal(w.Code,w.Body.String())}
+ if cfg:=read();cfg.AutoCPU!=1||cfg.WorkRoot!=work||cfg.UpdateChannel!="stable"{t.Fatal(cfg)}
+ w=post(map[string]any{"orcaExe":a.cfg.ORCAExe,"workRoot":work})
+ if w.Code!=200||read().AutoCPU!=1{t.Fatal("legacy client lost CPU setting",w.Code)}
+ w=post(map[string]any{"orcaExe":a.cfg.ORCAExe,"workRoot":work,"autoCPU":-1})
+ if w.Code!=400||read().AutoCPU!=1{t.Fatal("invalid preference accepted",w.Code)}
+ oldPath,oldCfg:=a.cfgPath,a.cfg
+ a.cfgPath=filepath.Dir(oldPath) // Cannot replace the configuration directory with a file.
+ w=post(map[string]any{"orcaExe":a.cfg.ORCAExe,"workRoot":work+"-new","autoCPU":1})
+ a.cfgPath=oldPath
+ if w.Code!=500||a.cfg!=oldCfg||read()!=oldCfg{t.Fatal("failed save changed stored or active settings",w.Code)}
+}

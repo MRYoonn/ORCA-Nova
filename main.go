@@ -29,6 +29,7 @@ type Config struct {
 	ORCAExe       string `json:"orcaExe"`
 	WorkRoot      string `json:"workRoot"`
 	UpdateChannel string `json:"updateChannel,omitempty"`
+	AutoCPU int `json:"autoCPU,omitempty"`
 }
 type JobFile struct {
 	Name    string `json:"name"`
@@ -45,6 +46,7 @@ type RunRequest struct {
 	Files  []JobFile `json:"files"`
 	Stages []Stage   `json:"stages"`
 	Triplet *tripJobMeta `json:"triplet,omitempty"`
+	AutoCPU int `json:"autoCPU,omitempty"`
 }
 type Job struct {
 	ID              string   `json:"id"`
@@ -76,7 +78,13 @@ type App struct {
 	token    string
 	updates  *updater
 	cfgPath  string
+	cfgWriteMu sync.Mutex
 	history  *durationHistory
+}
+
+func (a *App) probeResources() resourceSystem {
+ if a.queue!=nil{return a.queue.probeResources()}
+ return systemResources()
 }
 
 func configPath() string {
@@ -106,6 +114,7 @@ func newApp() *App {
 				a.cfg.WorkRoot = cfg.WorkRoot
 			}
 			a.cfg.ORCAExe = cfg.ORCAExe
+			if cfg.AutoCPU>0{a.cfg.AutoCPU=min(cfg.AutoCPU,runtime.NumCPU())}
 			if cfg.UpdateChannel == "beta" { a.cfg.UpdateChannel = "beta" }
 		}
 	}
@@ -121,14 +130,24 @@ func newApp() *App {
 	return a
 }
 func (a *App) saveConfig() error {
+    a.cfgWriteMu.Lock()
+    defer a.cfgWriteMu.Unlock()
 	a.mu.Lock()
 	cfg := a.cfg
 	a.mu.Unlock()
-	if err := os.MkdirAll(filepath.Dir(a.cfgPath), 0700); err != nil {
+    dir:=filepath.Dir(a.cfgPath)
+	if err := os.MkdirAll(dir, 0700); err != nil {
 		return err
 	}
-	b, _ := json.MarshalIndent(cfg, "", "  ")
-	return os.WriteFile(a.cfgPath, b, 0600)
+	b, err := json.MarshalIndent(cfg, "", "  ")
+    if err!=nil{return err}
+    temp,err:=os.CreateTemp(dir,".orca-config-*")
+    if err!=nil{return err}
+    name:=temp.Name()
+    defer os.Remove(name)
+    if _,err=temp.Write(b);err!=nil{_ = temp.Close();return err}
+    if err=temp.Close();err!=nil{return err}
+    return os.Rename(name,a.cfgPath)
 }
 func respond(w http.ResponseWriter, status int, v interface{}) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -296,11 +315,17 @@ func (a *App) route(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-		a.mu.Lock()
-		cfg.UpdateChannel = a.cfg.UpdateChannel
+		if cfg.AutoCPU<0||cfg.AutoCPU>runtime.NumCPU(){fail(w,400,"자동 CPU 설정 범위를 확인하세요");return}
+        a.mu.Lock()
+        previous:=a.cfg
+		cfg.UpdateChannel = previous.UpdateChannel
+        if cfg.AutoCPU==0{cfg.AutoCPU=previous.AutoCPU}
 		a.cfg = cfg
 		a.mu.Unlock()
 		if err := a.saveConfig(); err != nil {
+            a.mu.Lock()
+            if a.cfg==cfg{a.cfg=previous}
+            a.mu.Unlock()
 			fail(w, 500, err.Error())
 			return
 		}
@@ -315,8 +340,10 @@ func (a *App) route(w http.ResponseWriter, r *http.Request) {
 			fail(w, 400, "입력 데이터 해석 실패: "+err.Error())
 			return
 		}
-		report := preflight(req)
-		respond(w, 200, report)
+		planned,allocation,err:=planStandaloneResources(req,a.probeResources())
+		if err!=nil{fail(w,400,err.Error());return}
+		report := preflight(planned)
+		respond(w, 200, struct {PreflightReport; Allocation *allocationView `json:"allocation,omitempty"`}{report,allocation})
 	case "/api/run":
 		if r.Method != http.MethodPost {
 			fail(w, 405, "Method not allowed")
@@ -474,6 +501,9 @@ func (a *App) start(w http.ResponseWriter, r *http.Request) {
 		fail(w, 400, "입력 데이터를 읽지 못했어요: "+err.Error())
 		return
 	}
+	planned,allocation,planErr:=planStandaloneResources(req,a.probeResources())
+	if planErr!=nil{fail(w,400,planErr.Error());return}
+	req=planned
 	if report := preflight(req); !report.OK {
 		fail(w, 400, "계산 전 검사 실패: "+strings.Join(report.Errors, " / "))
 		return
@@ -564,7 +594,7 @@ func (a *App) start(w http.ResponseWriter, r *http.Request) {
 	a.cancel = cancel
 	a.process = nil
 	a.mu.Unlock()
-	respond(w, 200, map[string]interface{}{"ok": true, "folder": folder})
+	respond(w, 200, map[string]interface{}{"ok": true, "folder": folder, "allocation":allocation})
 	go a.runJob(ctx, cfg.ORCAExe, req, job)
 }
 func (a *App) updateJob(j *Job, fn func(*Job)) {

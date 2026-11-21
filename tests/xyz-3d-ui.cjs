@@ -51,6 +51,7 @@ const xyz='3\nWater\nO 0.0000 0.0000 0.0000\nH 0.7586 0.0000 0.5043\nH -0.7586 0
   await page.locator('#desktop-extra-list .xyz-extra-item button').first().click();
   assert((await page.locator('#xyz3d-title').innerText()).includes('extra.xyz'));
   await page.locator('#xyz3d-close').click();
+  await page.locator('#nav-batch').click();
   await page.locator('#batch-files').setInputFiles({name:'batch.xyz',mimeType:'text/plain',buffer:Buffer.from(xyz)});
   await page.waitForFunction(()=>batchMolecules.length===1);
   await page.locator('#batch-molecules .batch-inputs button').first().click();
@@ -61,6 +62,7 @@ const xyz='3\nWater\nO 0.0000 0.0000 0.0000\nH 0.7586 0.0000 0.5043\nH -0.7586 0
    return bad.map(input=>{try{xyz3DParse(input);return false}catch(e){return true}});
   });
   assert.deepEqual(failures,[true,true,true]);
+  await page.locator('#nav-calculation').click();
   await page.locator('#xyz-remove').click();
   assert(!(await page.locator('#xyz3d-primary').isEnabled()));
   assert.equal(await page.evaluate(()=>batchMolecules.length),1);
