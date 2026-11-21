@@ -944,17 +944,21 @@ setInterval(()=>{if(lastDesktopState?.update)desktopUpdateShow(lastDesktopState.
 .batch-panel{margin:18px 0;padding:18px;border:1px solid #35506a;border-radius:14px;background:#111e2f}.batch-panel h2{margin:0 0 8px;font-size:17px;color:#daebff}.batch-panel p,.batch-note{font-size:12px;line-height:1.7;color:#9eb7d1}.batch-drop{border:1px dashed #508591;border-radius:10px;padding:14px;margin:12px 0;background:#152a37}.batch-drop.over{border-color:#83eed5;background:#1b3c47}.batch-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0}.batch-controls label{font-size:11px;color:#b8cde3}.batch-controls input{width:90px;margin-left:4px}.batch-table-wrap{overflow-x:auto}.batch-table{width:100%;border-collapse:collapse;font-size:11px}.batch-table th,.batch-table td{text-align:left;vertical-align:top;padding:9px 6px;border-bottom:1px solid #293d53}.batch-table th{color:#8dafd0}.batch-table input[type=number]{width:68px}.batch-table button{margin:2px}.batch-table small{display:block;line-height:1.7;color:#98b3cd;overflow-wrap:anywhere}.batch-table textarea{width:100%;min-height:170px;background:#0c1624;color:#d1e8f6;border:1px solid #3a536d;font:11px/1.7 monospace;padding:8px}.batch-table details{min-width:220px;margin:6px 0}.batch-status{white-space:pre-wrap;font-size:12px;color:#a8dacd;max-height:220px;overflow:auto}.batch-status.error{color:#ffb1ab}.batch-state{font-weight:bold;color:#bde8d8}
 </style>
 <section class="batch-panel" id="batch-panel" aria-label="Batch Calculation">
-<h2>Batch Calculation · Multi-XYZ / Job Queue</h2>
-<p>분자마다 독립된 폴더에서 Workflow를 실행합니다. 왼쪽에서 계산 프리셋과 CPU / MaxCore를 설정한 뒤 적용하세요. 기존 결과는 새 실행 폴더에 보관됩니다.</p>
+<h2>Batch / Queue</h2>
+<p>XYZ 등록 → 계산 선택 → 사용할 CPU 선택 → 실행. 각 Job은 독립 폴더에 저장됩니다.</p>
 <div class="batch-drop" id="batch-drop">XYZ / INP 파일 여러 개를 여기에 놓으세요.
 <div class="batch-controls"><label class="btn small ghost" for="batch-files">＋ XYZ / INP 여러 개 불러오기</label><input id="batch-files" type="file" multiple accept=".xyz,.inp" hidden><button class="btn small ghost" id="batch-apply" data-help="현재 왼쪽 계산 프리셋과 옵션을 모든 분자에 다시 적용합니다. 개별 INP 편집 내용은 바뀌므로 확인 후 적용하세요.">현재 프리셋을 모두 적용 <span class="help-icon">?</span></button></div></div>
 <div class="batch-note">분자마다 <b>계산 프리셋</b>을 따로 선택할 수 있어요. 각 행의 선택은 다른 분자나 왼쪽 기본 설정을 변경하지 않습니다. Imported INP나 직접 수정한 INP를 프리셋으로 덮어쓸 때는 확인합니다. Charge / Multiplicity, CPU, MaxCore와 선행 XYZ 연결을 실행 전에 확인하세요.</div>
 <div class="batch-table-wrap"><table class="batch-table"><thead><tr><th>선택</th><th>실행</th><th>Molecule / 계산 프리셋</th><th>Charge</th><th>Multiplicity</th><th>개별 입력 / 삭제</th></tr></thead><tbody id="batch-molecules"></tbody></table></div>
 <div class="batch-selection-bar"><button id="batch-select-all" class="btn small ghost">전체 선택</button><button id="batch-remove-selected" class="btn small ghost" disabled>선택 XYZ 삭제</button><button id="batch-clear-all" class="btn small ghost">등록 목록 비우기</button><span id="batch-selected-count" class="batch-selected-count">0개 선택 · 0개 등록</span></div>
 <div class="batch-note">목록 삭제는 이미 제출된 Job Queue나 계산 결과 폴더를 삭제하지 않습니다.</div>
-<div class="batch-controls">
+<div class="batch-controls" style="align-items:center">
+<label><input type="checkbox" id="batch-auto" disabled style="width:auto;margin-left:0"> CPU/RAM 자동 배분</label>
+<label>사용할 CPU 수 <input class="control" id="batch-cpu" type="number" min="1" value="4"></label>
+<span class="batch-note" id="batch-system-note">자원 감지 중…</span>
+</div>
+<div class="batch-controls" id="batch-manual-options">
 <label>동시 실행 수 <span class="help-icon" tabindex="0" data-help="기본값은 1입니다. 2, 3 또는 원하는 양수를 입력할 수 있습니다. CPU / RAM 예산이 부족하면 자원이 반환될 때까지 대기합니다.">?</span><input class="control" id="batch-concurrency" type="number" min="1" max="64" value="1" list="batch-concurrency-options"><datalist id="batch-concurrency-options"><option value="1"><option value="2"><option value="3"></datalist></label>
-<label>전체 CPU 예산 <input class="control" id="batch-cpu" type="number" min="1" value="4"></label>
 <button id="batch-two-parallel" class="btn small ghost" data-help="동시 실행 목표만 2개로 설정합니다. 실행 가능한지는 실제 CPU/RAM 예산에 따라 결정됩니다.">동시 2개</button><button id="batch-four-parallel" class="btn small ghost" data-help="동시 실행 목표만 4개로 설정합니다. 시스템 자원이 부족하면 Scheduler가 일부 계산을 대기시킵니다.">동시 4개</button><label>전체 RAM 예산 (MB) <span class="help-icon" tabindex="0" data-help="MaxCore는 코어당 MB입니다. Scheduler는 CPU × MaxCore에 안전 여유 25%를 더해 예약합니다. 실제 메모리 사용량의 절대 상한은 아닙니다. PC와 다른 프로그램에 필요한 RAM을 제외하세요.">?</span><input class="control" id="batch-ram" type="number" min="1" value="8192"></label>
 </div>
 <div class="batch-budget-note" id="batch-budget-note">현재 INP 기준으로 병렬 계산에 필요한 CPU/RAM 예산을 표시합니다.</div>
@@ -981,11 +985,27 @@ setInterval(()=>{if(lastDesktopState?.update)desktopUpdateShow(lastDesktopState.
 // Batch imports are isolated from the single-molecule editor. Only explicit
 // Apply/Charge/Multiplicity actions regenerate a molecule's captured request.
 const batchMolecules=[];
-let batchQueueState=null,batchRequestBusy=false,batchImporting=false;
+let batchQueueState=null,batchRequestBusy=false,batchImporting=false,batchAutoSystem=null;
+function batchAutoMode(){return !!batchAutoSystem?.supported && $('batch-auto').checked}
+function batchShowResourceMode(){
+ $('batch-manual-options').style.display=batchAutoMode()?'none':'flex';
+ batchUpdateBudget();
+}
+async function batchLoadResourceSystem(){
+ try{
+  const sys=await desktopAPI('queue/resources');
+  if(!sys.supported||!Number.isSafeInteger(sys.cpu)||sys.cpu<1)throw Error(sys.message||'자동 RAM 감지를 지원하지 않습니다.');
+  batchAutoSystem=sys;
+  const cpu=$('batch-cpu');cpu.max=String(sys.cpu);cpu.value=String(Math.min(sys.cpu,Math.max(1,num('cores',sys.cpu))));
+  $('batch-auto').disabled=false;$('batch-auto').checked=true;
+  $('batch-system-note').textContent=sys.cpu+' CPU · 현재 가용 RAM '+(sys.availableMB/1024).toFixed(1)+' GB (예약 예산 '+(sys.budgetMB/1024).toFixed(1)+' GB)';
+ }catch(e){$('batch-auto').checked=false;$('batch-auto').disabled=true;$('batch-system-note').textContent='자동 감지 불가 · Manual 모드';}
+ batchShowResourceMode();
+}
 function batchMessage(message,bad=false){$('batch-status').textContent=message;$('batch-status').classList.toggle('error',bad)}
 function batchLimits(){
  const n=id=>{const x=Number($(id).value);if(!Number.isSafeInteger(x)||x<1)throw Error('동시 실행 수, CPU와 RAM은 양의 정수여야 합니다.');return x};
- return {concurrency:n('batch-concurrency'),cpu:n('batch-cpu'),ramMB:n('batch-ram')};
+ return batchAutoMode()?{concurrency:1,cpu:n('batch-cpu'),ramMB:128}:{concurrency:n('batch-concurrency'),cpu:n('batch-cpu'),ramMB:n('batch-ram')};
 }
 function batchCapture(m){
  const saved={loadedXYZ,xyzOriginal,xyzAtomCount,activeStage,active,charge:$('charge').value,mult:$('mult').value};
@@ -1077,7 +1097,12 @@ function batchUpdateSelection(){
 function batchUpdateBudget(){
  const included=batchMolecules.filter(m=>m.included),target=$('batch-budget-note');
  if(!included.length){
-  target.textContent='실행할 XYZ를 등록한 뒤 각 INP의 CPU / MaxCore를 확인하세요.';
+  target.textContent='실행할 XYZ / INP를 등록하세요.';
+  target.classList.remove('warning');return;
+ }
+ if(batchAutoMode()){
+  const fixed=included.filter(m=>m.custom||!m.presetId).length;
+  target.textContent=included.length+'개 Job · 전체 CPU '+$('batch-cpu').value+'개 · 실제 가용 RAM에 맞춰 배분 · 최대 동시 4개. '+(fixed?fixed+'개 편집/Imported INP는 원래 자원 설정 유지. ':'')+'Preflight에서 Job별 배분 확인.';
   target.classList.remove('warning');return;
  }
  let maxCPU=1,maxRAM=0;
@@ -1137,15 +1162,20 @@ async function batchImport(files){
   batchRenderMolecules();batchMessage(batchMolecules.length+'개 분자 등록 · 모든 INP를 검토한 뒤 전체 Preflight를 실행하세요.'+(notes.length?'\n'+notes.join('\n'):''),notes.length>0);
  }catch(e){batchMessage(e.message,true)}finally{batchImporting=false;batchUpdateSelection();}
 }
-function batchPayload(){const jobs=batchMolecules.filter(m=>m.included).map(m=>m.request);if(!jobs.length)throw Error('실행할 분자를 한 개 이상 포함하세요.');return {jobs,limits:batchLimits()};}
-function batchCheckLines(result){return JSON.stringify(result,null,2)}
+function batchPayload(){const included=batchMolecules.filter(m=>m.included),jobs=included.map(m=>m.request);if(!jobs.length)throw Error('실행할 분자를 한 개 이상 포함하세요.');const payload={jobs,limits:batchLimits()};if(batchAutoMode())payload.auto={eligible:included.map(m=>!m.custom&&!!m.presetId)};return payload;}
+function batchAllocationLines(result){
+ if(!result?.allocations?.length)return '';
+ const l=result.limits;
+ return '전체 '+l.cpu+' CPU · RAM 예약 '+(l.ramMB/1024).toFixed(1)+' GB · 최대 동시 '+l.concurrency+'개\n'+result.allocations.map(a=>a.label+' · '+a.cpu+' CPU / '+(a.ramMB/1024).toFixed(2)+' GB 예약'+(a.automatic?' · Auto':' · Fixed')).join('\n');
+}
+function batchCheckLines(result){return (batchAllocationLines(result)?batchAllocationLines(result)+'\n\n':'')+JSON.stringify(result.reports??result,null,2)}
 async function batchSubmit(start){
  if(batchRequestBusy)return;batchRequestBusy=true;$('batch-start').disabled=true;$('batch-check').disabled=true;
  try{
   const payload=batchPayload(),result=await desktopAPI('queue/preflight',payload);
   batchMessage(batchCheckLines(result));
   if(result.ok===false)throw Error('전체 Preflight를 통과하지 못했습니다. 아래 검사 결과를 확인하세요.\n'+batchCheckLines(result));
-  if(start){await desktopConfig();await desktopAPI('queue',payload);batchMessage(payload.jobs.length+'개 Job을 Queue에 등록했습니다.');await batchPoll();}
+  if(start){await desktopConfig();const applied=await desktopAPI('queue',payload);batchMessage(payload.jobs.length+'개 Job을 Queue에 등록했습니다.'+(batchAllocationLines(applied)?'\n'+batchAllocationLines(applied):''));await batchPoll();}
  }catch(e){batchMessage(e.message,true)}finally{batchRequestBusy=false;$('batch-start').disabled=false;$('batch-check').disabled=false;batchUpdateSelection();}
 }
 async function batchAction(action,id=''){
@@ -1208,6 +1238,7 @@ $('batch-clear-all').onclick=()=>{
 $('batch-two-parallel').onclick=()=>{$('batch-concurrency').value='2';batchUpdateBudget()};
 $('batch-four-parallel').onclick=()=>{$('batch-concurrency').value='4';batchUpdateBudget()};
 for(const id of ['batch-concurrency','batch-cpu','batch-ram'])$(id).addEventListener('input',batchUpdateBudget);
+$('batch-auto').addEventListener('change',batchShowResourceMode);
 $('batch-files').onchange=async e=>{await batchImport([...e.target.files]);e.target.value=''};
 const batchDrop=$('batch-drop');batchDrop.ondragover=e=>{e.preventDefault();batchDrop.classList.add('over')};batchDrop.ondragleave=()=>batchDrop.classList.remove('over');batchDrop.ondrop=e=>{e.preventDefault();batchDrop.classList.remove('over');batchImport([...e.dataTransfer.files])};
 $('batch-apply').onclick=()=>{if(batchMolecules.some(m=>m.custom)&&!confirm('모든 분자의 개별 INP 편집을 현재 프리셋으로 다시 생성할까요?'))return;for(const m of batchMolecules){m.presetId=active;batchCapture(m);m.custom=false}batchRenderMolecules();batchMessage('현재 프리셋을 전체 분자에 적용했습니다. 각 단계의 Charge / Multiplicity와 자원 설정을 확인하세요.')};
@@ -1259,6 +1290,7 @@ $('batch-compare-csv').onclick=async()=>{const ok=await batchCompare();if(ok&&ba
 
 // Place the panel before the existing runner; single-job workflows remain intact.
 $('desktop-app-panel').before($('batch-panel'));
+batchLoadResourceSystem();
 setInterval(batchPoll,2300);batchPoll();
 </script>
 
