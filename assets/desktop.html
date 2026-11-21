@@ -199,7 +199,13 @@
   <div class="quick-card" id="quick-presets">
     <div class="quick-head"><b>⚡ 빠른 계산 · 통합 계산 프리셋</b><span class="badge">한 번에 적용</span></div>
     <p class="quick-lead">무엇을 계산할지만 선택하세요. Functional, Basis Set, Dispersion, CPU 설정을 자동으로 채워줘요.</p>
-    <div class="preset-grid" id="preset-grid"></div>
+    <div class="preset-filter" role="group" aria-label="프리셋 분류">
+  <button type="button" class="btn small ghost" data-preset-filter="recommended" aria-pressed="true">추천</button>
+  <button type="button" class="btn small ghost" data-preset-filter="literature" aria-pressed="false">문헌 Method</button>
+  <button type="button" class="btn small ghost" data-preset-filter="preset" aria-pressed="false">일반</button>
+  <button type="button" class="btn small ghost" data-preset-filter="all" aria-pressed="false">전체</button>
+  <input type="search" id="preset-search" class="control" placeholder="프리셋 검색" aria-label="프리셋 검색">
+</div><div class="preset-grid" id="preset-grid"></div><p id="preset-empty" class="hint" hidden>일치하는 프리셋이 없습니다.</p>
     <div class="preset-context" id="preset-context"><strong>추천</strong> · Opt + Spin Density처럼 여러 계산을 하나의 INP에서 함께 요청할 수 있어요. 빠른 구조 탐색은 r2SCAN-3c로 시작하고, 최종 논문 값은 Method를 다시 검토하세요.</div>
     <div class="preset-help">ⓘ <b>빠른 계산 ≠ 더 정확한 계산.</b> 최종 보고용 에너지는 논문 SI의 Method, Basis Set, Solvent 등을 맞춰 재계산해야 해요.</div>
   </div>
@@ -221,8 +227,8 @@
      <label data-help="두 최적화와 Spin 분석에 공통으로 적용되는 Basis Set입니다.">Basis Set <select id="trip-basis" class="control"><option>def2-TZVP</option><option>def2-SVP</option><option>def2-TZVPP</option></select></label>
      <label data-help="분산 보정을 일관되게 적용합니다.">Dispersion <select id="trip-dispersion" class="control"><option>D4</option><option>D3BJ</option></select></label>
      <label data-help="모든 단계의 SMD implicit solvent에 사용됩니다.">SMD Solvent <select id="trip-solvent" class="control"><option value="acetonitrile">acetonitrile</option><option>toluene</option><option>water</option></select></label>
-     <label data-help="분자별 ORCA %pal nprocs입니다. 전체 CPU 예약은 Batch Scheduler에서 제한합니다.">CPU / Job <input id="trip-cores" class="control" type="number" min="1" max="64" value="8"></label>
-     <label data-help="분자별 ORCA %maxcore (코어당 MB)입니다. Batch Scheduler는 추가 RAM 여유를 예약합니다.">MaxCore (MB/core) <input id="trip-memory" class="control" type="number" min="100" max="16000" value="2500"></label>
+     <label class="trip-manual-resource" data-help="분자별 ORCA %pal nprocs입니다. 전체 CPU 예약은 Batch Scheduler에서 제한합니다.">CPU / Job <input id="trip-cores" class="control" type="number" min="1" max="64" value="8"></label>
+     <label class="trip-manual-resource" data-help="분자별 ORCA %maxcore (코어당 MB)입니다. Batch Scheduler는 추가 RAM 여유를 예약합니다.">MaxCore (MB/core) <input id="trip-memory" class="control" type="number" min="100" max="16000" value="2500"></label>
     </div>
     <div class="triplet-flags">
      <label data-help="Reference 고리 원자를 Cartesian Constraints로 고정하고 측쇄를 최적화합니다."><input id="trip-constrained" type="checkbox" checked> Constrained Opt</label>
@@ -232,11 +238,12 @@
     </div>
     <div class="triplet-note">Constraints 선택 · 기본은 <b>고리 heavy atoms 6개</b>. S2, O4, 고리의 H는 필요할 때만 선택하세요. 모두 ORCA 0-based index로 변환됩니다.</div>
     <div class="triplet-controls">
-     <label data-help="동시에 실행할 독립 Target 수입니다. Batch Scheduler는 자원 초과시 다음 작업을 대기시킵니다.">동시 Target Job <input id="trip-concurrency" class="control" type="number" value="1" min="1" max="24"></label>
+     <label class="trip-auto-label" data-help="자동 모드에서는 일반 Batch와 동일한 Scheduler가 Target별 CPU / MaxCore를 배분합니다."><input id="trip-auto" type="checkbox" disabled> CPU/RAM 자동 배분</label>
+     <label class="trip-manual-resource" data-help="동시에 실행할 독립 Target 수입니다. Batch Scheduler는 자원 초과시 다음 작업을 대기시킵니다.">동시 Target Job <input id="trip-concurrency" class="control" type="number" value="1" min="1" max="24"></label>
      <label data-help="모든 병렬 작업에 배분할 CPU 총합 예산입니다. 각 Target의 %pal nprocs보다 작으면 실행 불가합니다.">Batch 전체 CPU <input id="trip-budget-cpu" class="control" type="number" value="16" min="1"></label>
-     <label data-help="모든 병렬 작업에 배분할 예약 RAM 예산입니다. 예약 RAM은 MaxCore x cores x 1.25를 기준으로 계산하고 실제 RSS 상한은 아닙니다.">Batch 전체 RAM (MB) <input id="trip-budget-ram" class="control" type="number" value="56000" min="1"></label>
+     <label class="trip-manual-resource" data-help="모든 병렬 작업에 배분할 예약 RAM 예산입니다. 예약 RAM은 MaxCore x cores x 1.25를 기준으로 계산하고 실제 RSS 상한은 아닙니다.">Batch 전체 RAM (MB) <input id="trip-budget-ram" class="control" type="number" value="56000" min="1"></label>
     </div>
-    <div id="trip-fixed" class="triplet-fixed"></div>
+    <div id="trip-resource-note" class="triplet-note" role="status">시스템 자원 감지 중 · 수동 모드</div><div id="trip-fixed" class="triplet-fixed"></div>
    </section>
    <div class="triplet-toolbar">
     <button type="button" class="btn small ghost" id="trip-preview" data-help="두 XYZ의 공통 thiouracil 골격을 식별하고 고리/측쇄 좌표를 정렬합니다. 실행용 INP는 아직 등록되지 않습니다.">① Mapping·Geometry 미리보기</button>
@@ -477,6 +484,23 @@ const PRESET_CATEGORIES=[
  {id:'recommended',name:'추천',note:'계산 목적별 시작점 · 논문 재현을 의미하지 않음'},
  {id:'preset',name:'프리셋',note:'일반 설정 · 원하는 Method로 수정 가능'}
 ];
+let presetFilter='recommended';
+function updatePresetFilter(){
+ const query=$('preset-search').value.trim().toLowerCase();
+ let count=0;
+ for(const group of $('preset-grid').querySelectorAll('.preset-group')){
+  const categoryMatches=presetFilter==='all'||group.dataset.kind===presetFilter||!!query;
+  let visible=0;
+  for(const card of group.querySelectorAll('.preset-item')){
+   const p=PRESETS.find(x=>x.id===card.dataset.preset);
+   const match=categoryMatches&&(!query||[p.title,p.subtitle,p.desc,p.calc,p.tag].join(' ').toLowerCase().includes(query));
+   card.hidden=!match;if(match)visible++;
+  }
+  group.hidden=!visible;count+=visible;
+ }
+ $('preset-empty').hidden=count>0;
+ for(const button of document.querySelectorAll('[data-preset-filter]'))button.setAttribute('aria-pressed',String(button.dataset.presetFilter===presetFilter&&!query));
+}
 function initPresets(){
  const box=$('preset-grid');
  box.innerHTML=PRESET_CATEGORIES.map(group=>{
@@ -486,7 +510,9 @@ function initPresets(){
    <div class="preset-group-grid">${items.map(p=>`<button type="button" class="preset-item" data-preset="${p.id}" data-title="${esc(p.title)}" data-help="${esc(p.desc)}" title="${esc(p.title+' — '+p.subtitle)}"><span class="preset-top"><span class="preset-title">${esc(p.title)}</span><span class="preset-pill" data-class="${group.id}" title="${group.id==='recommended'?'추천 · 시작점 제안일 뿐, 계산법 검증이나 논문 재현이 아닙니다.':group.id==='literature'?'문헌 Method · 출처와 전체 SI 검증 범위를 확인하세요.':'프리셋 · 미리 저장된 설정입니다.'}">${group.name==='문헌 Method'?'문헌':group.name}</span></span><span class="preset-sub">${esc(p.subtitle)}</span></button>`).join('')}</div></section>`;
  }).join('');
  box.querySelectorAll('.preset-item').forEach(b=>b.addEventListener('click',()=>applyPreset(b.dataset.preset)));
- refreshPresetHighlight();
+ for(const button of document.querySelectorAll('[data-preset-filter]'))button.onclick=()=>{presetFilter=button.dataset.presetFilter;$('preset-search').value='';updatePresetFilter()};
+ $('preset-search').oninput=updatePresetFilter;
+ updatePresetFilter();refreshPresetHighlight();
 }
 
 const GROUPS=[
@@ -973,7 +999,7 @@ setInterval(()=>{if(lastDesktopState?.update)desktopUpdateShow(lastDesktopState.
 <span class="batch-note">대기·실행 작업과 실제 계산 파일은 유지됩니다.</span>
 </div>
 <div class="batch-table-wrap"><table class="batch-table"><thead><tr><th>Molecule / 계산</th><th>Status / 단계</th><th>CPU / RAM</th><th>경과 / ETA</th><th>작업 관리</th></tr></thead><tbody id="batch-queue"></tbody></table></div>
-<details class="batch-comparison" open style="margin-top:18px"><summary style="cursor:pointer;color:#b7d9fa">다중 분자 결과 비교 · 실제 OUT 추출값</summary>
+<details class="batch-comparison" style="margin-top:18px"><summary style="cursor:pointer;color:#b7d9fa">다중 분자 결과 비교 · 실제 OUT 추출값</summary>
 <div class="batch-note">ORCA 원자 번호는 0부터 시작합니다. 아래 번호는 분자 고리의 C5 / C6 명칭과 자동으로 대응하지 않습니다. 각 XYZ의 원자 순서를 직접 확인하세요. Spin Population만으로 반응 선택성을 확정할 수 없습니다.</div>
 <div class="batch-controls"><label>ORCA atom index A <input class="control" id="batch-atom-a" type="number" min="0" step="1" value="4"></label><label>ORCA atom index B <input class="control" id="batch-atom-b" type="number" min="0" step="1" value="5"></label><button class="btn small ghost" id="batch-compare-refresh">비교 결과 새로고침</button><button class="btn small ghost" id="batch-compare-csv">↓ 비교 CSV</button></div>
 <div class="batch-note">Vertical 값은 TD-DFT Root 1의 excitation energy이며 kcal/mol 우선, eV를 병기합니다. Electronic Energy (Eh) 및 서로 다른 Geometry 사이의 Adiabatic 에너지와 구분합니다. 이 표는 Adiabatic 값을 자동 추정하지 않습니다.</div>
@@ -1850,12 +1876,28 @@ const tripRingLabels=['C2','N3','C4','C5','C6','N1','S2','O4','H1','H3','H5','H6
 const tripFixedNames=['C2','N3','C4','C5','C6','N1','S2','O4','H1','H3','H5','H6'];
 function tripStatus(message,bad=false){$('trip-status').textContent=message;$('trip-status').style.color=bad?'#ffb5c0':'#aacbdf'}
 function tripElement(tag,text,parent){let e=document.createElement(tag);if(text!==undefined)e.textContent=String(text);if(parent)parent.append(e);return e}
+let tripAutoSupported=false;
+function tripAutoMode(){return tripAutoSupported&&$('trip-auto').checked}
+function tripShowResourceMode(){
+ for(const label of document.querySelectorAll('.trip-manual-resource'))label.hidden=tripAutoMode();
+ $('trip-resource-note').textContent=tripAutoMode()?'선택한 CPU 내에서 Target별 코어와 RAM 자동 배분 · 최대 동시 4개. 실제 배분은 실행 직전에 재확인합니다.':'수동 CPU / MaxCore 및 예약 예산을 사용합니다.';
+}
+async function tripLoadResourceSystem(){
+ try{
+  const sys=await desktopAPI('queue/resources');
+  if(!sys.supported||!Number.isSafeInteger(sys.cpu)||sys.cpu<1)throw Error('자동 RAM 감지 불가');
+  tripAutoSupported=true;
+  const cpu=$('trip-budget-cpu');cpu.max=String(sys.cpu);cpu.value=String(Math.min(sys.cpu,Math.max(1,Number(cpu.value)||sys.cpu)));
+  $('trip-auto').disabled=false;$('trip-auto').checked=true;
+ }catch(e){tripAutoSupported=false;$('trip-auto').disabled=true;$('trip-auto').checked=false;}
+ tripShowResourceMode();
+}
 function tripControls(){
  const fixed=[...document.querySelectorAll('#trip-fixed input:checked')].map(x=>x.value);
  return {charge:Number($('trip-charge').value),referenceCharge:Number($('trip-refcharge').value),multiplicity:3,
   constrained:$('trip-constrained').checked,unconstrained:$('trip-unconstrained').checked,spin:$('trip-spin').checked,frequency:$('trip-frequency').checked,
   fixedRoles:fixed,functional:$('trip-functional').value,basis:$('trip-basis').value,dispersion:$('trip-dispersion').value,
-  solvent:$('trip-solvent').value,cores:Number($('trip-cores').value),maxcore:Number($('trip-memory').value)}
+  solvent:$('trip-solvent').value,cores:tripAutoMode()?1:Number($('trip-cores').value),maxcore:tripAutoMode()?512:Number($('trip-memory').value)}
 }
 for(const role of tripFixedNames){
  const label=tripElement('label',undefined,$('trip-fixed'));
@@ -1957,7 +1999,8 @@ async function tripPreview(){
 }
 $('trip-preview').onclick=tripPreview;
 $('trip-review').onclick=tripPreview;
-for(const id of ['trip-refcharge','trip-charge','trip-constrained','trip-unconstrained','trip-spin','trip-frequency','trip-cores','trip-memory','trip-functional','trip-basis','trip-dispersion','trip-solvent','trip-concurrency','trip-budget-cpu','trip-budget-ram']){
+$('trip-auto').addEventListener('change',tripShowResourceMode);
+for(const id of ['trip-auto','trip-refcharge','trip-charge','trip-constrained','trip-unconstrained','trip-spin','trip-frequency','trip-cores','trip-memory','trip-functional','trip-basis','trip-dispersion','trip-solvent','trip-concurrency','trip-budget-cpu','trip-budget-ram']){
  $(id).addEventListener('change',()=>{tripState.draft=null;$('trip-run').disabled=true;tripStatus('계산 설정 변경됨 · ② 매핑 재검증이 필요합니다.')});
 }
 $('trip-fixed').addEventListener('change',()=>{tripState.draft=null;$('trip-run').disabled=true;tripStatus('고정 원자 선택 변경됨 · ② 매핑 재검증이 필요합니다.')});
@@ -1973,12 +2016,13 @@ $('trip-run').onclick=async()=>{
   const jobs=prepared.items.map(x=>x.request);
   if(jobs.some(x=>!x||!x.triplet?.confirmed))throw Error('확인되지 않은 Triplet Geometry Mapping입니다.');
   // Use the existing scheduler budgets; this never bypasses queue preflight.
-  const request={jobs,limits:{concurrency:Number($('trip-concurrency').value),cpu:Number($('trip-budget-cpu').value),ramMB:Number($('trip-budget-ram').value)}};
+  const request={jobs,limits:{concurrency:tripAutoMode()?1:Number($('trip-concurrency').value),cpu:Number($('trip-budget-cpu').value),ramMB:tripAutoMode()?128:Number($('trip-budget-ram').value)}};
+  if(tripAutoMode())request.auto={eligible:jobs.map(()=>true)};
   const check=await desktopAPI('queue/preflight',request);
   if(!check.ok)throw Error('Batch Preflight 오류: '+JSON.stringify(check.reports));
   await desktopConfig();
-  await desktopAPI('queue',request);
-  tripStatus(jobs.length+'개 Transfer Job을 기존 Batch Queue에 등록했습니다. 단계별 OUT/XYZ/GBW/CUBE가 원본과 분리된 폴더에 저장됩니다.');
+  const applied=await desktopAPI('queue',request);
+  tripStatus(jobs.length+'개 Transfer Job을 기존 Batch Queue에 등록했습니다. 단계별 OUT/XYZ/GBW/CUBE가 원본과 분리된 폴더에 저장됩니다.'+(batchAllocationLines(applied)?' · '+batchAllocationLines(applied):''));
   await batchPoll();await tripRefreshJobs();
  }catch(err){tripStatus('Batch 등록 실패: '+err.message,true)}
  finally{b.disabled=false}
@@ -2079,6 +2123,15 @@ $('trip-export-json').onclick=()=>{if(tripState.lastComparison)download('triplet
 .advanced-options{margin:12px 0;border:1px solid var(--line);border-radius:8px;padding:10px}
 .advanced-options summary{cursor:pointer;font-size:12px;color:#b5cce1}
 .advanced-options .section{margin-bottom:0}
+.preset-filter{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:10px 0 12px}
+.preset-filter [aria-pressed=true]{background:#25465d;border-color:#52809a;color:#e7f3ff}
+.preset-filter input{flex:1 1 125px;min-width:120px;width:auto;font-size:12px}
+.preset-group-note{display:none}
+.preset-item{min-height:54px;padding:9px 10px;gap:4px}
+.preset-item .preset-title{font-size:12.5px}
+.quick-card .quick-lead{font-size:12px}
+.trip-auto-label input{accent-color:#5addbb}
+.workspace-page .batch-comparison:not([open]){margin-top:10px}
 .workspace-inline{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0}
 @media(max-width:950px){#workbench .main{height:auto}.workspace-page{padding:16px}.workspace-nav{padding:6px 12px}.workspace-nav button{padding:8px 10px}}
 </style>
@@ -2130,6 +2183,7 @@ function workspaceShow(key){
  for(const b of nav.querySelectorAll('[data-page]'))b.addEventListener('click',()=>workspaceShow(b.dataset.page));
  // Keep scientific controls and input state unchanged during navigation.
  workspaceShow('calculation');
+ tripLoadResourceSystem();
 })();
 </script>
 </body>
