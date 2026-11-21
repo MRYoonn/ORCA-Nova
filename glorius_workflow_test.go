@@ -75,3 +75,21 @@ func TestGloriusNoGapFromDifferentStartingSpecies(t *testing.T){
  rows[1].InitialSource=rows[0].InitialSource
  if !strings.Contains(gloriusCompositeReport(rows),"Triplet - Singlet composite"){t.Fatal("same-source gap missing")}
 }
+
+func TestGloriusQueueActualMockChildPipeline(t *testing.T){
+ q:=mockQueue(t);t.Setenv("ORCA_NOVA_GLORIUS_MOCK","1")
+ q.Limits=QueueLimits{Concurrency:1,CPU:1,RAMMB:2000}
+ good:=addEntry(t,q,gReq())
+ badReq:=gReq();badReq.Label="missing GOAT geometry";badReq.Files[1].Content+="\n# MOCK_NO_GOAT_XYZ\n"
+ bad:=addEntry(t,q,badReq)
+ if err:=q.action("","resume");err!=nil{t.Fatal(err)}
+ waitQueue(t,q,func(es []*QueueEntry)bool{return es[0].State=="Completed"&&es[1].State=="Failed"})
+ q.mu.Lock();defer q.mu.Unlock()
+ if len(good.Job.CompletedStages)!=3||len(bad.Job.CompletedStages)!=0{t.Fatal("checkpoint mismatch")}
+ for _,n:=range []string{"goat.globalminimum.xyz","low.xyz","high.out","results.json","analysis.txt"}{
+  if _,err:=os.Stat(filepath.Join(good.Job.Folder,n));err!=nil{t.Fatal(err)}
+ }
+ if _,err:=os.Stat(filepath.Join(bad.Job.Folder,"low.out"));!os.IsNotExist(err){t.Fatal("downstream DFT launched with missing GOAT XYZ",err)}
+ txt,err:=os.ReadFile(filepath.Join(good.Job.Folder,"analysis.txt"))
+ if err!=nil||!strings.Contains(string(txt),"G_composite"){t.Fatal(err,string(txt))}
+}
