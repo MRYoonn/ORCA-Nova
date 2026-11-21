@@ -80,6 +80,11 @@ type App struct {
 	history  *durationHistory
 }
 
+func (a *App) probeResources() resourceSystem {
+ if a.queue!=nil{return a.queue.probeResources()}
+ return systemResources()
+}
+
 func configPath() string {
 	dir, err := os.UserConfigDir()
 	if err != nil {
@@ -316,7 +321,7 @@ func (a *App) route(w http.ResponseWriter, r *http.Request) {
 			fail(w, 400, "입력 데이터 해석 실패: "+err.Error())
 			return
 		}
-		planned,allocation,err:=planStandaloneResources(req,systemResources())
+		planned,allocation,err:=planStandaloneResources(req,a.probeResources())
 		if err!=nil{fail(w,400,err.Error());return}
 		report := preflight(planned)
 		respond(w, 200, struct {PreflightReport; Allocation *allocationView `json:"allocation,omitempty"`}{report,allocation})
@@ -477,7 +482,7 @@ func (a *App) start(w http.ResponseWriter, r *http.Request) {
 		fail(w, 400, "입력 데이터를 읽지 못했어요: "+err.Error())
 		return
 	}
-	planned,allocation,planErr:=planStandaloneResources(req,systemResources())
+	planned,allocation,planErr:=planStandaloneResources(req,a.probeResources())
 	if planErr!=nil{fail(w,400,planErr.Error());return}
 	req=planned
 	if report := preflight(req); !report.OK {
