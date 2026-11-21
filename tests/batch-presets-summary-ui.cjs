@@ -14,7 +14,7 @@ const xyz='3\nwater\nO 0 0 0\nH 0.757 0.586 0\nH -0.757 0.586 0\n';
    if(u.pathname==='/api/status')return route.fulfill({json:{config:{orcaExe:'/tmp/orca',workRoot:'/tmp/jobs'}}});
    return route.fulfill({json:{ok:true}});
   });
-  await page.goto('http://orca.test/?session=x');
+  await page.goto('http://orca.test/?session=x');await page.locator('#nav-batch').click();
   await page.evaluate(()=>{active='A4';$('cores').value='2';$('maxcore').value='500';});
   await page.locator('#batch-files').setInputFiles(['monomer','dimer','control'].map(name=>({name:name+'.xyz',mimeType:'text/plain',buffer:Buffer.from(xyz)})));
   await page.waitForFunction(()=>batchMolecules.length===3);
@@ -64,6 +64,7 @@ const xyz='3\nwater\nO 0 0 0\nH 0.757 0.586 0\nH -0.757 0.586 0\n';
    Warnings:['Check <img src=x onerror=alert(1)>']
   },pes:[],warnings:[]}]};
   await page.evaluate(x=>vizSetModel(x),data);
+  await page.locator('#nav-results').click();
   const summary=page.locator('#viz-summary');
   assert((await summary.innerText()).includes('계산 정상 종료'));
   assert((await summary.innerText()).includes('-123.45678912 Eh'));
