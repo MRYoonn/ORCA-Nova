@@ -45,6 +45,7 @@ type RunRequest struct {
 	Files  []JobFile `json:"files"`
 	Stages []Stage   `json:"stages"`
 	Triplet *tripJobMeta `json:"triplet,omitempty"`
+	AutoCPU int `json:"autoCPU,omitempty"`
 }
 type Job struct {
 	ID              string   `json:"id"`
@@ -315,8 +316,10 @@ func (a *App) route(w http.ResponseWriter, r *http.Request) {
 			fail(w, 400, "입력 데이터 해석 실패: "+err.Error())
 			return
 		}
-		report := preflight(req)
-		respond(w, 200, report)
+		planned,allocation,err:=planStandaloneResources(req,systemResources())
+		if err!=nil{fail(w,400,err.Error());return}
+		report := preflight(planned)
+		respond(w, 200, struct {PreflightReport; Allocation *allocationView `json:"allocation,omitempty"`}{report,allocation})
 	case "/api/run":
 		if r.Method != http.MethodPost {
 			fail(w, 405, "Method not allowed")
@@ -474,6 +477,9 @@ func (a *App) start(w http.ResponseWriter, r *http.Request) {
 		fail(w, 400, "입력 데이터를 읽지 못했어요: "+err.Error())
 		return
 	}
+	planned,allocation,planErr:=planStandaloneResources(req,systemResources())
+	if planErr!=nil{fail(w,400,planErr.Error());return}
+	req=planned
 	if report := preflight(req); !report.OK {
 		fail(w, 400, "계산 전 검사 실패: "+strings.Join(report.Errors, " / "))
 		return
@@ -564,7 +570,7 @@ func (a *App) start(w http.ResponseWriter, r *http.Request) {
 	a.cancel = cancel
 	a.process = nil
 	a.mu.Unlock()
-	respond(w, 200, map[string]interface{}{"ok": true, "folder": folder})
+	respond(w, 200, map[string]interface{}{"ok": true, "folder": folder, "allocation":allocation})
 	go a.runJob(ctx, cfg.ORCAExe, req, job)
 }
 func (a *App) updateJob(j *Job, fn func(*Job)) {
