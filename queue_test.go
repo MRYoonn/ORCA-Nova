@@ -838,3 +838,30 @@ func TestStandaloneAutoRunWritesAllocatedInputs(t *testing.T){
  }
  t.Fatal("mock standalone did not finish")
 }
+
+func TestStoredAutoCPUPreferenceAndConfigFailureRollback(t *testing.T) {
+ q:=mockQueue(t);a:=q.app;a.token="token"
+ a.cfg.ORCAExe=filepath.Join(a.cfg.WorkRoot,"orca.exe");a.cfg.UpdateChannel="stable"
+ if err:=a.saveConfig();err!=nil{t.Fatal(err)}
+ post:=func(payload map[string]any)*httptest.ResponseRecorder{
+  b,_:=json.Marshal(payload);r:=httptest.NewRequest(http.MethodPost,"/api/config?session=token",bytes.NewReader(b));r.Header.Set("X-ORCA-Session","token")
+  w:=httptest.NewRecorder();a.guard(a.route)(w,r);return w
+ }
+ read:=func()Config{
+  b,e:=os.ReadFile(a.cfgPath);if e!=nil{t.Fatal(e)}
+  var cfg Config;if e=json.Unmarshal(b,&cfg);e!=nil{t.Fatal(e)};return cfg
+ }
+ work:=filepath.Join(filepath.Dir(a.cfgPath),"custom")
+ w:=post(map[string]any{"orcaExe":a.cfg.ORCAExe,"workRoot":work,"autoCPU":1})
+ if w.Code!=200{t.Fatal(w.Code,w.Body.String())}
+ if cfg:=read();cfg.AutoCPU!=1||cfg.WorkRoot!=work||cfg.UpdateChannel!="stable"{t.Fatal(cfg)}
+ w=post(map[string]any{"orcaExe":a.cfg.ORCAExe,"workRoot":work})
+ if w.Code!=200||read().AutoCPU!=1{t.Fatal("legacy client lost CPU setting",w.Code)}
+ w=post(map[string]any{"orcaExe":a.cfg.ORCAExe,"workRoot":work,"autoCPU":-1})
+ if w.Code!=400||read().AutoCPU!=1{t.Fatal("invalid preference accepted",w.Code)}
+ oldPath,oldCfg:=a.cfgPath,a.cfg
+ a.cfgPath=filepath.Dir(oldPath) // Cannot replace the configuration directory with a file.
+ w=post(map[string]any{"orcaExe":a.cfg.ORCAExe,"workRoot":work+"-new","autoCPU":1})
+ a.cfgPath=oldPath
+ if w.Code!=500||a.cfg!=oldCfg||read()!=oldCfg{t.Fatal("failed save changed stored or active settings",w.Code)}
+}
