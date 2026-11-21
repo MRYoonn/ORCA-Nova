@@ -429,13 +429,10 @@ func (a *App) route(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		a.mu.Lock()
-		j := a.job
+		folder:=""
+		if a.job!=nil{folder=a.job.Folder}
 		a.mu.Unlock()
-		if j == nil {
-			fail(w, 400, "실행한 작업이 없어요.")
-			return
-		}
-		revealFolder(j.Folder)
+		if err:=revealFolder(folder);err!=nil{fail(w,400,err.Error());return}
 		respond(w, 200, map[string]bool{"ok": true})
 	case "/api/quit":
 		if r.Method != http.MethodPost {
@@ -788,12 +785,27 @@ func checkOut(path string) (bool, bool, error) {
 	return normal, opt, scanner.Err()
 }
 
-func revealFolder(path string) {
+func resultDirectory(path string)(string,error){
+	if strings.TrimSpace(path)==""{return "",fmt.Errorf("아직 결과 폴더가 없습니다")}
+	absolute,err:=filepath.Abs(path)
+	if err!=nil{return "",err}
+	info,err:=os.Stat(absolute)
+	if err!=nil{return "",fmt.Errorf("결과 폴더를 찾을 수 없습니다: %s",absolute)}
+	if !info.IsDir(){return "",fmt.Errorf("결과 경로가 폴더가 아닙니다: %s",absolute)}
+	return absolute,nil
+}
+func revealFolder(path string) error {
+	folder,err:=resultDirectory(path)
+	if err!=nil{return err}
+	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" {
-		exec.Command("explorer.exe", path).Start()
+		cmd=exec.Command("explorer.exe", folder)
 	} else {
-		exec.Command("xdg-open", path).Start()
+		cmd=exec.Command("xdg-open", folder)
 	}
+	if err=cmd.Start();err!=nil{return fmt.Errorf("파일 탐색기를 실행하지 못했습니다: %w",err)}
+	go func(){_ = cmd.Wait()}()
+	return nil
 }
 func launch(url string) error {
 	if runtime.GOOS == "windows" {
