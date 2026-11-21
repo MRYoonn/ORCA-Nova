@@ -227,26 +227,27 @@ func (a *App) currentETA(job *Job) etaView {
 	if len(job.stageKeys) == 0 {
 		return result
 	}
-	sum := float64(0)
-	minSamples := 1000
-	for i, key := range job.stageKeys {
-		if i < job.StageIndex {
-			continue
+	// Sum the uncertainty bounds of the remaining stages, subtracting
+	// elapsed time from the current stage only. Do not fabricate a near-zero
+	// forecast when the current calculation has already exceeded its bound.
+	lo,hi:=float64(0),float64(0)
+	for i,key:=range job.stageKeys{
+		if i<job.StageIndex{continue}
+		median,n,ok:=a.history.estimate(key)
+		if !ok{return result}
+		lower,upper:=0.5,1.75
+		if n>=3{lower,upper=0.7,1.4}
+		elapsed:=float64(0)
+		if i==job.StageIndex{
+			elapsed=float64(result.StageElapsedSeconds)
+			if elapsed>median*upper{
+				result.WorkflowETA="예측 불안정 · 현재 단계 지연"
+				return result
+			}
 		}
-		median, n, ok := a.history.estimate(key)
-		if !ok {
-			return result
-		}
-		if n < minSamples {
-			minSamples = n
-		}
-		if i == job.StageIndex {
-			sum += math.Max(0, median-float64(result.StageElapsedSeconds))
-		} else {
-			sum += median
-		}
+		lo+=math.Max(0,median*lower-elapsed)
+		hi+=math.Max(0,median*upper-elapsed)
 	}
-	// Only show full-workflow ETA if every remaining stage has comparable history.
-	result.WorkflowETA = rangeEstimate(sum, 0, minSamples)
+	result.WorkflowETA=formatRemain(lo)+" ~ "+formatRemain(hi)
 	return result
 }
