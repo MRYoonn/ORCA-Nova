@@ -491,7 +491,7 @@ toast(p.title+' 설정을 적용했어요.')}
 // Source order is preserved inside each section. CSS Grid flows row-by-row: left → right.
 function presetClass(p){return p.tag==='문헌 Method'?'literature':p.tag.includes('추천')?'recommended':'preset'}
 const PRESET_CATEGORIES=[
- {id:'literature',name:'문헌 Method',note:'논문에 보고된 Method · 실제 SI 조건 확인 필요'},
+ {id:'literature',name:'문헌 Method',note:'논문 SI 기반 Method · 원본 INP와 구분'},
  {id:'recommended',name:'추천',note:'계산 목적별 시작점 · 논문 재현을 의미하지 않음'},
  {id:'preset',name:'프리셋',note:'일반 설정 · 원하는 Method로 수정 가능'}
 ];
@@ -641,7 +641,7 @@ async function singleLoadResourceSystem(){
 let active='A4',activeStage=0,editorDirty=false,loadedXYZ='',xyzOriginal='',xyzAtomCount=null,view='inp',toastTimer=null;
 const $=id=>document.getElementById(id);
 const helpText={};
-function calc(id){return DATA.find(x=>x.id===id)||DATA[8]}
+function calc(id){return DATA.find(x=>x.id===id)||DATA.find(x=>x.id==='A4')}
 function esc(s){return String(s).replace(/[&<>"']/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]));}
 function filenameStem(s){return (s||'molecule').replace(/\.[^.]+$/,'').replace(/[^A-Za-z0-9_-]/g,'_').slice(0,52)||'molecule'}
 function val(id){return $(id).value}
@@ -739,7 +739,9 @@ function buildInput(stageIndex=activeStage,autoPreview=true){
 function activeInfo(){const c=calc(active),st=currentStage(),base=st[1];const transfer=!$('triplet-panel').hidden;
  $('desktop-run').hidden=c.kind==='workflow'||transfer;$('desktop-run-wf').hidden=c.kind!=='workflow'||transfer;$('desktop-preflight').hidden=transfer;$('calc-title').textContent=c.name;$('calc-desc').textContent=c.desc;$('crumb').textContent=c.group+'. '+c.groupName;$('calc-mode').textContent=c.kind==='workflow'?'◉ MULTI-STEP WORKFLOW':'● SINGLE INPUT';$('calc-mode').style.background=c.kind==='workflow'?'#2c3248':'#1d344a';$('calc-note').textContent=c.kind==='workflow'?'이 Workflow는 ORCA 실행을 위한 여러 INP를 생성해요. ZIP으로 받으면 Windows CMD에서 순차 실행할 수 있지만, 계산 결과와 상태 검증은 직접 해야 해요.':c.guide;
  const allowAddons=!c.glorius&&addOnAvailable(base),opts=stageOptions(st);
- $('mult').disabled=!!c.glorius&&st[3]!==null;
+ $('mult').disabled=!!c.glorius&&st[3]!==null&&st[3]!==undefined;
+ if($('mult').disabled){$('mult').value=String(st[3]);syncPicker('mult');}
+ else syncPicker('mult');
  if(c.glorius){$('calc-note').textContent=c.guide;}
  for(const [id,forced] of [['extra-spin',opts.spin===true],['extra-spinpop',opts.spinpop===true]]){const el=$(id),wasForced=el.dataset.forced==='true';if(forced&&!wasForced){el.dataset.prior=String(el.checked);el.checked=true;el.dataset.forced='true'}else if(!forced&&wasForced){el.checked=el.dataset.prior==='true';el.dataset.forced='false'}}
  for(const id of ['extra-freq','extra-spin','extra-spinpop'])$(id).disabled=!allowAddons;
@@ -1188,6 +1190,7 @@ function batchCapture(m){
  const saved={loadedXYZ,xyzOriginal,xyzAtomCount,activeStage,active,charge:$('charge').value,mult:$('mult').value};
  try{
   active=m.presetId||active;
+  if(calc(active).glorius&&calc(active).steps[0][3]!==null)m.mult=calc(active).steps[0][3];
   loadedXYZ=m.name;xyzOriginal=m.xyz;xyzAtomCount=parseXYZ(m.xyz);activeStage=0;$('charge').value=m.charge;$('mult').value=m.mult;
   const files=new Map([[m.name,m.xyz]]),jobs=[];
   // Each molecule is independent; a generated geometry can only refer to an
@@ -1239,7 +1242,9 @@ function batchRenderMolecules(){
   const presetHint=document.createElement('small');presetHint.className='batch-preset-hint';
   presetHint.textContent=m.custom?'현재 INP를 직접 수정한 상태입니다.':(m.presetId?'단계 '+(m.request?.stages?.length||0)+'개 · 이 분자에만 적용':'원본 INP 유지');
   nameCell.append(presetHint);
-  controls[2].value=m.charge;controls[3].value=m.mult;
+  controls[2].value=m.charge;const fixedState=!m.custom&&calc(m.presetId).glorius?calc(m.presetId).steps[0][3]:null;
+ controls[3].value=fixedState??m.mult;controls[3].disabled=fixedState!==null;
+ if(calc(m.presetId).glorius&&m.presetId==='G11')presetHint.textContent+=' · S₀(1) 및 T₁(3) 각각 계산';
   for(const [control,key] of [[controls[2],'charge'],[controls[3],'mult']])control.onchange=()=>{
    const x=Number(control.value);
    if(!Number.isSafeInteger(x)||(key==='mult'&&(x<1||x>5))){batchMessage('Charge는 정수, Multiplicity는 1–5를 입력하세요.',true);control.value=m[key];return;}
