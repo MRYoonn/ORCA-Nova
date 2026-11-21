@@ -28,7 +28,7 @@ const fs=require('fs'),path=require('path'),assert=require('assert');
    if(url.pathname==='/api/queue')return route.fulfill({json:{jobs:[],paused:false}});
    return route.fulfill({json:{ok:true}});
   });
-  await page.goto('http://orca.test/?session=x');
+  await page.goto('http://orca.test/?session=x');await page.locator('#nav-settings').click();
   await page.waitForFunction(()=>document.querySelector('#update-release-link')?.textContent.includes('v1.6.0'));
   assert.equal(await page.locator('#update-channel').inputValue(),'stable');
   assert.equal(await page.locator('#update-version').textContent(),'v1.5.1');
