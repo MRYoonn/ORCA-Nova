@@ -56,3 +56,25 @@ func TestAutoResourceRejectsNoncanonicalPAL(t *testing.T){
  req.Files[1].Content=strings.Replace(req.Files[1].Content,"%pal\n  nprocs 8\nend","%pal\n  nprocs 8\n  nprocs_group 2\nend",1)
  if _,err:=autoRewrite(req,2,1000);err==nil{t.Fatal("noncanonical input rewritten")}
 }
+
+func TestPendingResourceReallocationUsesRemainingBudget(t *testing.T){
+ req:=resourceTestRequest("next")
+ sys:=resourceSystem{CPU:16,Supported:true,BudgetMB:50000}
+ first,c,r,err:=replanPendingAllocation(req,16,50000,4,4,sys)
+ if err!=nil||c!=4||r!=12500{t.Fatal(c,r,err)}
+ next,c2,r2,err:=replanPendingAllocation(req,12,37500,3,3,sys)
+ if err!=nil||c2!=4||r2!=12500{t.Fatal(c2,r2,err)}
+ last,c3,r3,err:=replanPendingAllocation(req,16,50000,4,1,sys)
+ if err!=nil||c3!=16||r3!=50000{t.Fatal(c3,r3,err)}
+ if !strings.Contains(first.Files[1].Content,"nprocs 4")||!strings.Contains(next.Files[1].Content,"nprocs 4")||!strings.Contains(last.Files[1].Content,"nprocs 16"){t.Fatal("resource directive incorrect")}
+ if !strings.Contains(req.Files[1].Content,"nprocs 8"){t.Fatal("source modified")}
+}
+func TestPendingResourceReallocationRespectsLiveRAM(t *testing.T){
+ req:=resourceTestRequest("next")
+ sys:=resourceSystem{CPU:16,Supported:true,BudgetMB:1280}
+ next,c,r,err:=replanPendingAllocation(req,16,50000,4,2,sys)
+ if err!=nil||c!=1||r!=640{t.Fatal(c,r,err)}
+ if !strings.Contains(next.Files[1].Content,"nprocs 1"){t.Fatal("incorrect reduced allocation")}
+ sys.BudgetMB=639
+ if _,_,_,err:=replanPendingAllocation(req,16,50000,4,2,sys);err==nil{t.Fatal("unsafe launch with insufficient physical RAM")}
+}
