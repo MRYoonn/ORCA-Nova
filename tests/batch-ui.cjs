@@ -12,7 +12,7 @@ const fs=require('fs'),assert=require('assert');
  if(u.pathname==='/api/queue/preflight')return route.fulfill({json:{ok:true,reports:[]}});
  if(u.pathname==='/api/status')return route.fulfill({json:{config:{orcaExe:'/tmp/orca',workRoot:'/tmp/jobs'}}});
  return route.fulfill({json:{ok:true}});
- });await page.goto('http://orca.test/?session=mock');
+ });await page.goto('http://orca.test/?session=mock');await page.locator('#nav-batch').click();
  await page.evaluate(()=>{active='W2';$('cores').value='2';$('maxcore').value='100';});
  const xyz='3\nwater\nO 0 0 0\nH 0.757 0.586 0\nH -0.757 0.586 0\n';
  await page.locator('#batch-files').setInputFiles([1,2,3,4].map(n=>({name:'mol'+n+'.xyz',mimeType:'text/plain',buffer:Buffer.from(xyz)})));
@@ -75,6 +75,7 @@ const fs=require('fs'),assert=require('assert');
  assert.equal(submitted.jobs.length,4); // Already submitted jobs remain untouched.
 
  // Primary and additional XYZ can transfer into Batch and be removed independently.
+ await page.locator('#nav-calculation').click();
  await page.locator('#xyz-file').setInputFiles({name:'primary.xyz',mimeType:'text/plain',buffer:Buffer.from(xyz)});
  await page.locator('#desktop-extra-xyz').setInputFiles([{name:'extra.xyz',mimeType:'text/plain',buffer:Buffer.from(xyz)}]);
  await page.waitForFunction(()=>desktopXYZ.has('extra.xyz'));
@@ -83,6 +84,7 @@ const fs=require('fs'),assert=require('assert');
  await page.locator('#desktop-to-batch').click();
  await page.waitForFunction(()=>batchMolecules.length===2);
  assert.equal(await page.evaluate(()=>batchMolecules.map(m=>m.name).sort().join(',')),'extra.xyz,primary.xyz');
+ assert(await page.locator('#page-batch').isVisible());await page.locator('#nav-calculation').click();
  await page.locator('#desktop-extra-list .xyz-extra-item button[aria-label$="추가 XYZ 등록 해제"]').click();
  assert.equal(await page.evaluate(()=>desktopXYZ.size),0);
  await page.locator('#xyz-remove').click();
@@ -99,6 +101,7 @@ const fs=require('fs'),assert=require('assert');
 
  // Automatic mode hides manual controls and distinguishes generated from edited INPs.
  autoProbe=true;
+ await page.locator('#nav-batch').click();
  await page.evaluate(()=>batchLoadResourceSystem());
  assert(await page.locator('#batch-auto').isChecked());
  assert(!(await page.locator('#batch-manual-options').isVisible()));
