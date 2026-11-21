@@ -79,6 +79,7 @@ func preflight(req RunRequest) PreflightReport {
    if err!=nil{bad(f.Name+": "+err.Error())}else{geometries[strings.ToLower(f.Name)]=geometry{n,z}}
   }
  }
+ earlier:=map[string]Stage{}
  for i,st:=range req.Stages {
   prefix:=fmt.Sprintf("%d단계 (%s): ",i+1,st.Name)
   out:=PreflightStage{Name:st.Name,Input:st.Input,Source:st.Source}
@@ -88,6 +89,8 @@ func preflight(req RunRequest) PreflightReport {
   if !safeName(st.Source)||!strings.EqualFold(filepath.Ext(st.Source),".xyz"){bad(prefix+"XYZ 파일명이 잘못됐습니다")}
   matched:=false
   if hasInput {
+   if err:=validateGloriusDeclaration(st,inp,earlier,files);err!=nil{bad(prefix+err.Error())}
+   if generated:=stageGeometry(st);generated!=""{if _,exists:=files[strings.ToLower(generated)];exists{bad(prefix+"산출 XYZ 이름이 등록 파일과 충돌합니다: "+generated)}}
    m:=xyzHeader.FindStringSubmatch(inp)
    if m==nil{r.Warnings=append(r.Warnings,prefix+"* xyzfile 문장이 보이지 않습니다. 직접 수정한 INP를 검토하세요.")}
    if m!=nil{
@@ -107,9 +110,9 @@ func preflight(req RunRequest) PreflightReport {
   g,found:=geometries[strings.ToLower(st.Source)]
   if !found {
    for k:=0;k<i;k++{
-    prev:=req.Stages[k];name:=strings.TrimSuffix(prev.Input,filepath.Ext(prev.Input))+".xyz"
+    prev:=req.Stages[k];name:=stageGeometry(prev)
     if strings.EqualFold(name,st.Source){
-     if !prev.Opt{bad(prefix+"필요한 XYZ를 생성하는 앞 단계가 Optimization이 아닙니다: "+prev.Name)}
+     if name==""{bad(prefix+"앞 단계가 XYZ를 생성하지 않습니다: "+prev.Name)}
      if pg,ok:=geometries[strings.ToLower(prev.Source)];ok{g=pg;found=true}
      break
     }
@@ -125,7 +128,8 @@ func preflight(req RunRequest) PreflightReport {
    }
   }
   r.Stages=append(r.Stages,out)
-  if st.Opt&&found {geometries[strings.ToLower(strings.TrimSuffix(st.Input,filepath.Ext(st.Input))+".xyz")]=g}
+  if generated:=stageGeometry(st);generated!=""&&found{geometries[strings.ToLower(generated)]=g}
+  earlier[strings.ToLower(st.Input)]=st
  }
  return r
 }
