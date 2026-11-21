@@ -27,3 +27,13 @@ func physicalMemoryMB() (total, available int, err error) {
  if ok == 0 { return 0, 0, fmt.Errorf("GlobalMemoryStatusEx: %v", e) }
  return int(s.TotalPhys >> 20), int(s.AvailPhys >> 20), nil
 }
+
+var systemTimesProc = syscall.NewLazyDLL("kernel32.dll").NewProc("GetSystemTimes")
+
+func physicalCPUTimes() (cpuCounters,bool) {
+ var idle,kernel,user syscall.Filetime
+ ok,_,_:=systemTimesProc.Call(uintptr(unsafe.Pointer(&idle)),uintptr(unsafe.Pointer(&kernel)),uintptr(unsafe.Pointer(&user)))
+ ticks:=func(t syscall.Filetime)uint64{return uint64(t.HighDateTime)<<32|uint64(t.LowDateTime)}
+ if ok==0{return cpuCounters{},false}
+ return cpuCounters{idle:ticks(idle),kernel:ticks(kernel),user:ticks(user)},true
+}
