@@ -54,10 +54,8 @@ func autoRewrite(req RunRequest, cores, maxcore int) (RunRequest, error) {
    if strings.Contains(f.Content,"\r\n") { nl = "\r\n" }
    f.Content = autoPALBlock.ReplaceAllStringFunc(f.Content,func(v string)string{
     ending := ""; if strings.HasSuffix(v,"\r") {ending="\r"}
-    return fmt.Sprintf("%%pal%snprocs %d%send%s", nl,cores,nl,ending)
+    return fmt.Sprintf("%%pal%s  nprocs %d%send%s", nl,cores,nl,ending)
    })
-   // Keep the same canonical indentation so the rewritten inputs remain eligible.
-   f.Content = strings.ReplaceAll(f.Content, "%pal"+nl+"nprocs ", "%pal"+nl+"  nprocs ")
    f.Content = autoMaxCoreLine.ReplaceAllStringFunc(f.Content,func(v string)string{
     ending := ""; if strings.HasSuffix(v,"\r") {ending="\r"}
     return fmt.Sprintf("%%maxcore %d%s",maxcore,ending)
@@ -83,13 +81,12 @@ const autoParallelCap = 4
 // enforces the sum of running reservations.
 func planAutoResources(jobs []RunRequest, flags []bool, cpu int, sys resourceSystem) ([]RunRequest, QueueLimits, error) {
  if len(jobs)==0 || len(jobs)!=len(flags) { return nil,QueueLimits{},fmt.Errorf("자동 배분 대상 목록이 올바르지 않습니다") }
- if !sys.Supported || cpu<1 || cpu>sys.CPU { return nil,QueueLimits{},fmt.Errorf("시스템 자원 감지 또는 CPU 선택을 확인하세요. Manual 모드도 사용할 수 있습니다") }
+ if !sys.Supported || sys.BudgetMB>1000000000 || cpu<1 || cpu>sys.CPU { return nil,QueueLimits{},fmt.Errorf("시스템 자원 감지 또는 CPU 선택을 확인하세요. Manual 모드도 사용할 수 있습니다") }
  cores:=min(cpu,sys.BudgetMB/(autoMinimumMaxCore*5/4))
  if cores<1 {return nil,QueueLimits{},fmt.Errorf("사용 가능한 RAM이 부족합니다. 다른 프로그램을 종료한 후 다시 시도하세요")}
  parallel:=min(len(jobs),cores,autoParallelCap)
- perCore:=min(16000,(sys.BudgetMB*4/5)/cores)
+ perCore:=min(16000,((sys.BudgetMB*4/5)/cores)/4*4)
  limits:=QueueLimits{Concurrency:parallel,CPU:cpu,RAMMB:sys.BudgetMB}
- if err:=validLimits(limits);err!=nil{return nil,QueueLimits{},err}
  out:=append([]RunRequest(nil),jobs...)
  for i, req:=range jobs{
   if !flags[i] {continue}
