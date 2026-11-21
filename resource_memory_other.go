@@ -8,3 +8,5 @@ import "fmt"
 func physicalMemoryMB() (int, int, error) {
  return 0, 0, fmt.Errorf("자동 RAM 감지는 Windows에서 지원됩니다")
 }
+
+func physicalCPUTimes() (cpuCounters,bool) {return cpuCounters{},false}
