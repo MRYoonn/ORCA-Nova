@@ -32,6 +32,7 @@ type QueueEntry struct {
 	Request RunRequest `json:"request"`
 	CPU     int        `json:"cpu"`
 	RAMMB   int        `json:"ramMB"`
+	AutoResources bool `json:"autoResources,omitempty"`
 	Job     *Job       `json:"job"`
 	ETA     etaView    `json:"eta"`
 	worker  *App
@@ -47,6 +48,7 @@ type JobQueue struct {
 	Error       string        `json:"error,omitempty"`
 	path        string
 	app         *App
+	autoRetry bool
 }
 
 var palKeyword = regexp.MustCompile(`(?i)\bPAL(\d+)\b`)
@@ -214,6 +216,17 @@ func (q *JobQueue) dispatchLocked() {
 	for _, e := range q.Jobs {
 		if e.State != "Pending" || e.Held || n >= q.Limits.Concurrency || cpu+e.CPU > q.Limits.CPU || ram+e.RAMMB > q.Limits.RAMMB {
 			continue
+		}
+		if e.AutoResources {
+			sys := systemResources()
+			if !sys.Supported || e.RAMMB > sys.BudgetMB {
+				// Do not start another calculation during physical-memory pressure.
+				if !q.autoRetry {
+					q.autoRetry = true
+					time.AfterFunc(10*time.Second, func(){ q.mu.Lock(); defer q.mu.Unlock(); q.autoRetry=false; q.dispatchLocked() })
+				}
+				continue
+			}
 		}
 		q.app.mu.Lock()
 		cfg := q.app.cfg
@@ -562,6 +575,9 @@ func (a *App) queueRoute(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	switch r.URL.Path {
+	case "/api/queue/resources":
+		if r.Method != "GET" { fail(w,405,"Method not allowed"); return }
+		respond(w,200,systemResources())
 	case "/api/queue/action":
 		if r.Method != "POST" {
 			fail(w, 405, "Method not allowed")
@@ -647,23 +663,27 @@ func (a *App) queueRoute(w http.ResponseWriter, r *http.Request) {
 		var x struct {
 			Jobs   []RunRequest `json:"jobs"`
 			Limits QueueLimits  `json:"limits"`
+			Auto *struct { Eligible []bool `json:"eligible"` } `json:"auto,omitempty"`
 		}
 		if json.NewDecoder(io.LimitReader(r.Body, 64<<20)).Decode(&x) != nil {
 			fail(w, 400, "입력을 읽지 못했습니다")
-			return
-		}
-		if err := validLimits(x.Limits); err != nil {
-			fail(w, 400, err.Error())
 			return
 		}
 		if len(x.Jobs) == 0 || len(x.Jobs) > 100 {
 			fail(w, 400, "Batch는 1–100개 분자여야 합니다")
 			return
 		}
+		if x.Auto != nil {
+			jobs,limits,err := planAutoResources(x.Jobs,x.Auto.Eligible,x.Limits.CPU,systemResources())
+			if err != nil { fail(w,400,err.Error()); return }
+			x.Jobs,x.Limits=jobs,limits
+		}
+		if err:=validLimits(x.Limits); err!=nil { fail(w,400,err.Error());return }
 		reports := []PreflightReport{}
+		allocations := []allocationView{}
 		entries := []*QueueEntry{}
 		valid := true
-		for _, req := range x.Jobs {
+		for i, req := range x.Jobs {
 			p := preflight(req)
 			cpu, ram, err := resources(req)
 			if err != nil {
@@ -678,10 +698,12 @@ func (a *App) queueRoute(w http.ResponseWriter, r *http.Request) {
 				valid = false
 			}
 			reports = append(reports, p)
-			entries = append(entries, &QueueEntry{ID: queueID(), Label: req.Label, State: "Pending", Request: req, CPU: cpu, RAMMB: ram})
+			automatic := x.Auto != nil && x.Auto.Eligible[i]
+			allocations=append(allocations,allocationView{Label:req.Label,CPU:cpu,RAMMB:ram,Automatic:automatic})
+			entries = append(entries, &QueueEntry{ID: queueID(), Label: req.Label, State: "Pending", Request: req, CPU: cpu, RAMMB: ram, AutoResources: x.Auto != nil})
 		}
 		if r.URL.Path == "/api/queue/preflight" {
-			respond(w, 200, map[string]interface{}{"ok": valid, "reports": reports})
+			respond(w, 200, map[string]interface{}{"ok": valid, "reports": reports, "limits":x.Limits, "allocations":allocations})
 			return
 		}
 		if !valid {
@@ -715,6 +737,8 @@ func (a *App) queueRoute(w http.ResponseWriter, r *http.Request) {
 			fail(w, 409, "단일 계산이 실행 중입니다")
 			return
 		}
+		// Existing pending jobs must not inherit an incompatible automatic plan.
+		if x.Auto != nil { for _, e := range q.Jobs { if e.State=="Pending" { fail(w,409,"기존 대기 작업을 먼저 완료하거나 취소하세요"); return } } }
 		q.Limits = x.Limits
 		q.Jobs = append(q.Jobs, entries...)
 		q.Paused = false
@@ -723,7 +747,7 @@ func (a *App) queueRoute(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		q.dispatchLocked()
-		respond(w, 200, map[string]bool{"ok": true})
+		respond(w, 200, map[string]interface{}{"ok": true,"limits":x.Limits,"allocations":allocations})
 	default:
 		http.NotFound(w, r)
 	}
