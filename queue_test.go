@@ -882,3 +882,16 @@ func TestStoredAutoCPUPreferenceAndConfigFailureRollback(t *testing.T) {
  a.cfgPath=oldPath
  if w.Code!=500||a.cfg!=oldCfg||read()!=oldCfg{t.Fatal("failed save changed stored or active settings",w.Code)}
 }
+
+func TestResultDirectoryValidation(t *testing.T){
+ dir:=t.TempDir()
+ target:=filepath.Join(dir,"completed molecule with spaces")
+ if err:=os.Mkdir(target,0700);err!=nil{t.Fatal(err)}
+ if got,err:=resultDirectory(target);err!=nil||got!=target{t.Fatal(got,err)}
+ file:=filepath.Join(dir,"not_a_directory.out")
+ if err:=os.WriteFile(file,[]byte("output"),0600);err!=nil{t.Fatal(err)}
+ for _,bad:=range []string{"",filepath.Join(dir,"missing"),file}{
+  if _,err:=resultDirectory(bad);err==nil{t.Fatal("accepted invalid result directory",bad)}
+  if err:=revealFolder(bad);err==nil{t.Fatal("invalid folder launch accepted",bad)}
+ }
+}
