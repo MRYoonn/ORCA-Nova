@@ -122,3 +122,17 @@ func replanPendingAllocation(req RunRequest, freeCPU, freeRAM, freeSlots, waitin
  if report:=preflight(next); !report.OK {return req,0,0,fmt.Errorf("자동 배분 후 Preflight 실패: %v",report.Errors)}
  return next,cpu,ram,nil
 }
+
+// A standalone calculation follows the same policy as a one-job Batch.
+// Manual input is untouched. The allocation is recalculated on Run so the
+// earlier preview is never mistaken for a guarantee of free memory.
+func planStandaloneResources(req RunRequest, sys resourceSystem) (RunRequest, *allocationView, error) {
+ if req.AutoCPU==0 {return req,nil,nil}
+ jobs,_,err:=planAutoResources([]RunRequest{req},[]bool{true},req.AutoCPU,sys)
+ if err!=nil{return req,nil,err}
+ out:=jobs[0]
+ out.AutoCPU=0
+ c,r,err:=resources(out)
+ if err!=nil{return req,nil,err}
+ return out,&allocationView{Label:out.Label,CPU:c,RAMMB:r,Automatic:true},nil
+}
