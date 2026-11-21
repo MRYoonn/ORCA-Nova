@@ -14,6 +14,7 @@ import (
 var failedSCF = regexp.MustCompile(`(?i)SCF (?:NOT CONVERGED|DID NOT CONVERGE)|SCF convergence failure|SCF CONVERGENCE HAS NOT BEEN ACHIEVED`)
 
 func validateStage(folder string, s Stage) error {
+	if s.Goat{return validateGOAT(folder,s)}
 	inp, err := os.ReadFile(filepath.Join(folder, s.Input))
 	if err != nil {
 		return err
@@ -76,7 +77,12 @@ func validateStage(folder string, s Stage) error {
 			return fmt.Errorf("최적화 XYZ의 원자 수 또는 원소가 입력과 다릅니다")
 		}
 	}
-	// Only compare explicit output metadata, never the parser's input fallback.
+	if s.Stationary!="" {
+        want:=0
+        if s.Stationary=="ts"{want=1}
+        if a.ImaginaryCount==nil||*a.ImaginaryCount!=want||a.Gibbs==nil{return fmt.Errorf("%s: Frequency/Gibbs 또는 imaginary mode 검증 실패 (필요 %d개)",s.Name,want)}
+    }
+    // Only compare explicit output metadata, never the parser's input fallback.
 	for _, v := range []struct {
 		pattern string
 		idx     int
