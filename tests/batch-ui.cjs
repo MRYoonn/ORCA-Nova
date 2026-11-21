@@ -32,7 +32,7 @@ const fs=require('fs'),assert=require('assert');
  assert.equal(await page.evaluate(()=>batchMolecules[1].request.stages[1].source),'first.xyz');
  await page.locator('#batch-drop').dispatchEvent('drop',{dataTransfer:await page.evaluateHandle(xyz=>{const dt=new DataTransfer();dt.items.add(new File([xyz],'drop.xyz',{type:'text/plain'}));return dt},xyz)});await page.waitForFunction(()=>batchMolecules.some(m=>m.name==='drop.xyz'));
 
- compareMode=true;await page.locator('#batch-compare-refresh').click();await page.waitForFunction(()=>batchComparisonRows.length===2);
+ compareMode=true;await page.locator('.batch-comparison summary').click();await page.locator('#batch-compare-refresh').click();await page.waitForFunction(()=>batchComparisonRows.length===2);
  const comparison=await page.locator('#batch-comparison-body').innerText();assert(comparison.includes('3.14'));assert(comparison.includes('2.71'));assert(comparison.includes('0.125 (Mulliken; ORCA 4 C)'));assert(comparison.includes('-0.25 (Mulliken; ORCA 5 N)'));assert(comparison.includes('Not calculated'));
  const csv=await page.evaluate(()=>batchComparisonCSV());assert(csv.includes('PBE0 def2-SVP'));assert(csv.includes('mol1.xyz'));assert(csv.includes('3.14'));assert(!comparison.includes('C5'));
  await page.locator('#batch-atom-a').fill('999');await page.locator('#batch-compare-refresh').click();await page.waitForFunction(()=>batchComparisonRows[0][8]==='Unavailable');
