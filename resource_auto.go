@@ -99,3 +99,26 @@ func planAutoResources(jobs []RunRequest, flags []bool, cpu int, sys resourceSys
  }
  return out,limits,nil
 }
+
+// replanPendingAllocation is called immediately before an eligible, never-started
+// job is prepared. Already-running and previously prepared jobs are not rewritten.
+// Use only the remaining queue budget and a fresh physical RAM snapshot.
+func replanPendingAllocation(req RunRequest, freeCPU, freeRAM, freeSlots, waiting int, sys resourceSystem) (RunRequest, int, int, error) {
+ if !sys.Supported || freeCPU<1 || freeSlots<1 || waiting<1 {return req,0,0,fmt.Errorf("사용 가능한 CPU/RAM 확인 중")}
+ budget:=min(freeRAM,sys.BudgetMB)
+ cores:=min(freeCPU,sys.CPU,budget/(autoMinimumMaxCore*5/4))
+ if cores<1 {return req,0,0,fmt.Errorf("사용 가능한 RAM이 부족합니다")}
+ count:=min(waiting,freeSlots,cores)
+ // Give the next job one remainder core, if present. Remaining jobs are
+ // reevaluated using the reservations committed by this dispatch.
+ n:=(cores+count-1)/count
+ m:=min(16000,((budget*4/5)/cores)/4*4)
+ if m<autoMinimumMaxCore {return req,0,0,fmt.Errorf("MaxCore 최소 정책 미달")}
+ next,err:=autoRewrite(req,n,m)
+ if err!=nil{return req,0,0,err}
+ cpu,ram,err:=resources(next)
+ if err!=nil{return req,0,0,err}
+ if cpu>freeCPU || ram>budget {return req,0,0,fmt.Errorf("자동 배분 예약량이 남은 예산을 초과합니다")}
+ if report:=preflight(next); !report.OK {return req,0,0,fmt.Errorf("자동 배분 후 Preflight 실패: %v",report.Errors)}
+ return next,cpu,ram,nil
+}
