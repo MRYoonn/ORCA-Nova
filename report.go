@@ -609,12 +609,12 @@ func writeAnalysisReports(folder string, req RunRequest) (string, error) {
 		if parseErr != nil {
 			report.Warnings = append(report.Warnings, parseErr.Error())
 		}
-		if stage.Opt {
-			xyz := stem + ".xyz"
+		if xyz:=stageGeometry(stage);xyz!="" {
 			if info, e := os.Stat(filepath.Join(folder, xyz)); e == nil && !info.IsDir() {
 				report.FinalXYZ = xyz
 			}
 		}
+		if stage.Goat{report.Found=true;report.Status="Completed";if e:=validateGOAT(folder,stage);e!=nil{report.Status="Failed";report.Warnings=append(report.Warnings,e.Error())};report.Warnings=append(report.Warnings,"GOAT conformer search; this is not DFT SCF, stationary-point or Gibbs validation.")}
 		all = append(all, stageResult{stage, report})
 		if report.Found || parseErr != nil {
 			if err := os.WriteFile(filepath.Join(folder, stem+"_analysis.txt"), []byte(formatAnalysis(report, stage)), 0644); err != nil {
@@ -669,6 +669,8 @@ func writeAnalysisReports(folder string, req RunRequest) (string, error) {
 	} else {
 		b.WriteString("S₀/T₁ 비교: 수렴한 Singlet 및 Triplet 최적화 결과가 모두 있을 때 표시됩니다.\n")
 	}
+	composites:=gloriusComposites(folder,req)
+	b.WriteString(gloriusCompositeReport(composites))
 	b.WriteString("\n[SOC / BDE / SET / reaction ΔG]\n계산에 필요한 개별 상태나 여러 화학종의 에너지가 존재해야 비교할 수 있습니다. 부재한 수치는 임의 생성하지 않습니다.\n")
 	if err := os.WriteFile(path, []byte(b.String()), 0644); err != nil {
 		return "", err
@@ -680,7 +682,8 @@ func writeAnalysisReports(folder string, req RunRequest) (string, error) {
 		Label  string
 		Units  map[string]string
 		Stages []stageResult
-	}{Label: req.Label, Units: map[string]string{"Electronic": "Eh", "Enthalpy": "Eh", "Gibbs": "Eh", "ZPE": "Eh", "EntropyTerm": "Eh (T*S)", "ThermalCorrection": "Eh", "ThermalEnthalpyCorrection": "Eh (H - Electronic)", "Entropy": "Eh/K", "Temperature": "K", "Frequencies": "cm^-1", "Frontier": "eV", "Roots.EV": "eV (Vertical excitation)", "Roots.EH": "Eh (Vertical excitation)", "Roots.WavelengthNM": "nm", "Populations.Spin": "electrons", "Populations.Index": "zero-based ORCA atom index"}, Stages: all}
+        GloriusComposite []gloriusCompositeRow `json:",omitempty"`
+	}{GloriusComposite:composites,Label: req.Label, Units: map[string]string{"Electronic": "Eh", "Enthalpy": "Eh", "Gibbs": "Eh", "ZPE": "Eh", "EntropyTerm": "Eh (T*S)", "ThermalCorrection": "Eh", "ThermalEnthalpyCorrection": "Eh (H - Electronic)", "Entropy": "Eh/K", "Temperature": "K", "Frequencies": "cm^-1", "Frontier": "eV", "Roots.EV": "eV (Vertical excitation)", "Roots.EH": "Eh (Vertical excitation)", "Roots.WavelengthNM": "nm", "Populations.Spin": "electrons", "Populations.Index": "zero-based ORCA atom index"}, Stages: all}
 	data, err := json.MarshalIndent(payload, "", "  ")
 	if err != nil {
 		return "", err
