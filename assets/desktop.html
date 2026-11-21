@@ -959,17 +959,25 @@ async function desktopRun(workflow){
   toast('ORCA 계산을 시작했어요.');await desktopPoll();
  }catch(e){desktopMessage('오류: '+e.message,true);toast(e.message);}
 }
+function etaClock(value){
+ if(typeof value!=='number'||!Number.isFinite(value)||value<0)return '—';
+ const s=Math.floor(value),h=Math.floor(s/3600),m=Math.floor(s%3600/60);
+ return (h?h+'시간 ':'')+(h||m?m+'분 ':'')+s%60+'초';
+}
+function updateSingleETA(job,eta,error=false){
+ const e=eta||{},active=job?.state==='running';
+ const elapsed=job?etaClock(e.elapsedSeconds):'—';
+ const state=error?'연결 오류':!job?'계산 대기':active?'실행 중':({completed:'정상 종료',failed:'실패',interrupted:'중단',stopped:'중단'}[job.state]||job.state);
+ const stage=error?'확인 불가':!job?'—':active?(e.stageEta||'추정 중 · 유사 계산 기록 없음'):'계산 종료';
+ const workflow=error?'확인 불가':!job?'—':active?(e.workflowEta||'추정 중'):'계산 종료';
+ const note=error?'로컬 실행 서비스 연결 실패 · 마지막 예측을 표시하지 않습니다.':!job?'계산 시작 후 예상시간을 표시합니다.':active?((e.optimizationCycle?'Opt cycle '+e.optimizationCycle+' · ':'')+(e.estimateBasis||'과거 완료된 유사 계산 기준')+' · Opt cycle은 진행률(%)이 아닙니다.'):'실제 계산 경과 시간 · 결과 폴더에서 OUT 확인';
+ const values={'eta-elapsed':elapsed,'eta-stage':stage,'eta-workflow':workflow,'eta-note':note,'quick-eta-elapsed':elapsed,'quick-eta-stage':stage,'quick-eta-workflow':workflow,'quick-eta-note':note,'quick-eta-state':state};
+ for(const [id,text] of Object.entries(values)){const node=$(id);if(node)node.textContent=text;}
+}
 async function desktopPoll(){try{
  const epoch=desktopConfigEpoch;
  const d=await desktopAPI('status');lastDesktopState=d;
- if(d.eta){
-  const e=d.eta;
-  const pretty=s=>{s=Number(s)||0;const h=Math.floor(s/3600),m=Math.floor(s%3600/60),sec=s%60;return(h?h+'시간 ':'')+(m?m+'분 ':'')+sec+'초'};
-  document.getElementById('eta-elapsed').textContent=pretty(e.elapsedSeconds);
-  document.getElementById('eta-stage').textContent=e.stageEta||'추정 중';
-  document.getElementById('eta-workflow').textContent=e.workflowEta||'추정 중';
-  document.getElementById('eta-note').textContent=(e.optimizationCycle?'Geometry Optimization cycle '+e.optimizationCycle+' · ':'')+(e.estimateBasis||'')+' · Opt cycle은 진행률(%)이 아니에요.';
- }
+ updateSingleETA(d.job,d.eta);
  if(d.config&&!desktopConfigSaving&&epoch===desktopConfigEpoch){restoreAutoCPUPreference(d.config);const p=$('desktop-orca-path'),w=$('desktop-work-root');if(document.activeElement!==p&&!desktopConfigDirty.has(p.id))p.value=d.config.orcaExe||'';if(document.activeElement!==w&&!desktopConfigDirty.has(w.id))w.value=d.config.workRoot||'';}
  updateSingleFolder(d.job);
  if(d.job){const j=d.job;let label={running:'실행 중',completed:'정상 종료',failed:'실패',stopped:'중단'}[j.state]||j.state;
@@ -978,7 +986,7 @@ async function desktopPoll(){try{
  else document.getElementById('desktop-live-log').textContent=j.message+'\n'+j.folder;
  document.getElementById('desktop-report').disabled=!j.reportFile;const run=j.state!=='running';document.getElementById('desktop-run').disabled=!run;document.getElementById('desktop-run-wf').disabled=!run;document.getElementById('desktop-stop').disabled=run;
  }else{desktopMessage('대기 중 · ORCA 설치 경로를 설정한 뒤 실행할 수 있어요.');document.getElementById('desktop-stop').disabled=true;document.getElementById('desktop-report').disabled=true;}
- }catch(e){desktopMessage('로컬 실행 서비스 연결 오류: '+e.message,true)}
+ }catch(e){updateSingleETA(lastDesktopState?.job,null,true);desktopMessage('로컬 실행 서비스 연결 오류: '+e.message,true)}
 }
 document.getElementById('desktop-save-config').addEventListener('click',async()=>{try{await desktopConfig();toast('설정을 저장했어요.');desktopMessage('설정 저장 완료')}catch(e){desktopMessage('설정 저장 실패: '+e.message,true);toast('설정 저장 실패: '+e.message)}});
 document.getElementById('desktop-preflight').addEventListener('click',async()=>{
@@ -1405,8 +1413,14 @@ async function batchPoll(){
   const queued=jobs.filter(j=>j.state==='Pending').length;$('nav-batch').textContent='Batch / Queue'+(queued+running.length?' ('+(queued+running.length)+')':'');
   $('batch-start').textContent=$('batch-append').checked?'＋ Queue에 추가':'▶ Batch 계산 시작';
   renderQueueRows(jobs,d.paused);
-  updateCompletedFolders(jobs);
- }catch(e){batchMessage('Job Queue 연결 실패: '+e.message,true)}finally{batchPollBusy=false}
+  updateBatchETA(d);updateCompletedFolders(jobs);
+ }catch(e){updateBatchETA(null,true);batchMessage('Job Queue 연결 실패: '+e.message,true)}finally{batchPollBusy=false}
+}
+function updateBatchETA(d,error=false){
+ const jobs=d?.jobs||[],running=jobs.filter(j=>j.state==='Running').length,waiting=jobs.filter(j=>j.state==='Pending').length,done=jobs.filter(j=>j.state==='Completed').length;
+ const remaining=error?'연결 오류':!d?'추정 중':running+waiting===0?(jobs.length?'계산 종료':'계산 대기'):(typeof d.batchEta==='string'&&d.batchEta?d.batchEta:'추정 중');
+ const values={'batch-eta-total':remaining,'batch-eta-count':error?'—':running+' 실행 / '+waiting+' 대기 / '+done+' 완료','batch-eta-note':error?'Queue 연결 실패':d?.paused?'Queue 일시정지 · 아직 시작하지 않은 작업 대기':'과거 유사 계산 기록 기준 · CPU/RAM 대기 및 수렴에 따라 변동'};
+ for(const [id,value] of Object.entries(values)){const node=$(id);if(node)node.textContent=value;}
 }
 function updateCompletedFolders(jobs){
  const select=$('completed-folder-select'),button=$('completed-folder-open'),path=$('completed-folder-path'),quick=$('completed-folder-shortcut');
@@ -1439,7 +1453,12 @@ function renderQueueRows(jobs,paused){
    const stage=document.createElement('small');stage.textContent=j.job?.stageName?`${(j.job.stageIndex||0)+1}/${j.job.stageCount||j.request?.stages?.length||'?'} · ${j.job.stageName}`:j.request?.stages?.map(s=>s.name).join(' → ')||'';cells[1].append(stage);
    const message=document.createElement('small');message.textContent=j.state==='Pending'?(j.held?'사용자 보류':paused?'Queue 일시정지':j.waitReason||'실행 대기'):j.job?.message||'';cells[1].append(message);
    cells[2].textContent=(j.cpu||'?')+' CPU / '+(j.ramMB||'?')+' MB';if(j.autoResources){const mode=document.createElement('small');mode.textContent=j.autoEligible?'Auto · 예약량':'Fixed INP · 예약량';cells[2].append(mode);}
-   cells[3].textContent=batchSeconds(j.eta?.elapsedSeconds);const eta=document.createElement('small');eta.textContent=j.eta?.workflowEta||'추정 중';cells[3].append(eta);
+   cells[3].className='queue-eta-cell';
+   const elapsed=document.createElement('small');elapsed.textContent='경과: '+etaClock(j.eta?.elapsedSeconds);cells[3].append(elapsed);
+   const active=j.state==='Running',pending=j.state==='Pending';
+   const eta=document.createElement('strong');eta.textContent='Job 남은 시간: '+(active?(j.eta?.workflowEta||'추정 중'):pending?(j.held||paused?'보류 중':'실행 대기'):'계산 종료');cells[3].append(eta);
+   if(active){const stageETA=document.createElement('small');stageETA.textContent='현재 단계: '+(j.eta?.stageEta||'추정 중 · 유사 기록 없음');cells[3].append(stageETA);}
+   if(active&&j.eta?.estimateBasis){const basis=document.createElement('small');basis.textContent=j.eta.estimateBasis;cells[3].append(basis);}
    if(j.eta?.optimizationCycle){const cycle=document.createElement('small');cycle.textContent='Opt cycle '+j.eta.optimizationCycle;cells[3].append(cycle);}
    const button=(text,action)=>{const b=document.createElement('button');b.className='btn small ghost';b.textContent=text;b.onclick=()=>batchAction(action,j.id);cells[4].append(b)};
    if(j.state==='Pending'){button(j.held?'보류 해제':'보류',j.held?'release':'hold');button('↑','up');button('↓','down');button('취소','cancel');}
@@ -2344,6 +2363,14 @@ $('trip-export-json').onclick=()=>{if(tripState.lastComparison)download('triplet
 .single-auto-label{display:flex;gap:6px;align-items:center;margin:5px 0 10px;font-size:12px;color:#b7d1e5}
 .calculation-runbar{position:sticky;bottom:0;z-index:3;background:#142235;border:1px solid #35506a;border-radius:9px;padding:10px;margin:12px 0 0;box-shadow:0 -6px 14px #080e1655}
 .calculation-runbar .btn.primary{flex:1;min-width:130px}
+.eta-overview{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px 14px;border:1px solid #36536b;background:#142639;border-radius:9px;padding:12px;color:#a8c3dc;margin-bottom:10px}
+.eta-overview>div{min-width:0;display:flex;flex-direction:column;gap:5px;font-size:11px}
+.eta-overview strong{color:#d9f6ed;font-size:14px;overflow-wrap:anywhere}
+.eta-overview strong span{font-size:inherit;color:inherit}
+.eta-overview>small{grid-column:1/-1;color:#9ab3ca;line-height:1.4}
+#quick-eta-overview{flex:0 0 100%;margin:0 0 3px;padding:8px 10px}
+.queue-eta-cell{min-width:175px}
+.queue-eta-cell strong{display:block;color:#cbefdf;font-size:12px;line-height:1.5;margin:3px 0}
 .folder-open{background:#244759;color:#d9f6ff;border-color:#46758b;white-space:nowrap}
 .folder-open:hover{background:#315c70}
 .queue-folder-open{display:flex;margin:7px 0 0!important}
@@ -2387,7 +2414,7 @@ function workspaceShow(key){
  const nav=document.querySelector('.top-nav');
  nav.className='workspace-nav';document.querySelector('.topbar').after(nav);
  const batch=workspacePage('batch','Batch / Queue','다중 XYZ 등록 · Job별 계산 선택 · CPU/RAM 자동 배분');
- batch.append($('batch-panel'));
+ const batchEta=document.createElement('div');batchEta.className='eta-overview';batchEta.id='batch-eta-overview';batchEta.innerHTML='<div><span>전체 Batch 예상 남은 시간</span><strong id="batch-eta-total">추정 중</strong></div><div><span>Queue 상태</span><strong id="batch-eta-count">—</strong></div><small id="batch-eta-note">유사 계산 기록 기준</small>';batch.append(batchEta,$('batch-panel'));updateBatchETA(batchQueueState);
  const res=workspacePage('results','Results','계산 결과 폴더, 단일 계산 로그 및 결과 시각화');
  const resultPanel=document.createElement('div');resultPanel.className='desktop-app-panel';
  const resultActions=document.createElement('div');resultActions.className='workspace-inline';
@@ -2421,6 +2448,7 @@ function workspaceShow(key){
  updateSingleFolder(lastDesktopState?.job);updateCompletedFolders(batchQueueState?.jobs||[]);
  const details=document.createElement('details');details.id='single-preflight-details';details.className='advanced-options';details.innerHTML='<summary>계산 전 검사 결과</summary><pre class="runner-log" id="single-preflight-report">Preflight를 실행하세요.</pre>';
  const allocation=document.createElement('div');allocation.id='single-run-allocation';allocation.className='muted';runner.append(allocation,details);
+ const quickEta=document.createElement('div');quickEta.className='eta-overview';quickEta.id='quick-eta-overview';quickEta.innerHTML='<div><span>계산 상태 / 경과 시간</span><strong><span id="quick-eta-state">계산 대기</span> · <span id="quick-eta-elapsed">—</span></strong></div><div><span>현재 단계 예상 남은 시간</span><strong id="quick-eta-stage">—</strong></div><div><span>전체 Workflow 예상 남은 시간</span><strong id="quick-eta-workflow">—</strong></div><small id="quick-eta-note"></small>';actions.prepend(quickEta);updateSingleETA(lastDesktopState?.job,lastDesktopState?.eta);
  document.querySelector('.content-panel').append(actions);
  $('single-auto').addEventListener('change',singleResourceModeChanged);
  for(const b of nav.querySelectorAll('[data-page]'))b.addEventListener('click',()=>workspaceShow(b.dataset.page));
