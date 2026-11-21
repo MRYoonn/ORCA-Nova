@@ -78,3 +78,40 @@ func TestPendingResourceReallocationRespectsLiveRAM(t *testing.T){
  sys.BudgetMB=639
  if _,_,_,err:=replanPendingAllocation(req,16,50000,4,2,sys);err==nil{t.Fatal("unsafe launch with insufficient physical RAM")}
 }
+
+func TestAutoResourceTripletPreservesScientificWorkflow(t *testing.T) {
+ prepared,err:=prepareTriplet(tripPrepareRequest{
+  Reference:exampleTripletXYZ(false,false,true),
+  Targets:[]tripTargetRequest{{Name:"S-Me.xyz",XYZ:exampleTripletXYZ(false,false,true)},{Name:"S-Et.xyz",XYZ:exampleTripletXYZ(true,true,true)}},
+  Options:standardTripOpts(),Confirmed:true,
+ })
+ if err!=nil{t.Fatal(err)}
+ jobs:=[]RunRequest{*prepared.Items[0].Request,*prepared.Items[1].Request}
+ sys:=resourceSystem{CPU:16,Supported:true,BudgetMB:50000}
+ planned,limits,err:=planAutoResources(jobs,[]bool{true,true},16,sys)
+ if err!=nil||limits.Concurrency!=2{t.Fatal(limits,err)}
+ for i,p:=range planned {
+  if !p.Triplet.Confirmed || len(p.Stages)!=3 || p.Files[0].Content!=jobs[i].Files[0].Content{t.Fatal("Triplet mapping or geometry changed")}
+  if !preflight(p).OK {t.Fatal(preflight(p).Errors)}
+  c,r,e:=resources(p);if e!=nil||c!=8||r!=25000{t.Fatal(c,r,e)}
+  strip:=func(s string)string{return autoMaxCoreLine.ReplaceAllString(autoPALBlock.ReplaceAllString(s,"PAL"),"MAXCORE")}
+  for k:=1;k<len(p.Files);k++{
+   if strip(p.Files[k].Content)!=strip(jobs[i].Files[k].Content){t.Fatal("Non-resource INP changed",p.Files[k].Name)}
+  }
+  if !strings.Contains(p.Files[3].Content,`%moinp "step2_triplet.gbw"`)||!strings.Contains(p.Files[1].Content,"Constraints"){t.Fatal("Triplet scientific workflow changed")}
+ }
+ next,c,r,e:=replanPendingAllocation(planned[1],16,50000,4,1,sys)
+ if e!=nil||c!=16||r!=50000|| !preflight(next).OK{t.Fatal(c,r,e)}
+ if !strings.Contains(next.Files[3].Content,"MOREAD"){t.Fatal("Internal GBW reuse lost")}
+}
+
+func TestCPUUsageCounterDelta(t *testing.T){
+ before:=cpuCounters{idle:100,kernel:400,user:300}
+ // kernel delta = 200 including idle delta = 120; user delta = 100
+ after:=cpuCounters{idle:220,kernel:600,user:400}
+ pct,ok:=cpuUsageDelta(before,after);if !ok||pct!=60{t.Fatal(pct,ok)}
+ for _,bad:=range []cpuCounters{before,{idle:99,kernel:600,user:400},{idle:999,kernel:600,user:400}}{
+  if _,ok:=cpuUsageDelta(before,bad);ok{t.Fatal("invalid CPU counter accepted",bad)}
+ }
+ if pct,ok:=cpuUsageDelta(before,cpuCounters{idle:400,kernel:700,user:300});!ok||pct!=0{t.Fatal(pct,ok)}
+}
