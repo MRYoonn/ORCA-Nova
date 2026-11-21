@@ -40,6 +40,9 @@ type Stage struct {
 	Input  string `json:"input"`
 	Source string `json:"source"`
 	Opt    bool   `json:"opt"`
+	Goat bool `json:"goat,omitempty"`
+	Stationary string `json:"stationary,omitempty"`
+	CompositeFrom string `json:"compositeFrom,omitempty"`
 }
 type RunRequest struct {
 	Label  string    `json:"label"`
