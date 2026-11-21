@@ -17,6 +17,16 @@ const fs=require('fs'),path=require('path'),assert=require('assert');
   });
   await page.goto('http://orca.test/?session=test');
   const wb=page.locator('#workbench'),toggle=page.locator('#library-toggle');
+  assert(await wb.isVisible());
+  assert(!(await page.locator('#batch-panel').isVisible()));
+  assert(!(await page.locator('#viz-panel').isVisible()));
+  assert(!(await page.locator('#si-panel').isVisible()));
+  assert(!(await page.locator('#desktop-orca-path').isVisible()));
+  assert(!(await page.locator('#outputs-section').isVisible()));
+  const originalINP=await page.locator('#editor').inputValue();
+  for(const [key,selector] of [['batch','#batch-panel'],['results','#viz-panel'],['tools','#si-panel'],['settings','#desktop-orca-path']]){await page.locator('#nav-'+key).click();assert(await page.locator(selector).isVisible());assert(!(await wb.isVisible()));assert.equal(await page.locator('#nav-'+key).getAttribute('aria-current'),'page');}
+  await page.locator('#nav-calculation').click();assert.equal(await page.locator('#editor').inputValue(),originalINP);
+  await page.locator('#advanced-outputs summary').click();assert(await page.locator('#outputs-section').isVisible());await page.locator('#advanced-outputs summary').click();
   assert(await wb.evaluate(el=>el.classList.contains('library-collapsed')),'library must be folded by default');
   assert.equal(await toggle.getAttribute('aria-expanded'),'false');
   assert(!(await page.locator('#library-content').isVisible()),'library lists should not occupy space initially');
