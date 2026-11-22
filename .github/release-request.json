@@ -1,9 +1,9 @@
 {
-  "tag": "v1.8.0-rc.2",
-  "prerelease": true,
+  "tag": "v1.8.0",
+  "prerelease": false,
   "source": "approved-main-merge",
-  "summary": "User-approved Beta. Glorius SI workflows, validated Composite Gibbs, result-folder access, and Batch ETA improvements. Live ORCA 6.x/xTB validation remains pending.",
-  "release_type": "candidate",
-  "stable_release_blocked": true,
+  "summary": "Explicit user-approved Stable promotion of verified v1.8.0-rc.2 application code. Live ORCA 6.x/xTB/MPI scientific validation remains pending and is disclosed in release notes.",
+  "release_type": "stable",
+  "stable_release_blocked": false,
   "previous_stable": "v1.7.0"
 }
