@@ -90,6 +90,7 @@ func TestGloriusGOATOutputAndCompositeReport(t *testing.T) {
 		t.Fatal("minimum with imaginary mode accepted")
 	}
 	normal := strings.Replace(sampleORCA, "-83.22 cm**-1   ***imaginary mode***", "83.22 cm**-1", 1)
+	normal = strings.Replace(normal, "Zero point energy", "Temperature ... 298.15 K\nZero point energy", 1)
 	write("low.out", normal)
 	if err := validateStage(folder, req.Stages[1]); err != nil {
 		t.Fatal(err)
@@ -98,7 +99,7 @@ func TestGloriusGOATOutputAndCompositeReport(t *testing.T) {
 	if rows := gloriusComposites(folder, req, completed); len(rows) != 1 || rows[0].Result != nil {
 		t.Fatal("missing SP was invented", rows)
 	}
-	write("high.out", "SCF CONVERGED AFTER 8 CYCLES\nFINAL SINGLE POINT ENERGY -151.7770000000\nORCA TERMINATED NORMALLY\n")
+	write("high.out", "SCF CONVERGED AFTER 8 CYCLES\nFINAL SINGLE POINT ENERGY -151.7770000000\nExpectation value of <S**2> : 0.18\nORCA TERMINATED NORMALLY\n")
 	if rows := gloriusComposites(folder, req, completed[:2]); rows[0].Result != nil {
 		t.Fatal("SP output accepted before its stage passed execution checks")
 	}
@@ -106,6 +107,16 @@ func TestGloriusGOATOutputAndCompositeReport(t *testing.T) {
 	expected := -151.777 + (-151.54618270 + 151.55083691)
 	if len(rows) != 1 || rows[0].Result == nil || math.Abs(rows[0].Result.CompositeGibbsEh-expected) > 1e-8 {
 		t.Fatal(rows)
+	}
+	resultRow := rows[0].Result
+	if resultRow.TemperatureK == nil || *resultRow.TemperatureK != 298.15 ||
+		resultRow.CompositeZPECorrectedEh == nil || math.Abs(*resultRow.CompositeZPECorrectedEh-(-151.777+0.02631509)) > 1e-8 ||
+		resultRow.CompositeEnthalpyEh == nil || math.Abs(*resultRow.CompositeEnthalpyEh-(-151.777-151.52034633+151.55083691)) > 1e-8 {
+		t.Fatalf("missing or incorrect thermochemistry: %+v", resultRow)
+	}
+	if resultRow.HighS2 == nil || *resultRow.HighS2 != 0.18 ||
+		!strings.Contains(strings.Join(resultRow.Warnings, "\n"), "High-level SP OUT에서 spin contamination") {
+		t.Fatalf("missing high-level spin diagnostic: %+v", resultRow)
 	}
 	path, err := writeAnalysisReports(folder, req, completed)
 	if err != nil {
@@ -133,9 +144,10 @@ func TestGloriusGOATOutputAndCompositeReport(t *testing.T) {
 		t.Fatal("unconverged high SP accepted")
 	}
 }
-func TestGloriusNoGapFromDifferentStartingSpecies(t *testing.T) {
-	a := SICompositeResult{Atoms: 3, Charge: 0, Multiplicity: 1, CompositeGibbsEh: -100}
-	b := SICompositeResult{Atoms: 3, Charge: 0, Multiplicity: 3, CompositeGibbsEh: -99.9}
+func TestGloriusGapRequiresSameStartingSpeciesAndTemperature(t *testing.T) {
+	temp := 298.15
+	a := SICompositeResult{Atoms: 3, Charge: 0, Multiplicity: 1, CompositeGibbsEh: -100, TemperatureK: &temp}
+	b := SICompositeResult{Atoms: 3, Charge: 0, Multiplicity: 3, CompositeGibbsEh: -99.9, TemperatureK: &temp}
 	rows := []gloriusCompositeRow{{InitialSource: "moleculeA.xyz", Stationary: "minimum", Result: &a}, {InitialSource: "moleculeB.xyz", Stationary: "minimum", Result: &b}}
 	if strings.Contains(gloriusCompositeReport(rows), "Triplet - Singlet composite") {
 		t.Fatal("cross-species gap")
@@ -143,6 +155,14 @@ func TestGloriusNoGapFromDifferentStartingSpecies(t *testing.T) {
 	rows[1].InitialSource = rows[0].InitialSource
 	if !strings.Contains(gloriusCompositeReport(rows), "Triplet - Singlet composite") {
 		t.Fatal("same-source gap missing")
+	}
+	differentTemperature := 300.0
+	for _, temperature := range []*float64{nil, &differentTemperature} {
+		b.TemperatureK = temperature
+		report := gloriusCompositeReport(rows)
+		if strings.Contains(report, "Triplet - Singlet composite") || !strings.Contains(report, "동일한 Temperature") {
+			t.Fatal(report)
+		}
 	}
 }
 

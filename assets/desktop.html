@@ -2092,7 +2092,14 @@ $('si-compute').onclick=async()=>{
   const r=await desktopAPI('si/composite',{lowInp,lowOut,lowXYZ,highInp,highOut,highXYZ,stationaryPoint:$('si-stationary').value});
   const lines=[r.formula,'Verified inputs: '+r.verifiedInputs,'Opt+Freq Method: '+r.lowMethod,'High SP Method: '+r.highMethod,'Atoms: '+r.atoms+'; Charge: '+r.charge+'; Multiplicity: '+r.multiplicity,
    'E_low: '+r.lowElectronicEh.toFixed(9)+' Eh','G_low: '+r.lowGibbsEh.toFixed(9)+' Eh','E_high: '+r.highElectronicEh.toFixed(9)+' Eh','Thermal correction: '+r.correctionEh.toFixed(9)+' Eh',
-   'Composite G (ABSOLUTE): '+r.compositeGibbsEh.toFixed(9)+' Eh','이 값은 상대 에너지 ΔG가 아닙니다.',...(r.warnings||[])];
+   'Composite G (ABSOLUTE): '+r.compositeGibbsEh.toFixed(9)+' Eh','이 값은 상대 에너지 ΔG가 아닙니다.'];
+  const optional=[['Temperature',r.temperatureK,'K',2],['ZPE_low',r.lowZpeEh,'Eh',9],
+   ['E_high + ZPE_low',r.compositeZpeCorrectedEh,'Eh',9],['H_composite',r.compositeEnthalpyEh,'Eh',9],
+   ['<S²> Opt/Freq',r.lowS2,'',6],['<S²> High-level SP',r.highS2,'',6]];
+  for(const [label,value,unit,precision] of optional){
+   if(Number.isFinite(value))lines.push(label+': '+value.toFixed(precision)+(unit?' '+unit:''));
+  }
+  lines.push(...(r.warnings||[]));
   siCompositeReport=lines.join('\n');$('si-composite-result').textContent=siCompositeReport;$('si-comp-export').disabled=false;
  }catch(e){$('si-composite-result').textContent='검증/계산 실패: '+e.message}finally{btn.disabled=false}
 };

@@ -35,7 +35,7 @@ const fs=require('fs'),path=require('path'),assert=require('assert');
      verifiedInputs:true,lowMethod:'PBE0 def2-SVP',highMethod:'PBE0 def2-TZVPP',
      charge:0,multiplicity:3,atoms:3,lowElectronicEh:-151.55083691,
      lowGibbsEh:-151.54618270,highElectronicEh:-151.777,
-     correctionEh:0.00465421,compositeGibbsEh:-151.77234579,
+     correctionEh:0.00465421,compositeGibbsEh:-151.77234579,temperatureK:298.15,lowZpeEh:0.02,compositeEnthalpyEh:-151.75,highS2:0,
      warnings:['표준상태 미적용']
     }});
    }
@@ -93,7 +93,13 @@ const fs=require('fs'),path=require('path'),assert=require('assert');
   assert.equal(lastComp.stationaryPoint,'ts');
   assert(lastComp.lowXYZ.includes('water'));
   assert((await page.locator('#si-composite-result').innerText()).includes('-151.772345790 Eh'));
-  assert((await page.locator('#si-composite-result').innerText()).includes('ΔG가 아닙니다'));
+  const thermochemistry=await page.locator('#si-composite-result').innerText();
+  assert(thermochemistry.includes('ΔG가 아닙니다'));
+  assert(thermochemistry.includes('Temperature: 298.15 K'));
+  assert(thermochemistry.includes('ZPE_low: 0.020000000 Eh'));
+  assert(thermochemistry.includes('H_composite: -151.750000000 Eh'));
+  assert(thermochemistry.includes('<S²> High-level SP: 0.000000'));
+  assert(!thermochemistry.includes('E_high + ZPE_low'));
   assert.deepEqual(errors,[]);
   console.log('PASS: offline SI text/PDF evidence, user opt-in, non-supported basis blocked, composite API and no JS errors');
  }finally{await browser.close();}

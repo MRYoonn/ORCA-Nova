@@ -247,6 +247,23 @@ func gloriusCompositeReport(rows []gloriusCompositeRow) string {
 		}
 		a := r.Result
 		fmt.Fprintf(&b, "%s | charge %d mult %d | E_high %.10f | G_corr %.10f | G_composite %.10f\n", r.Stage, a.Charge, a.Multiplicity, a.HighElectronicEh, a.CorrectionEh, a.CompositeGibbsEh)
+		for _, field := range []struct {
+			label string
+			value *float64
+			unit  string
+		}{
+			{"Temperature", a.TemperatureK, "K"},
+			{"ZPE_low", a.LowZPEEh, "Eh"},
+			{"E_high + ZPE_low", a.CompositeZPECorrectedEh, "Eh"},
+			{"H_composite", a.CompositeEnthalpyEh, "Eh"},
+			{"<S²> Opt/Freq", a.LowS2, ""},
+			{"<S²> High-level SP", a.HighS2, ""},
+		} {
+			if field.value != nil {
+				fmt.Fprintf(&b, "  %s %.8g %s\n", field.label, *field.value, field.unit)
+			}
+		}
+
 		for _, w := range a.Warnings {
 			fmt.Fprintf(&b, "  %s\n", w)
 		}
@@ -257,9 +274,13 @@ func gloriusCompositeReport(rows []gloriusCompositeRow) string {
 	if len(rows) == 2 && rows[0].Result != nil && rows[1].Result != nil && rows[0].Stationary == "minimum" && rows[1].Stationary == "minimum" {
 		a, c := rows[0].Result, rows[1].Result
 		if a.Multiplicity == 1 && c.Multiplicity == 3 && a.Charge == c.Charge && a.Atoms == c.Atoms && rows[0].InitialSource != "" && strings.EqualFold(rows[0].InitialSource, rows[1].InitialSource) {
-			d := c.CompositeGibbsEh - a.CompositeGibbsEh
-			if !math.IsNaN(d) && !math.IsInf(d, 0) {
-				fmt.Fprintf(&b, "Triplet - Singlet composite ΔG (same starting species must be confirmed): %.10f Eh / %.4f kcal/mol\n", d, d*627.509474)
+			if a.TemperatureK == nil || c.TemperatureK == nil || *a.TemperatureK <= 0 || *a.TemperatureK != *c.TemperatureK {
+				b.WriteString("Triplet–Singlet 비교 불가 · 두 Opt/Freq OUT에서 동일한 Temperature를 확인해야 합니다.\n")
+			} else {
+				d := c.CompositeGibbsEh - a.CompositeGibbsEh
+				if !math.IsNaN(d) && !math.IsInf(d, 0) {
+					fmt.Fprintf(&b, "Triplet - Singlet composite ΔG (%.2f K, same starting species must be confirmed): %.10f Eh / %.4f kcal/mol\n", *a.TemperatureK, d, d*627.509474)
+				}
 			}
 		}
 	}

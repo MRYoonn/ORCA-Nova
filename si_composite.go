@@ -29,6 +29,12 @@ type SICompositeResult struct {
  LowElectronicEh float64 `json:"lowElectronicEh"`
  LowGibbsEh float64 `json:"lowGibbsEh"`
  HighElectronicEh float64 `json:"highElectronicEh"`
+ TemperatureK *float64 `json:"temperatureK,omitempty"`
+ LowZPEEh *float64 `json:"lowZpeEh,omitempty"`
+ CompositeZPECorrectedEh *float64 `json:"compositeZpeCorrectedEh,omitempty"`
+ CompositeEnthalpyEh *float64 `json:"compositeEnthalpyEh,omitempty"`
+ LowS2 *float64 `json:"lowS2,omitempty"`
+ HighS2 *float64 `json:"highS2,omitempty"`
  CorrectionEh float64 `json:"correctionEh"`
  CompositeGibbsEh float64 `json:"compositeGibbsEh"`
  Warnings []string `json:"warnings"`
@@ -138,11 +144,27 @@ func calculateSIComposite(req SICompositeRequest)(SICompositeResult,error){
  res.HighElectronicEh=*sp.Electronic
  res.CorrectionEh=*opt.Gibbs-*opt.Electronic
  res.CompositeGibbsEh=*sp.Electronic+res.CorrectionEh
+ res.TemperatureK=opt.Temperature
+ res.LowZPEEh=opt.ZPE
+ if opt.ZPE!=nil {
+  energy:=res.HighElectronicEh+*opt.ZPE
+  res.CompositeZPECorrectedEh=&energy
+ }
+ if opt.Enthalpy!=nil {
+  enthalpy:=res.HighElectronicEh+(*opt.Enthalpy-res.LowElectronicEh)
+  res.CompositeEnthalpyEh=&enthalpy
+ }
+ res.LowS2=opt.S2
+ res.HighS2=sp.S2
  res.VerifiedInputs=true
  res.Warnings=append(res.Warnings,"이것은 한 화학종의 혼합수준 Gibbs 에너지(Eh)입니다. 반응 ΔG 또는 ΔG‡는 화학양론·표준상태·용매·상태별 비교가 추가로 필요합니다.")
  res.Warnings=append(res.Warnings,"1 atm→1 M 표준상태 보정, 저주파 모드/준조화 보정, 상태별 용매와 basis/correction의 적합성은 자동 적용하지 않습니다.")
- if opt.S2!=nil&&math.Abs(*opt.S2-float64(m1-1)/2*float64(m1+1)/2)>0.1 {
+ idealS2:=float64(m1-1)/2*float64(m1+1)/2
+ if opt.S2!=nil&&math.Abs(*opt.S2-idealS2)>0.1 {
   res.Warnings=append(res.Warnings,"Opt OUT에서 spin contamination 가능성이 있습니다. <S²>를 검토하세요.")
+ }
+ if sp.S2!=nil&&math.Abs(*sp.S2-idealS2)>0.1 {
+  res.Warnings=append(res.Warnings,"High-level SP OUT에서 spin contamination 가능성이 있습니다. <S²>를 검토하세요.")
  }
  return res,nil
 }

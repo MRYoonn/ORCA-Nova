@@ -27,3 +27,9 @@
 1. 실제 Windows ORCA 6.x/xTB 환경에서 Glorius Workflow를 실행한다. GOAT 산출 XYZ, DFT 단계 검증, Composite Gibbs와 재시작을 확인하고 결과를 `docs/GLORIUS_2026_SI_WORKFLOW.md`에 기록한다.
 2. P1은 `queue.go`의 자동 자원 할당 및 Batch 재개 흐름에서 이어간다. 사용자 지정 자동 동시 실행 수의 효과와 ORCA/MPI 프로세스의 실제 CPU/RAM을 Windows에서 확인한다.
 3. P2는 `docs/GLORIUS_2026_SI_WORKFLOW.md`에서 이어간다. 원본 INP, 실제 ORCA 6.x/xTB 실행, 독립 conformer 재순위화와 결과 분석이 남았다. Golden은 OUT 파서의 검증 범위다.
+
+### Glorius thermochemistry 후속 브랜치
+
+- `feat/glorius-thermochemistry`에서 `si_composite.go`와 `glorius_workflow.go`를 이어 개발했다. OUT에서 확인된 온도와 ZPE, ZPE 보정 전자 에너지, Composite Enthalpy, 각 단계의 ⟨S²⟩를 TXT/JSON 및 SI 도구에 표시한다. G11의 Triplet–Singlet ΔG는 두 Opt/Freq OUT에 동일한 양의 온도가 기록된 경우에만 계산한다.
+- Go 전체 회귀, `go vet`, Windows 테스트 바이너리 교차 빌드, Chromium SI 도구 테스트를 확인했다. 검증에는 합성 Glorius 출력이 사용됐다. 후속 코드는 공개된 rc.2의 제품 코드 이후 변경이다.
+- 다음 검증은 실제 ORCA 6.x/xTB에서 두 전자 상태의 Gibbs 및 ⟨S²⟩를 비교하는 것이다. 반응식 기반 Composite 합산을 구현하기 전에 화학양론, 온도, 용매, 전자 상태 검증을 공통화한다.
