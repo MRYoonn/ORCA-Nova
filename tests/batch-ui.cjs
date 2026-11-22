@@ -2,7 +2,7 @@ const {chromium}=require('playwright');
 const fs=require('fs'),assert=require('assert');
 (async()=>{const browser=await chromium.launch({headless:true,...(process.env.CHROMIUM_PATH?{executablePath:process.env.CHROMIUM_PATH}:{}),args:['--no-sandbox']});try{
  const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
- let submitted=null,compareMode=false,txtRequests=0,autoProbe=false,config={orcaExe:'/tmp/orca',workRoot:'/tmp/jobs'},singleRun=null,queueFixture=null;await page.route('http://orca.test/**',async route=>{
+ let submitted=null,compareMode=false,txtRequests=0,autoProbe=false,config={orcaExe:'/tmp/orca',workRoot:'/tmp/jobs'},singleRun=null,queueFixture=null,singleJob=null,singleETA=null,revealRequests=[],revealError=false;await page.route('http://orca.test/**',async route=>{
  const u=new URL(route.request().url());if(u.pathname==='/')return route.fulfill({contentType:'text/html',body:fs.readFileSync(require('path').join(__dirname,'../assets/desktop.html'),'utf8')});
  if(u.pathname==='/api/queue/monitor')return route.fulfill({json:{cpuPercent:37.5,ramUsedMB:24576,ramTotalMB:65536,ramAvailableMB:40960}});
  if(u.pathname==='/api/queue/resources')return route.fulfill({json:autoProbe?{supported:true,cpu:16,totalMB:65536,availableMB:62500,budgetMB:50000}:{supported:false}});
@@ -11,7 +11,8 @@ const fs=require('fs'),assert=require('assert');
  if(u.pathname==='/api/queue')return route.fulfill({json:{jobs:queueFixture|| (compareMode?[{id:'j1',label:'Test molecule',state:'Completed',request:{stages:[{name:'S0 Opt',input:'first.inp',source:'mol1.xyz',opt:true}]}}]:[]),paused:false,limits:{concurrency:2,cpu:4,ramMB:8192},batchEta:'약 2분 ~ 약 5분'}});
  if(u.pathname==='/api/queue/results')return route.fulfill({json:{Stages:[{Stage:{name:'S0 Opt',source:'mol1.xyz'},Analysis:{Status:'Completed',Method:'PBE0 def2-SVP',Geometry:'mol1.xyz',Electronic:-100.123,Roots:[{Kind:'S',Root:1,EV:3.14},{Kind:'T',Root:1,EV:2.71}],Populations:{Mulliken:[{Index:4,Element:'C',Spin:0.125},{Index:5,Element:'N',Spin:-0.25}]}}},{Stage:{name:'Unrun stage',source:'first.xyz'},Analysis:{Status:'Not calculated'}}]}});
  if(u.pathname==='/api/queue/preflight')return route.fulfill({json:{ok:true,reports:[]}});
- if(u.pathname==='/api/status')return route.fulfill({json:{config}});
+ if(u.pathname==='/api/status')return route.fulfill({json:{config,job:singleJob,eta:singleETA}});
+ if(['/api/reveal','/api/queue/action'].includes(u.pathname)){revealRequests.push({path:u.pathname,body:route.request().postDataJSON()});return revealError?route.fulfill({status:400,json:{error:'결과 폴더를 찾을 수 없습니다'}}):route.fulfill({json:{ok:true}});}
  if(u.pathname==='/api/config'){config=route.request().postDataJSON();return route.fulfill({json:{ok:true}})}
  if(u.pathname==='/api/preflight')return route.fulfill({json:{ok:true,stages:[],errors:[],warnings:[],allocation:route.request().postDataJSON().autoCPU?{cpu:4,ramMB:16000}:null}});
  if(u.pathname==='/api/run'){singleRun=route.request().postDataJSON();return route.fulfill({json:{ok:true,folder:'/tmp/jobs/standalone',allocation:{cpu:4,ramMB:16000}}})}
@@ -129,14 +130,67 @@ const fs=require('fs'),assert=require('assert');
  assert(await page.locator('#batch-manual-options').isVisible());
  assert(!(await page.evaluate(()=>batchPayload())).auto);
   // Live queue filtering and explicit append selection are independent of source registration.
- queueFixture=[{id:'running1',label:'T1 running',state:'Running',cpu:2,ramMB:4000,autoResources:true,autoEligible:true},{id:'pending1',label:'T2 waiting',state:'Pending',waitReason:'가용 물리 RAM 대기'},{id:'done1',label:'SP done',state:'Completed'},{id:'failed1',label:'Opt failed',state:'Failed'}];
+ queueFixture=[{id:'running1',label:'T1 running',state:'Running',cpu:2,ramMB:4000,autoResources:true,autoEligible:true,eta:{elapsedSeconds:125,stageEta:'약 2분 ~ 약 3분',workflowEta:'약 4분 ~ 약 7분',estimateBasis:'유사 계산 기록 3개',optimizationCycle:5}},{id:'pending1',label:'T2 waiting',state:'Pending',waitReason:'가용 물리 RAM 대기'},{id:'done1',label:'SP done',state:'Completed',job:{folder:'/tmp/jobs/SP done'}},{id:'done2',label:'Opt done',state:'Completed',job:{folder:'/tmp/jobs/Opt done'}},{id:'failed1',label:'Opt failed',state:'Failed'}];
  await page.evaluate(()=>batchPoll());
  await page.waitForFunction(()=>document.querySelector('#batch-queue').textContent.includes('가용 물리 RAM 대기'));
+ assert(await page.locator('#batch-eta-overview').isVisible());assert.equal(await page.locator('#batch-eta-total').innerText(),'약 2분 ~ 약 5분');
  await page.locator('#queue-filter').selectOption('active');assert.equal(await page.locator('#batch-queue tr').count(),2);
+ assert((await page.locator('#batch-queue tr').first().innerText()).includes('Job 남은 시간: 약 4분 ~ 약 7분'));
+ assert((await page.locator('#batch-queue tr').first().innerText()).includes('현재 단계: 약 2분 ~ 약 3분'));
  await page.locator('#queue-search').fill('T2');assert.equal(await page.locator('#batch-queue tr').count(),1);
  await page.locator('#queue-search').fill('');await page.locator('#queue-filter').selectOption('failed');assert((await page.locator('#batch-queue').innerText()).includes('Opt failed'));
  await page.locator('#batch-append').check();assert.equal(await page.evaluate(()=>batchPayload().append),true);
  assert((await page.locator('#batch-start').innerText()).includes('Queue에 추가'));
+ // Folder buttons are visible on completion and use the exact backend job identity.
+ await page.locator('#queue-filter').selectOption('completed');
+ assert.equal(await page.locator('#batch-queue tr').count(),2);
+ await page.getByRole('button',{name:'SP done 결과 폴더 열기',exact:true}).click();
+ await page.waitForFunction(()=>true);
+ for(let i=0;i<30&&!revealRequests.length;i++)await new Promise(r=>setTimeout(r,20));
+ assert.deepEqual(revealRequests.at(-1),{path:'/api/queue/action',body:{action:'reveal',id:'done1'}});
+ await page.evaluate(()=>Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async value=>{window.copiedFolder=value}}}));
+ await page.getByRole('button',{name:'Opt done 결과 폴더 경로 복사',exact:true}).click();
+ assert.equal(await page.evaluate(()=>window.copiedFolder),'/tmp/jobs/Opt done');
+ await page.locator('#nav-results').click();
+ await page.locator('#completed-folder-select').selectOption('done1');
+ assert.equal(await page.locator('#completed-folder-path').innerText(),'/tmp/jobs/SP done');
+ await page.evaluate(()=>batchPoll());
+ assert.equal(await page.locator('#completed-folder-select').inputValue(),'done1');
+ await page.locator('#completed-folder-copy').click();
+ assert.equal(await page.evaluate(()=>window.copiedFolder),'/tmp/jobs/SP done');
+ await page.locator('#completed-folder-open').click();
+ for(let i=0;i<30&&revealRequests.length<2;i++)await new Promise(r=>setTimeout(r,20));
+ assert.equal(revealRequests.at(-1).body.id,'done1');
+ await page.locator('#nav-calculation').click();
+ assert(await page.locator('#desktop-reveal-quick').isDisabled());
+ singleJob={folder:'/tmp/jobs/standalone',state:'running',stageCount:1,stageIndex:0,stageName:'Opt',message:'실행 중'};
+ singleETA={elapsedSeconds:3671,stageEta:'약 3분 ~ 약 8분',workflowEta:'약 3분 ~ 약 8분',estimateBasis:'유사 설정 완료 기록 2개',optimizationCycle:12};
+ await page.evaluate(()=>desktopPoll());
+ assert(await page.locator('#quick-eta-overview').isVisible());
+ assert.equal(await page.locator('#quick-eta-elapsed').innerText(),'1시간 1분 11초');
+ assert.equal(await page.locator('#quick-eta-stage').innerText(),singleETA.stageEta);
+ assert.equal(await page.locator('#quick-eta-workflow').innerText(),singleETA.workflowEta);
+ await page.locator('#nav-results').click();assert.equal(await page.locator('#eta-stage').innerText(),singleETA.stageEta);
+ await page.locator('#nav-calculation').click();
+ singleETA={elapsedSeconds:3700,stageEta:'추정 중 · 유사 계산 기록 없음',workflowEta:'추정 중'};
+ await page.evaluate(()=>desktopPoll());assert.equal(await page.locator('#quick-eta-workflow').innerText(),'추정 중');
+ singleJob={folder:'/tmp/jobs/standalone',state:'completed',stageCount:1,stageIndex:0,stageName:'Opt',message:'완료'};
+ singleETA={elapsedSeconds:3800,stageEta:'계산 종료',workflowEta:'계산 종료'};
+ await page.evaluate(()=>desktopPoll());
+ assert(await page.locator('#desktop-reveal-quick').isEnabled());
+ assert.equal(await page.locator('#quick-eta-state').innerText(),'정상 종료');assert.equal(await page.locator('#quick-eta-workflow').innerText(),'계산 종료');
+ await page.locator('#desktop-reveal-quick').click();
+ for(let i=0;i<30&&revealRequests.length<3;i++)await new Promise(r=>setTimeout(r,20));
+ assert.equal(revealRequests.at(-1).path,'/api/reveal');
+ await page.locator('#nav-results').click();
+ assert.equal(await page.locator('#single-result-path').innerText(),singleJob.folder);
+ revealError=true;
+ await page.locator('#desktop-reveal').click();
+ await page.waitForFunction(()=>document.querySelector('#toast').textContent.includes('결과 폴더 열기 실패'));
+ revealError=false;singleJob=null;await page.evaluate(()=>desktopPoll());
+ await page.locator('#nav-calculation').click();
+ await page.locator('#completed-folder-shortcut').click();
+ assert(await page.locator('#completed-folder-select').isVisible());
  // Editing paths must survive status polling and switching workspace.
  await page.locator('#nav-settings').click();
  await page.locator('#desktop-work-root').fill('/tmp/custom-path');

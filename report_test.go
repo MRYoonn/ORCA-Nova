@@ -100,7 +100,7 @@ func TestWriteWorkflowReportNoMismatchedMethod(t *testing.T) {
 		}
 	}
 	req := RunRequest{Label: "test workflow", Stages: []Stage{{Name: "S0 Opt", Input: "s0.inp", Source: "mol.xyz", Opt: true}, {Name: "T1 Opt", Input: "t1.inp", Source: "mol.xyz", Opt: true}}}
-	path, e := writeAnalysisReports(dir, req)
+	path, e := writeAnalysisReports(dir, req, nil)
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -123,7 +123,7 @@ func TestNoAdiabaticFromOnlyVertical(t *testing.T) {
 			t.Fatal(e)
 		}
 	}
-	path, e := writeAnalysisReports(dir, RunRequest{Stages: []Stage{{Name: "Vertical", Input: "vert.inp"}}})
+	path, e := writeAnalysisReports(dir, RunRequest{Stages: []Stage{{Name: "Vertical", Input: "vert.inp"}}}, nil)
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -164,7 +164,7 @@ ORCA TERMINATED NORMALLY
 			t.Fatal(err)
 		}
 	}
-	_, err = writeAnalysisReports(dir, RunRequest{Label: "water", Stages: []Stage{{Name: "Freq", Input: "water.inp"}, {Name: "Not started", Input: "next.inp"}}})
+	_, err = writeAnalysisReports(dir, RunRequest{Label: "water", Stages: []Stage{{Name: "Freq", Input: "water.inp"}, {Name: "Not started", Input: "next.inp"}}}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -249,7 +249,7 @@ func TestReportDoesNotCompareDifferentSolventBlocks(t *testing.T) {
 		os.WriteFile(filepath.Join(dir, state+".inp"), []byte(inp), 0600)
 		os.WriteFile(filepath.Join(dir, state+".out"), []byte(out), 0600)
 	}
-	path, err := writeAnalysisReports(dir, RunRequest{Stages: []Stage{{Input: "s0.inp"}, {Input: "t1.inp"}}})
+	path, err := writeAnalysisReports(dir, RunRequest{Stages: []Stage{{Input: "s0.inp"}, {Input: "t1.inp"}}}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

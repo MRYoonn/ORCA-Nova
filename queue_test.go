@@ -67,7 +67,24 @@ func TestMain(m *testing.M) {
 		if strings.Contains(s, "MOCK_SLOW") {
 			time.Sleep(10 * time.Second)
 		}
-		if !strings.Contains(s, "MOCK_NO_SCF") {
+		if os.Getenv("ORCA_NOVA_GLORIUS_MOCK")=="1" {
+            k:=keywordLine(s)
+            if k["goat"]{
+                h:=xyzHeader.FindStringSubmatch(s)
+                if len(h)<4{os.Exit(2)}
+                b,e:=os.ReadFile(h[3]);if e!=nil{os.Exit(3)}
+                stem:=strings.TrimSuffix(os.Args[1],".inp")
+                if !strings.Contains(s,"MOCK_NO_GOAT_XYZ"){if e=os.WriteFile(stem+".globalminimum.xyz",b,0600);e!=nil{os.Exit(4)}}
+                fmt.Println("Global minimum found!\n# Final ensemble info #\nORCA TERMINATED NORMALLY")
+                os.Exit(0)
+            }
+            if k["freq"]{
+                fmt.Println("VIBRATIONAL FREQUENCIES")
+                if k["optts"]||strings.Contains(s,"MOCK_IMAGINARY"){fmt.Println("  0: -123.45 cm**-1   ***imaginary mode***")}else{fmt.Println("  0: 123.45 cm**-1")}
+                fmt.Println("  1: 999.99 cm**-1\nNORMAL MODES\nFinal Gibbs free energy ... -75.10000000 Eh")
+            }
+        }
+        if !strings.Contains(s, "MOCK_NO_SCF") {
 			fmt.Println("SCF CONVERGED AFTER 10 CYCLES")
 		}
 		if strings.Contains(s, "Opt") {
@@ -864,4 +881,17 @@ func TestStoredAutoCPUPreferenceAndConfigFailureRollback(t *testing.T) {
  w=post(map[string]any{"orcaExe":a.cfg.ORCAExe,"workRoot":work+"-new","autoCPU":1})
  a.cfgPath=oldPath
  if w.Code!=500||a.cfg!=oldCfg||read()!=oldCfg{t.Fatal("failed save changed stored or active settings",w.Code)}
+}
+
+func TestResultDirectoryValidation(t *testing.T){
+ dir:=t.TempDir()
+ target:=filepath.Join(dir,"completed molecule with spaces")
+ if err:=os.Mkdir(target,0700);err!=nil{t.Fatal(err)}
+ if got,err:=resultDirectory(target);err!=nil||got!=target{t.Fatal(got,err)}
+ file:=filepath.Join(dir,"not_a_directory.out")
+ if err:=os.WriteFile(file,[]byte("output"),0600);err!=nil{t.Fatal(err)}
+ for _,bad:=range []string{"",filepath.Join(dir,"missing"),file}{
+  if _,err:=resultDirectory(bad);err==nil{t.Fatal("accepted invalid result directory",bad)}
+  if err:=revealFolder(bad);err==nil{t.Fatal("invalid folder launch accepted",bad)}
+ }
 }

@@ -6,6 +6,8 @@ let browser;try{const url=await new Promise((resolve,reject)=>{child.stdout.once
 async function api(path,body){const r=await fetch(base+'/api/'+path+'?session='+token,{method:body?'POST':'GET',headers:{'Content-Type':'application/json','X-ORCA-Session':token},body:body?JSON.stringify(body):undefined});if(!r.ok)throw Error(await r.text());return r.json()}
 await api('config',{orcaExe:require('path').join(__dirname,'mock_orca.py'),workRoot:root+'/jobs'});
 browser=await chromium.launch({headless:true,...(process.env.CHROMIUM_PATH?{executablePath:process.env.CHROMIUM_PATH}:{}),args:['--no-sandbox']});const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto(url);
+await page.locator('#nav-batch').click();
+await page.locator('#batch-auto').uncheck();
 await page.evaluate(()=>{active='W2';$('cores').value='1';$('maxcore').value='100'});
 const xyz='3\nwater\nO 0 0 0\nH .757 .586 0\nH -.757 .586 0\n';await page.locator('#batch-files').setInputFiles([1,2,3,4].map(n=>({name:'mol'+n+'.xyz',mimeType:'text/plain',buffer:Buffer.from(xyz)})));await page.waitForFunction(()=>batchMolecules.length===4);
 await page.locator('#batch-concurrency').fill('2');await page.locator('#batch-cpu').fill('2');await page.locator('#batch-ram').fill('1024');await page.locator('#batch-start').click();await page.waitForFunction(()=>$('batch-status').textContent.includes('등록했습니다'));

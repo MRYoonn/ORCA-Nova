@@ -40,6 +40,9 @@ type Stage struct {
 	Input  string `json:"input"`
 	Source string `json:"source"`
 	Opt    bool   `json:"opt"`
+	Goat bool `json:"goat,omitempty"`
+	Stationary string `json:"stationary,omitempty"`
+	CompositeFrom string `json:"compositeFrom,omitempty"`
 }
 type RunRequest struct {
 	Label  string    `json:"label"`
@@ -426,13 +429,10 @@ func (a *App) route(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		a.mu.Lock()
-		j := a.job
+		folder:=""
+		if a.job!=nil{folder=a.job.Folder}
 		a.mu.Unlock()
-		if j == nil {
-			fail(w, 400, "실행한 작업이 없어요.")
-			return
-		}
-		revealFolder(j.Folder)
+		if err:=revealFolder(folder);err!=nil{fail(w,400,err.Error());return}
 		respond(w, 200, map[string]bool{"ok": true})
 	case "/api/quit":
 		if r.Method != http.MethodPost {
@@ -630,11 +630,12 @@ func (a *App) failure(j *Job, msg string, outputPath string) {
 	a.updateJob(j, func(j *Job) { j.State = "failed"; j.Message = msg; j.Finished = time.Now().Format(time.RFC3339) })
 }
 func (a *App) runJob(ctx context.Context, orcaExe string, req RunRequest, j *Job) {
+	verifiedStages := make([]string, 0, len(req.Stages))
 	defer func() {
 		if req.Triplet != nil {
 			if err := writeTripletSummary(j.Folder, req); err != nil { a.updateJob(j, func(j *Job) { j.Message += " (Triplet 비교 보고서: "+err.Error()+")" }) }
 		}
-		path, err := writeAnalysisReports(j.Folder, req)
+		path, err := writeAnalysisReports(j.Folder, req, verifiedStages)
 		if err == nil {
 			a.updateJob(j, func(j *Job) { j.ReportFile = path })
 		} else {
@@ -660,6 +661,7 @@ func (a *App) runJob(ctx context.Context, orcaExe string, req RunRequest, j *Job
 					return
 				}
 			}
+			verifiedStages = append(verifiedStages, stage.Input)
 			continue
 		}
 		if ctx.Err() != nil {
@@ -750,11 +752,12 @@ func (a *App) runJob(ctx context.Context, orcaExe string, req RunRequest, j *Job
 				return
 			}
 		}
+		verifiedStages = append(verifiedStages, stage.Input)
 		a.updateJob(j, func(j *Job) { j.CompletedStages = append(j.CompletedStages, stage.Input) })
 		if i < len(j.stageKeys) {
 			a.history.observe(j.stageKeys[i], time.Since(j.stageStarted).Seconds())
 		}
-		if path, err := writeAnalysisReports(j.Folder, req); err == nil {
+		if path, err := writeAnalysisReports(j.Folder, req, verifiedStages); err == nil {
 			a.updateJob(j, func(j *Job) { j.ReportFile = path })
 		}
 	}
@@ -785,12 +788,27 @@ func checkOut(path string) (bool, bool, error) {
 	return normal, opt, scanner.Err()
 }
 
-func revealFolder(path string) {
+func resultDirectory(path string)(string,error){
+	if strings.TrimSpace(path)==""{return "",fmt.Errorf("아직 결과 폴더가 없습니다")}
+	absolute,err:=filepath.Abs(path)
+	if err!=nil{return "",err}
+	info,err:=os.Stat(absolute)
+	if err!=nil{return "",fmt.Errorf("결과 폴더를 찾을 수 없습니다: %s",absolute)}
+	if !info.IsDir(){return "",fmt.Errorf("결과 경로가 폴더가 아닙니다: %s",absolute)}
+	return absolute,nil
+}
+func revealFolder(path string) error {
+	folder,err:=resultDirectory(path)
+	if err!=nil{return err}
+	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" {
-		exec.Command("explorer.exe", path).Start()
+		cmd=exec.Command("explorer.exe", folder)
 	} else {
-		exec.Command("xdg-open", path).Start()
+		cmd=exec.Command("xdg-open", folder)
 	}
+	if err=cmd.Start();err!=nil{return fmt.Errorf("파일 탐색기를 실행하지 못했습니다: %w",err)}
+	go func(){_ = cmd.Wait()}()
+	return nil
 }
 func launch(url string) error {
 	if runtime.GOOS == "windows" {
