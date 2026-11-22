@@ -108,16 +108,6 @@ func preflight(req RunRequest) PreflightReport {
    }
   }
   g,found:=geometries[strings.ToLower(st.Source)]
-  if !found {
-   for k:=0;k<i;k++{
-    prev:=req.Stages[k];name:=stageGeometry(prev)
-    if strings.EqualFold(name,st.Source){
-     if name==""{bad(prefix+"앞 단계가 XYZ를 생성하지 않습니다: "+prev.Name)}
-     if pg,ok:=geometries[strings.ToLower(prev.Source)];ok{g=pg;found=true}
-     break
-    }
-   }
-  }
   if !found{bad(prefix+"XYZ가 없고 앞선 단계에서도 생성되지 않습니다: "+st.Source)}
   if found{
    out.Atoms=g.atoms;out.Electrons=g.electrons-out.Charge

@@ -1423,8 +1423,8 @@ function updateBatchETA(d,error=false){
  for(const [id,value] of Object.entries(values)){const node=$(id);if(node)node.textContent=value;}
 }
 function updateCompletedFolders(jobs){
- const select=$('completed-folder-select'),button=$('completed-folder-open'),path=$('completed-folder-path'),quick=$('completed-folder-shortcut');
- if(!select||!button||!path||!quick)return;
+ const select=$('completed-folder-select'),button=$('completed-folder-open'),copy=$('completed-folder-copy'),path=$('completed-folder-path'),quick=$('completed-folder-shortcut');
+ if(!select||!button||!copy||!path||!quick)return;
  const complete=jobs.filter(j=>j.state==='Completed'&&j.job?.folder).slice().reverse();
  const previous=select.value;
  const options=complete.map(j=>new Option((j.label||j.request?.label||j.id),j.id));
@@ -1436,7 +1436,7 @@ function updateCompletedFolders(jobs){
   select.dataset.signature=signature;
  }
  const chosen=complete.find(j=>j.id===select.value);
- select.disabled=!complete.length;button.disabled=!chosen;
+ select.disabled=!complete.length;button.disabled=!chosen;copy.disabled=!chosen;
  path.textContent=chosen?.job.folder||'완료 후 실제 계산 저장 폴더가 여기에 표시됩니다.';
  path.title=chosen?.job.folder||'';
  quick.textContent='완료된 Batch 결과 ('+complete.length+')';
@@ -1465,7 +1465,9 @@ function renderQueueRows(jobs,paused){
    if(j.state==='Running')button('중단','cancel');
    if(['Failed','Cancelled','Interrupted'].includes(j.state))button('재시작','retry');
    if(['Failed','Cancelled','Interrupted','Completed'].includes(j.state))button('기록 삭제','remove');
-   if(j.job?.folder){const b=document.createElement('button');b.type='button';b.className='btn small folder-open queue-folder-open';b.textContent='📁 결과 폴더 열기';b.setAttribute('aria-label',(j.label||j.id)+' 결과 폴더 열기');b.title=j.job.folder;b.onclick=()=>openBatchResultFolder(j.id);cells[0].append(b);}
+   if(j.job?.folder){const b=document.createElement('button');b.type='button';b.className='btn small folder-open queue-folder-open';b.textContent='📁 결과 폴더 열기';b.setAttribute('aria-label',(j.label||j.id)+' 결과 폴더 열기');b.title=j.job.folder;b.onclick=()=>openBatchResultFolder(j.id);cells[0].append(b);
+    const copy=document.createElement('button');copy.type='button';copy.className='btn small ghost queue-folder-copy';copy.textContent='경로 복사';copy.setAttribute('aria-label',(j.label||j.id)+' 결과 폴더 경로 복사');copy.onclick=()=>copyText(j.job.folder);cells[0].append(copy);
+   }
    if(j.job?.reportFile){const b=document.createElement('button');b.className='btn small ghost';b.textContent='TXT';b.onclick=async()=>{try{const r=await fetch('/api/queue/report?id='+encodeURIComponent(j.id)+'&session='+encodeURIComponent(desktopSession));if(!r.ok)throw Error('TXT 보고서를 읽지 못했습니다.');download((j.label||j.id)+'_analysis.txt',await r.text())}catch(e){batchMessage(e.message,true)}};cells[4].append(b);}
    body.append(row);
   }
@@ -2422,8 +2424,12 @@ function workspaceShow(key){
  const path=document.createElement('div');path.id='single-result-path';path.className='workspace-result-path';
  resultPanel.append(resultActions,path,$('desktop-eta'),$('desktop-live-log'),$('desktop-report-preview').closest('details'));
  const completed=document.createElement('div');completed.className='desktop-app-panel';
- completed.innerHTML='<h2 style="font-size:15px;margin:0 0 12px">완료된 Batch 결과</h2><div class="workspace-inline"><select id="completed-folder-select" class="control" aria-label="완료된 Batch 계산" disabled><option value="">완료된 Batch 결과 없음</option></select><button id="completed-folder-open" class="btn small folder-open" disabled>📁 선택한 결과 폴더 열기</button></div><div id="completed-folder-path" class="workspace-result-path"></div>';
+ completed.innerHTML='<h2 style="font-size:15px;margin:0 0 12px">완료된 Batch 결과</h2><div class="workspace-inline"><select id="completed-folder-select" class="control" aria-label="완료된 Batch 계산" disabled><option value="">완료된 Batch 결과 없음</option></select><button id="completed-folder-open" class="btn small folder-open" disabled>📁 선택한 결과 폴더 열기</button><button id="completed-folder-copy" class="btn small ghost" type="button" disabled>경로 복사</button></div><div id="completed-folder-path" class="workspace-result-path"></div>';
  res.append(completed);
+ $('completed-folder-copy').onclick=()=>{
+  const job=batchQueueState?.jobs?.find(j=>j.id===$('completed-folder-select').value);
+  if(job?.job?.folder)copyText(job.job.folder);
+ };
  $('completed-folder-select').onchange=()=>updateCompletedFolders(batchQueueState?.jobs||[]);
  $('completed-folder-open').onclick=()=>{const id=$('completed-folder-select').value;if(id)openBatchResultFolder(id)};
  res.append(resultPanel,$('viz-panel'));

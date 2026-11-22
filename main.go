@@ -630,11 +630,12 @@ func (a *App) failure(j *Job, msg string, outputPath string) {
 	a.updateJob(j, func(j *Job) { j.State = "failed"; j.Message = msg; j.Finished = time.Now().Format(time.RFC3339) })
 }
 func (a *App) runJob(ctx context.Context, orcaExe string, req RunRequest, j *Job) {
+	verifiedStages := make([]string, 0, len(req.Stages))
 	defer func() {
 		if req.Triplet != nil {
 			if err := writeTripletSummary(j.Folder, req); err != nil { a.updateJob(j, func(j *Job) { j.Message += " (Triplet 비교 보고서: "+err.Error()+")" }) }
 		}
-		path, err := writeAnalysisReports(j.Folder, req)
+		path, err := writeAnalysisReports(j.Folder, req, verifiedStages)
 		if err == nil {
 			a.updateJob(j, func(j *Job) { j.ReportFile = path })
 		} else {
@@ -660,6 +661,7 @@ func (a *App) runJob(ctx context.Context, orcaExe string, req RunRequest, j *Job
 					return
 				}
 			}
+			verifiedStages = append(verifiedStages, stage.Input)
 			continue
 		}
 		if ctx.Err() != nil {
@@ -750,11 +752,12 @@ func (a *App) runJob(ctx context.Context, orcaExe string, req RunRequest, j *Job
 				return
 			}
 		}
+		verifiedStages = append(verifiedStages, stage.Input)
 		a.updateJob(j, func(j *Job) { j.CompletedStages = append(j.CompletedStages, stage.Input) })
 		if i < len(j.stageKeys) {
 			a.history.observe(j.stageKeys[i], time.Since(j.stageStarted).Seconds())
 		}
-		if path, err := writeAnalysisReports(j.Folder, req); err == nil {
+		if path, err := writeAnalysisReports(j.Folder, req, verifiedStages); err == nil {
 			a.updateJob(j, func(j *Job) { j.ReportFile = path })
 		}
 	}

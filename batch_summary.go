@@ -5,6 +5,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -12,7 +13,8 @@ func (q *JobQueue) batchETA() string {
 	if q.Paused {
 		return "추정 중 · 대기 작업 보류"
 	}
-	total, longest := 0.0, 0.0
+	totalLow, totalHigh, longest := 0.0, 0.0, 0.0
+	cpuSeconds, ramSeconds := 0.0, 0.0
 	active := 0
 	for _, e := range q.Jobs {
 		if e.State != "Pending" && e.State != "Running" {
@@ -22,28 +24,35 @@ func (q *JobQueue) batchETA() string {
 		if e.Held {
 			return "추정 중 · 보류 작업 포함"
 		}
-		files := map[string]string{}
-		atoms := 0
+		if len(e.Request.Stages) == 0 {
+			return "추정 중 · 실행 단계 정보 없음"
+		}
+		files := make(map[string]string, len(e.Request.Files))
 		for _, f := range e.Request.Files {
 			files[f.Name] = f.Content
-			if f.Name == e.Request.Stages[0].Source {
-				atoms, _, _ = parseXYZAtoms(f.Content)
-			}
 		}
-		remain := 0.0
-		for i, s := range e.Request.Stages {
-			done := false
-			if e.Job != nil {
-				for _, name := range e.Job.CompletedStages {
-					if name == s.Input {
-						done = true
-					}
-				}
+		atoms := xyzHeaderAtomCount(files[e.Request.Stages[0].Source])
+		geometries := make(map[string]int)
+		low := 0.0
+		for i, stage := range e.Request.Stages {
+			stageAtoms := xyzHeaderAtomCount(files[stage.Source])
+			if stageAtoms == 0 {
+				stageAtoms = geometries[stage.Source]
 			}
-			if done {
+			if generated := stageGeometry(stage); generated != "" {
+				geometries[generated] = stageAtoms
+			}
+			if e.Job != nil && slices.Contains(e.Job.CompletedStages, stage.Input) {
 				continue
 			}
-			median, _, ok := q.app.history.estimate(stageFingerprint(files[s.Input], atoms))
+			if stageAtoms == 0 {
+				stageAtoms = atoms
+			}
+			key := stageFingerprint(files[stage.Input], stageAtoms)
+			if e.Job != nil && i < len(e.Job.stageKeys) {
+				key = e.Job.stageKeys[i]
+			}
+			median, samples, ok := q.app.history.estimate(key)
 			if !ok {
 				return "추정 중 · 유사 계산 기록 부족"
 			}
@@ -51,22 +60,31 @@ func (q *JobQueue) batchETA() string {
 			if e.State == "Running" && e.Job != nil && i == e.Job.StageIndex {
 				elapsed = float64(e.ETA.StageElapsedSeconds)
 			}
-			if elapsed > median*1.75 {
+			stageLow, stageHigh, overdue := remainingBounds(median, elapsed, samples)
+			if overdue {
 				return "예측 불안정 · 유사 계산보다 오래 진행 중"
 			}
-			remain += math.Max(0, median-elapsed)
+			low += stageLow
+			totalHigh += stageHigh
 		}
-		total += remain
-		if remain > longest {
-			longest = remain
-		}
+		totalLow += low
+		longest = math.Max(longest, low)
+		cpuSeconds += low * float64(e.CPU)
+		ramSeconds += low * float64(e.RAMMB)
 	}
 	if active == 0 {
 		return "계산 종료"
 	}
-	// Lower bound assumes ideal parallelism; upper bound assumes serial work.
-	lower := math.Max(longest, total/float64(q.Limits.Concurrency)) * 0.5
-	return formatRemain(lower) + " ~ " + formatRemain(total*1.75) + " (과거 기록 기반 범위)"
+	// Compare the longest job and the work required under each resource limit.
+	// The upper estimate assumes serial execution without external waits.
+	lower := math.Max(longest, totalLow/float64(max(1, q.Limits.Concurrency)))
+	if q.Limits.CPU > 0 {
+		lower = math.Max(lower, cpuSeconds/float64(q.Limits.CPU))
+	}
+	if q.Limits.RAMMB > 0 {
+		lower = math.Max(lower, ramSeconds/float64(q.Limits.RAMMB))
+	}
+	return formatRemain(math.Min(lower, totalHigh)) + " ~ " + formatRemain(totalHigh) + " (과거 기록 기반 범위)"
 }
 func (q *JobQueue) writeBatchLocked() {
 	q.app.mu.Lock()

@@ -96,8 +96,11 @@ func xyzAtomCount(path string) int {
 	if err != nil {
 		return 0
 	}
-	lines := strings.SplitN(string(b), "\n", 2)
-	v, err := strconv.Atoi(strings.TrimSpace(lines[0]))
+	return xyzHeaderAtomCount(string(b))
+}
+func xyzHeaderAtomCount(xyz string) int {
+	header, _, _ := strings.Cut(xyz, "\n")
+	v, err := strconv.Atoi(strings.TrimSpace(header))
 	if err != nil || v <= 0 || v > 100000 {
 		return 0
 	}
@@ -173,18 +176,20 @@ func formatRemain(seconds float64) string {
 	}
 	return fmt.Sprintf("약 %d시간 %d분", minutes/60, minutes%60)
 }
-func rangeEstimate(median, elapsed float64, n int) string {
+func remainingBounds(median, elapsed float64, n int) (low, high float64, overdue bool) {
 	// Wide uncertainty for 1-2 samples; tighter only after several comparable
 	// successful jobs. Never pretend the forecast is an accurate deadline.
 	lower, upper := 0.5, 1.75
 	if n >= 3 {
 		lower, upper = 0.7, 1.4
 	}
-	if elapsed > median*upper {
+	return math.Max(0, median*lower-elapsed), math.Max(0, median*upper-elapsed), elapsed >= median*upper
+}
+func rangeEstimate(median, elapsed float64, n int) string {
+	lo, hi, overdue := remainingBounds(median, elapsed, n)
+	if overdue {
 		return "예측 불안정 · 유사 계산보다 오래 진행 중"
 	}
-	lo := math.Max(0, median*lower-elapsed)
-	hi := math.Max(0, median*upper-elapsed)
 	return formatRemain(lo) + " ~ " + formatRemain(hi)
 }
 func lastOptCycle(out string) int {
@@ -224,30 +229,30 @@ func (a *App) currentETA(job *Job) etaView {
 		result.StageETA = rangeEstimate(median, float64(result.StageElapsedSeconds), n)
 		result.EstimateBasis = fmt.Sprintf("유사 설정의 완료 기록 %d개 기반 · 실제 수렴에 따라 변동", n)
 	}
-	if len(job.stageKeys) == 0 {
+	if job.StageIndex < 0 || job.StageIndex >= len(job.stageKeys) {
 		return result
 	}
 	// Sum the uncertainty bounds of the remaining stages, subtracting
 	// elapsed time from the current stage only. Do not fabricate a near-zero
 	// forecast when the current calculation has already exceeded its bound.
-	lo,hi:=float64(0),float64(0)
-	for i,key:=range job.stageKeys{
-		if i<job.StageIndex{continue}
-		median,n,ok:=a.history.estimate(key)
-		if !ok{return result}
-		lower,upper:=0.5,1.75
-		if n>=3{lower,upper=0.7,1.4}
-		elapsed:=float64(0)
-		if i==job.StageIndex{
-			elapsed=float64(result.StageElapsedSeconds)
-			if elapsed>median*upper{
-				result.WorkflowETA="예측 불안정 · 현재 단계 지연"
-				return result
-			}
+	lo, hi := 0.0, 0.0
+	for i := job.StageIndex; i < len(job.stageKeys); i++ {
+		median, n, ok := a.history.estimate(job.stageKeys[i])
+		if !ok {
+			return result
 		}
-		lo+=math.Max(0,median*lower-elapsed)
-		hi+=math.Max(0,median*upper-elapsed)
+		elapsed := 0.0
+		if i == job.StageIndex {
+			elapsed = float64(result.StageElapsedSeconds)
+		}
+		low, high, overdue := remainingBounds(median, elapsed, n)
+		if overdue {
+			result.WorkflowETA = "예측 불안정 · 현재 단계 지연"
+			return result
+		}
+		lo += low
+		hi += high
 	}
-	result.WorkflowETA=formatRemain(lo)+" ~ "+formatRemain(hi)
+	result.WorkflowETA = formatRemain(lo) + " ~ " + formatRemain(hi)
 	return result
 }
