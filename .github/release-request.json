@@ -1,8 +1,8 @@
 {
-  "tag": "v1.8.0-rc.1",
+  "tag": "v1.8.0-rc.2",
   "prerelease": true,
   "source": "approved-main-merge",
-  "summary": "User-approved candidate: shared auto CPU/RAM, simplified workspace, active queue append, live monitoring and settings persistence. Windows and Chromium checks passed; real ORCA 6.x/MPI scientific validation remains outstanding.",
+  "summary": "User-approved Beta. Glorius SI workflows, validated Composite Gibbs, result-folder access, and Batch ETA improvements. Live ORCA 6.x/xTB validation remains pending.",
   "release_type": "candidate",
   "stable_release_blocked": true,
   "previous_stable": "v1.7.0"
