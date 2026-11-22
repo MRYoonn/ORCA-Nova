@@ -2,9 +2,9 @@
 
 ## 2026-11-22
 
-- 브랜치 `feat/glorius-si-workflow`, [Draft PR #56](https://github.com/MRYoonn/ORCA-Nova/pull/56).
+- 브랜치 `feat/glorius-si-workflow`, [병합된 PR #56](https://github.com/MRYoonn/ORCA-Nova/pull/56).
 - 최신 제품 코드 커밋 [a1e773895c0b1dc859dd19134d3da907ca40d782](https://github.com/MRYoonn/ORCA-Nova/commit/a1e773895c0b1dc859dd19134d3da907ca40d782). 이 문서의 커밋은 `git rev-parse HEAD`로 확인한다.
-- 공개 버전 [Stable v1.7.0](https://github.com/MRYoonn/ORCA-Nova/releases/tag/v1.7.0), [Beta v1.8.0-rc.1](https://github.com/MRYoonn/ORCA-Nova/releases/tag/v1.8.0-rc.1). `v1.8.0-rc.2` 릴리스 노트 준비 완료. 배포 승인과 병합 대기.
+- 공개 버전 [Stable v1.7.0](https://github.com/MRYoonn/ORCA-Nova/releases/tag/v1.7.0), [Beta v1.8.0-rc.2](https://github.com/MRYoonn/ORCA-Nova/releases/tag/v1.8.0-rc.2). 사용자 승인 후 배포했으며, 태그는 `966159f9719e0a9f104db5bdc509335f51d00cbd`를 가리킨다.
 
 ### 변경
 
@@ -18,10 +18,12 @@
 - 로컬 Go 전체 회귀와 `go vet ./...` 통과. 공개 ORCA 6.1.1의 원본 blob을 확인한 뒤 SP, Opt/Freq, PES Scan, TDDFT, triplet 출력 5개 파서 검증 통과. Glorius의 GOAT→Opt/Freq→SP 실행 분기는 Mock ORCA로 검증했다.
 - Chromium의 워크플로 지정 회귀 7개 및 JavaScript 구문 검사 통과. Chromium과 로컬 Go 서버를 연결한 4개 XYZ, 2개 병렬, 실패 후 재시작, 결과 TXT/JSON/CSV 내보내기 통과. 업데이트 UI는 로컬 Playwright 기본 브라우저 경로가 비어 있어 설치된 시스템 Chromium을 연결해 재검증했다.
 - 로컬 Windows amd64 Go EXE와 테스트 바이너리 교차 빌드 통과. Windows WebView2와 Portable ZIP/EXE 실행 검증은 GitHub의 Windows CI에서 수행한다.
+- 최종 PR HEAD `745d195cf4c3a1f178afbcd8476ac3f1c5544d42`의 [Windows Portable](https://github.com/MRYoonn/ORCA-Nova/actions/runs/44996147146), [Chromium](https://github.com/MRYoonn/ORCA-Nova/actions/runs/44996147224), [Golden/Go](https://github.com/MRYoonn/ORCA-Nova/actions/runs/44996147182) 통과. [Beta Release Windows Portable](https://github.com/MRYoonn/ORCA-Nova/actions/runs/44996292281)에서 Windows WebView2 빌드, ZIP 패키징, 실제 EXE 버전·로컬 API 스모크 검증과 공개가 모두 성공했다.
+- 익명으로 내려받은 공개 ZIP의 SHA-256은 `dbe0aa3bf47fbdeeba86ee82176be28e4bf33e1657f468fb765501c6f97a6735`로 공개 체크섬과 일치한다. ZIP 무결성 및 두 EXE와 WebView2 DLL 포함을 확인했다. GitHub Release는 Pre-release로 표시되고 최신 Stable 링크는 `v1.7.0`을 가리킨다. 업데이트 채널 필터링과 저장은 Go 및 Chromium 회귀에서 확인했다.
 - 인수인계 당시 `8238886`의 [Windows](https://github.com/MRYoonn/ORCA-Nova/actions/runs/44947636166), [Chromium](https://github.com/MRYoonn/ORCA-Nova/actions/runs/44947636098), [Golden/Go](https://github.com/MRYoonn/ORCA-Nova/actions/runs/44947636093) 성공 기록을 공개 페이지에서 확인했다. [변경 커밋의 CI](https://github.com/MRYoonn/ORCA-Nova/commit/a1e773895c0b1dc859dd19134d3da907ca40d782/checks)는 여기서 확인한다.
 
 ### 재개 지점
 
-1. 최신 PR의 Windows, Chromium, Golden/Go 확인 후 승인된 범위에서 `.github/workflows/release.yml`로 Beta 배포한다. 후보 버전 `v1.8.0-rc.2`에 해당하는 공개 Portable ZIP, SHA256SUMS, 앱 버전 및 Beta 채널을 확인한다.
+1. 실제 Windows ORCA 6.x/xTB 환경에서 Glorius Workflow를 실행한다. GOAT 산출 XYZ, DFT 단계 검증, Composite Gibbs와 재시작을 확인하고 결과를 `docs/GLORIUS_2026_SI_WORKFLOW.md`에 기록한다.
 2. P1은 `queue.go`의 자동 자원 할당 및 Batch 재개 흐름에서 이어간다. 사용자 지정 자동 동시 실행 수의 효과와 ORCA/MPI 프로세스의 실제 CPU/RAM을 Windows에서 확인한다.
 3. P2는 `docs/GLORIUS_2026_SI_WORKFLOW.md`에서 이어간다. 원본 INP, 실제 ORCA 6.x/xTB 실행, 독립 conformer 재순위화와 결과 분석이 남았다. Golden은 OUT 파서의 검증 범위다.
