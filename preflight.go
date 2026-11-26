@@ -79,6 +79,7 @@ func preflight(req RunRequest) PreflightReport {
    if err!=nil{bad(f.Name+": "+err.Error())}else{geometries[strings.ToLower(f.Name)]=geometry{n,z}}
   }
  }
+ if err:=validateHATRequest(req,files);err!=nil{bad(err.Error())}
  earlier:=map[string]Stage{}
  for i,st:=range req.Stages {
   prefix:=fmt.Sprintf("%d단계 (%s): ",i+1,st.Name)

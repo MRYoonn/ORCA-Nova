@@ -43,6 +43,8 @@ type Stage struct {
 	Goat bool `json:"goat,omitempty"`
 	Stationary string `json:"stationary,omitempty"`
 	CompositeFrom string `json:"compositeFrom,omitempty"`
+	HAT string `json:"hat,omitempty"`
+	EndSource string `json:"endSource,omitempty"`
 }
 type RunRequest struct {
 	Label  string    `json:"label"`
