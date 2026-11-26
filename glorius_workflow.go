@@ -41,7 +41,7 @@ func gloriusLevel(inp string, high bool) bool {
 	if high {
 		basis = "def2-qzvppd"
 	}
-	required := []string{"m06-2x", basis, "def2/j", "rijcosx", "d3zero", "cpcm(acetonitrile)"}
+	required := []string{"m062x", basis, "def2/j", "rijcosx", "d3zero", "cpcm(acetonitrile)"}
 	allowed := map[string]bool{}
 	for _, v := range required {
 		if !k[v] {
