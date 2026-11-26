@@ -149,15 +149,19 @@ type hatStageResult struct {
 	HMullikenSpin    *float64 `json:",omitempty"`
 }
 
-type hatResult struct {
-	Stages          []hatStageResult
+type hatBarriers struct {
 	TemperatureK    float64
 	TSImaginaryCm1  float64
 	ReactionKcalMol float64
 	ForwardKcalMol  float64
 	ReverseKcalMol  float64
 	IRC             string
-	Unavailable     string `json:",omitempty"`
+}
+
+type hatResult struct {
+	Stages []hatStageResult
+	*hatBarriers
+	Unavailable string `json:",omitempty"`
 }
 
 func analyzeHAT(folder string, req RunRequest, completed []string, analyses map[string]OrcaAnalysis) *hatResult {
@@ -165,6 +169,7 @@ func analyzeHAT(folder string, req RunRequest, completed []string, analyses map[
 		return nil
 	}
 	result := &hatResult{}
+	barriers := &hatBarriers{}
 	if req.HATMapping == nil {
 		result.Unavailable = "원자 대응 정보 없음"
 		return result
@@ -176,11 +181,11 @@ func analyzeHAT(folder string, req RunRequest, completed []string, analyses map[
 			result.Unavailable = stage.Name + " 단계 미완료 또는 Gibbs 없음"
 			return result
 		}
-		if analysis.Temperature == nil || *analysis.Temperature <= 0 || (len(result.Stages) > 0 && result.TemperatureK != *analysis.Temperature) {
+		if analysis.Temperature == nil || *analysis.Temperature <= 0 || (len(result.Stages) > 0 && barriers.TemperatureK != *analysis.Temperature) {
 			result.Unavailable = "Opt/Freq와 TS OUT에서 동일한 온도가 확인되어야 합니다"
 			return result
 		}
-		result.TemperatureK = *analysis.Temperature
+		barriers.TemperatureK = *analysis.Temperature
 		raw, err := readGloriusFile(folder, stageGeometry(stage))
 		if err != nil {
 			result.Unavailable = err.Error()
@@ -204,7 +209,7 @@ func analyzeHAT(folder string, req RunRequest, completed []string, analyses map[
 		if stage.HAT == "ts" {
 			for _, frequency := range analysis.Frequencies {
 				if frequency < -0.1 {
-					result.TSImaginaryCm1 = frequency
+					barriers.TSImaginaryCm1 = frequency
 					break
 				}
 			}
@@ -212,13 +217,14 @@ func analyzeHAT(folder string, req RunRequest, completed []string, analyses map[
 		result.Stages = append(result.Stages, row)
 	}
 	r, p, t := result.Stages[0].GibbsEh, result.Stages[1].GibbsEh, result.Stages[2].GibbsEh
-	result.ReactionKcalMol = (p - r) * 627.509474
-	result.ForwardKcalMol = (t - r) * 627.509474
-	result.ReverseKcalMol = (t - p) * 627.509474
-	result.IRC = "IRC 완료 전 · 연결성 미검증"
+	barriers.ReactionKcalMol = (p - r) * 627.509474
+	barriers.ForwardKcalMol = (t - r) * 627.509474
+	barriers.ReverseKcalMol = (t - p) * 627.509474
+	barriers.IRC = "IRC 완료 전 · 연결성 미검증"
 	if slices.Contains(completed, req.Stages[3].Input) {
-		result.IRC = hatIRCEndpoints(folder, req)
+		barriers.IRC = hatIRCEndpoints(folder, req)
 	}
+	result.hatBarriers = barriers
 	return result
 }
 
@@ -237,7 +243,7 @@ func formatHATResult(result *hatResult) string {
 			fmt.Fprintf(&b, "  이동 H Mulliken Spin %.5f\n", *s.HMullikenSpin)
 		}
 	}
-	if result.Unavailable != "" {
+	if result.hatBarriers == nil {
 		fmt.Fprintf(&b, "Unavailable: %s\n", result.Unavailable)
 		return b.String()
 	}

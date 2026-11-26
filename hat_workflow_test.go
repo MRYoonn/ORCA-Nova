@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"slices"
 	"strings"
@@ -65,7 +66,12 @@ func TestHATPreflight(t *testing.T) {
 }
 
 func TestHATReportDoesNotInventMissingEnergy(t *testing.T) {
-	r := formatHATResult(analyzeHAT(t.TempDir(), hatTestRequest(), nil, nil))
+	result := analyzeHAT(t.TempDir(), hatTestRequest(), nil, nil)
+	raw, err := json.Marshal(result)
+	if err != nil || strings.Contains(string(raw), "ForwardKcalMol") {
+		t.Fatalf("unavailable barrier encoded as a number: %s %v", raw, err)
+	}
+	r := formatHATResult(result)
 	if !strings.Contains(r, "Unavailable") || strings.Contains(r, "Forward ΔG‡ =") {
 		t.Fatalf("unexpected report: %s", r)
 	}

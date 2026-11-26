@@ -59,7 +59,7 @@ func stageFingerprint(input string, atoms int) string {
 		return ""
 	}
 	var kws []string
-	for _, line := range strings.Split(input, "\n") {
+	for _, line := range strings.Split(normalizeORCAInput(input), "\n") {
 		t := strings.TrimSpace(line)
 		if strings.HasPrefix(t, "!") {
 			kws = append(kws, strings.Fields(strings.ToLower(strings.TrimSpace(strings.TrimPrefix(t, "!"))))...)

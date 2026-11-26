@@ -39,7 +39,7 @@ func keywordLine(inp string) map[string]bool {
 	return out
 }
 func gloriusLevel(inp string, high bool) bool {
-	k := keywordLine(inp)
+	k := keywordLine(normalizeORCAInput(inp))
 	basis := "def2-tzvp"
 	if high {
 		basis = "def2-qzvppd"

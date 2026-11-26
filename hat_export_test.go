@@ -176,10 +176,22 @@ func TestHATBundleRunsAndReusesValidatedEndpoints(t *testing.T) {
 			if next == folder {
 				t.Fatal("previous output overwritten")
 			}
+			restarted, err := run("resume", folder)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err = os.Stat(filepath.Join(restarted, "r.launched")); !os.IsNotExist(err) {
+				t.Fatal("Resume reran the verified reactant")
+			}
+
 			for _, name := range []string{"r.launched", "p.launched"} {
 				if _, err := os.Stat(filepath.Join(next, name)); !os.IsNotExist(err) {
 					t.Fatalf("%s was rerun", name)
 				}
+			}
+			jsonReport, err := os.ReadFile(filepath.Join(next, "results.json"))
+			if err != nil || !strings.Contains(string(jsonReport), `"ForwardKcalMol": 0`) {
+				t.Fatalf("valid zero barrier missing: %s %v", jsonReport, err)
 			}
 			report, err := os.ReadFile(filepath.Join(next, "analysis.txt"))
 			if err != nil || !strings.Contains(string(report), "Forward → Reactant") {
