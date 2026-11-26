@@ -34,3 +34,10 @@
 - `orca_keywords.go` and `assets/desktop.html` own the ORCA 6 Functional labels and execution spellings. Checks cover 45 calculations, 29 presets and 123 generated INPs, plus the existing Batch, Glorius, SI and Triplet suites.
 - `hat_mapping.go` and `hat_workflow.go` check the declared H transfer, optimized endpoint graphs, common model and final NEB-TS artifact. `hat_restart.go` resumes from checked outputs. `hat_export.go` uses the desktop execution and validation pipeline in the Windows ZIP.
 - Resume validation on a licensed Windows ORCA 6.0.1/6.1.x workstation with the reported H14/H17 XYZ pair. Record the final NEB-TS artifact and IRC endpoint names, then qualify Hessian handoff with the applicable ORCA manual and execution results. ORCA 7 is unqualified.
+
+### v1.10.0-rc.1 Beta verification
+
+- Published tag `v1.10.0-rc.1` identifies product commit `6f01f7b13c3169b810b44537c2464121fe41e69e`. Stable `v1.9.1` and `main` stayed at `56ec8673bcf7cb9f48d1b55f3cc8107c4e7e04ba`.
+- [Windows Portable and mock-ORCA BAT](https://github.com/MRYoonn/ORCA-Nova/actions/runs/45872691657), [Chromium](https://github.com/MRYoonn/ORCA-Nova/actions/runs/45872691621), and [release versioned EXE smoke](https://github.com/MRYoonn/ORCA-Nova/actions/runs/45872986654) passed. Local Go tests, vet, race, public ORCA 6.1.1 OUT parser fixtures, and authenticated D9/Batch HTTP checks passed.
+- The public ZIP was downloaded and checked with SHA-256 `bf91ed2cc99e3b02ff6bd0523c13185629e46cde5903f7d7b8306e342735b270`. Both EXEs and WebView2 components were present. The updater accepted the archive and separated the Beta offer from Stable in the release selection test. [Public prerelease](https://github.com/MRYoonn/ORCA-Nova/releases/tag/v1.10.0-rc.1)
+- The development branch is on GitHub. PR creation received HTTP 403 from the GitHub GraphQL endpoint in the cloud environment. The repository's existing tag workflow published the verified Beta. [Changes against main](https://github.com/MRYoonn/ORCA-Nova/compare/main...feat/hat-workflow-compat)
