@@ -562,8 +562,8 @@ const GROUPS=[
 {id:'D3',name:'PES Scan',desc:'원자 간 거리 등을 바꾸며 에너지 변화를 조사해요.',guide:'원자 인덱스는 0부터 시작합니다. Atom i / j와 시작·끝 거리, Steps를 입력하고 해당 결합이 올바른지 XYZ를 기준으로 확인하세요.',kind:'single'},
 {id:'D5',name:'Activation Barrier (ΔG‡)',desc:'Transition State와 반응물의 Gibbs Free Energy 차이를 계산해요.',guide:'반응물 Opt + Freq와 TS OptTS + Freq를 각각 실행합니다. 둘의 자유에너지에서 ΔG‡를 계산하며 표준상태와 기준을 일치시켜야 합니다.',kind:'workflow',steps:[['Reactant Opt + Freq','A4',null,null,'reactant.xyz'],['TS OptTS + Freq','D1',null,null,'ts_guess.xyz'],['ΔG‡ Comparison',null,null,null,null]]},
 {id:'D6',name:'Reaction Energy (ΔG)',desc:'반응물과 생성물의 Gibbs Free Energy 차이를 구해요.',guide:'반응물과 생성물 각각 Opt + Freq를 수행하고 화학양론을 반영해 계산한 자유에너지를 비교하세요.',kind:'workflow',steps:[['Reactant Opt + Freq','A4',null,null,'reactant.xyz'],['Product Opt + Freq','A4',null,null,'product.xyz'],['ΔG Comparison',null,null,null,null]]},
-{id:'D9',name:'HAT / NEB-TS + Gibbs + IRC',desc:'두 XYZ에서 HAT 전이상태와 Gibbs 장벽을 한 번에 탐색합니다.',guide:'반응물 XYZ를 기본으로 등록하고 생성물 XYZ는 product.xyz라는 이름으로 추가하세요. 원자 순서와 이동 H의 인덱스를 유지하세요. 같은 이론 수준으로 두 끝점을 Opt/Freq한 뒤 NEB-TS/Freq 및 IRC를 실행합니다. 결과에서 허수 모드와 IRC 끝점, 스핀 상태를 직접 검증하세요. Batch 미지원.',kind:'workflow',hat:true,steps:[['Reactant Opt + Freq','A4',null,null,null,{hat:'reactant'}],['Product Opt + Freq','A4',null,null,'product.xyz',{hat:'product'}],['NEB-TS + Freq','HATNEB',null,null,null,{from:0,hat:'ts',endFrom:1}],['IRC (both directions)','D2',null,null,null,{from:2,hat:'irc'}]]},
-{id:'D8',name:'HAT / BDE Analysis',desc:'결합 해리 및 Hydrogen Atom Transfer의 에너지 변화를 계산해요.',guide:'일반적인 X–H BDE는 X–H, X·, H·의 에너지 차이를 계산합니다. HAT ΔG는 Hydrogen donor/acceptor 상태와 반응 조건을 별도로 고려해야 합니다.',kind:'workflow',steps:[['Parent X-H Opt + Freq','A4',null,1,'parent.xyz'],['Radical X· Opt + Freq','A4',null,2,'radical.xyz'],['H· SP','A2',0,2,'hydrogen.xyz'],['BDE / HAT Analysis',null,null,null,null]]}]},
+{id:'D8',name:'HAT / BDE Analysis',desc:'결합 해리 및 Hydrogen Atom Transfer의 에너지 변화를 계산해요.',guide:'일반적인 X–H BDE는 X–H, X·, H·의 에너지 차이를 계산합니다. HAT ΔG는 Hydrogen donor/acceptor 상태와 반응 조건을 별도로 고려해야 합니다.',kind:'workflow',steps:[['Parent X-H Opt + Freq','A4',null,1,'parent.xyz'],['Radical X· Opt + Freq','A4',null,2,'radical.xyz'],['H· SP','A2',0,2,'hydrogen.xyz'],['BDE / HAT Analysis',null,null,null,null]]},
+{id:'D9',name:'HAT / NEB-TS + Gibbs + IRC',desc:'두 XYZ에서 HAT 전이상태와 Gibbs 장벽을 한 번에 탐색합니다.',guide:'반응물 XYZ를 기본으로 등록하고 생성물 XYZ는 product.xyz라는 이름으로 추가하세요. 원자 순서와 이동 H의 인덱스를 유지하세요. 같은 이론 수준으로 두 끝점을 Opt/Freq한 뒤 NEB-TS/Freq 및 IRC를 실행합니다. 결과에서 허수 모드와 IRC 끝점, 스핀 상태를 직접 검증하세요. Batch 미지원.',kind:'workflow',hat:true,steps:[['Reactant Opt + Freq','A4',null,null,null,{hat:'reactant'}],['Product Opt + Freq','A4',null,null,'product.xyz',{hat:'product'}],['NEB-TS + Freq','HATNEB',null,null,null,{from:0,hat:'ts',endFrom:1}],['IRC (both directions)','D2',null,null,null,{from:2,hat:'irc'}]]}]},
 {id:'E',name:'Thermodynamics',items:[
 {id:'E4',name:'SET Thermodynamics',desc:'산화·환원 전후의 자유에너지를 비교해 Electron Transfer의 열역학을 계산해요.',guide:'Neutral / Radical Cation / Radical Anion 종들의 계산값을 비교하는 템플릿입니다. 실제 Redox Potential에는 용매화, 자유에너지 및 기준 전극 보정이 추가로 필요합니다.',kind:'workflow',steps:[['Neutral Opt + Freq','A4',0,1,'neutral.xyz'],['Cation Opt + Freq','A4',1,2,'cation.xyz'],['Anion Opt + Freq','A4',-1,2,'anion.xyz'],['SET Analysis',null,null,null,null]]},
 {id:'E',name:'',desc:'',kind:'none',hidden:true},
@@ -664,10 +664,12 @@ function addOnAvailable(base){return ['A1','A2','A3','A4','A5','B3','C1','C2','C
 function addonUserChecked(id){const el=$(id);return el.dataset.forced==='true'?el.dataset.prior==='true':el.checked}
 function addOnChecked(id,base){return addOnAvailable(base)&&addonUserChecked(id)}
 function effectiveChargeMult(st,base){let charge=st[2]===null?num('charge',0):st[2],mult=st[3]===null?num('mult',1):st[3];if(base==='B3')mult=3;if(base==='C7'){charge=num('charge',0)+Number(val('iontype'));if(mult===1)mult=2}return {charge,mult}}
+// The literature/UI spelling is M06-2X; ORCA 6 simple input requires M062X.
+function orcaFunctionalKeyword(fn){return fn==='M06-2X'?'M062X':fn}
 function gloriusInput(stageIndex,autoPreview){
  const st=stages()[stageIndex],opts=stageOptions(st),base=st[1],{charge,mult}=effectiveChargeMult(st,base);
  const allocation=autoPreview?singleDraftResources():null;
- const tokens=opts.goat?['GOAT','XTB2']:['M06-2X',opts.high?'def2-QZVPPD':'def2-TZVP','def2/J','RIJCOSX','D3ZERO','CPCM(acetonitrile)',val('scf')];
+ const tokens=opts.goat?['GOAT','XTB2']:[orcaFunctionalKeyword('M06-2X'),opts.high?'def2-QZVPPD':'def2-TZVP','def2/J','RIJCOSX','D3ZERO','CPCM(acetonitrile)',val('scf')];
  if(!opts.goat&&mult>1)tokens.unshift('UKS');
  if(base==='A4')tokens.push('Opt','Freq');
  if(base==='D1')tokens.push('OptTS','Freq');
@@ -688,7 +690,7 @@ function buildInput(stageIndex=activeStage,autoPreview=true){
  if(calc(active).glorius)return gloriusInput(stageIndex,autoPreview);
  const c=calc(active),st=stages()[stageIndex],base=st[1],opts=stageOptions(st),fn=val('functional'),basis=val('basis'),disp=val('dispersion');
  const file=xyzName(stageIndex),{charge,mult}=effectiveChargeMult(st,base);
- let tokens=[fn];if(fn!=='r2SCAN-3c')tokens.push(basis);
+ let tokens=[orcaFunctionalKeyword(fn)];if(fn!=='r2SCAN-3c')tokens.push(basis);
  if(disp!=='None'&&fn!=='r2SCAN-3c'&&fn!=='wB97X-D3')tokens.push(disp);
  tokens.push(val('scf'));
  const baseFreq=['A3','A4','A5','B3','D1','HATNEB'].includes(base);
