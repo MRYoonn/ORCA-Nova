@@ -17,8 +17,8 @@ Source 1: Hartmann, Liljenberg, Domack, Hölter, Daniliuc, Glorius, *Energy-Tran
 
 The published **article's Figure 5 caption** specifies M06-2X(D3Zero)/def2-QZVPPD/CPCM(MeCN) // M06-2X(D3Zero)/def2-TZVP/CPCM(MeCN), with relative Gibbs free energies. Figure 5 is not evidence that the user's molecule has the same chemical state or thermochemistry.
 
-- Preset A = `! M06-2X def2-TZVP D3ZERO TightSCF Opt Freq CPCM(acetonitrile)` (general single-input template matching published optimization level).
-- Preset B = `! M06-2X def2-QZVPPD D3ZERO TightSCF CPCM(acetonitrile)` (single-point calculation using the **optimized geometry from A**).
+- Preset A = `! M062X def2-TZVP D3ZERO TightSCF Opt Freq CPCM(acetonitrile)` (general single-input template matching published optimization level).
+- Preset B = `! M062X def2-QZVPPD D3ZERO TightSCF CPCM(acetonitrile)` (single-point calculation using the **optimized geometry from A**).
 - The final corrected Gibbs free energy needs the explicitly validated high-level electronic energy + appropriate thermal corrections, appropriate standard-state and conditions. **Preset B alone does not produce the reported composite Gibbs energies.**
 - Input electron configuration, correct charge/multiplicity, geometry and reaction species are always user decisions.
 - `D3ZERO` and `def2-QZVPPD` keywords are present in the ORCA 6.1 official documentation:
