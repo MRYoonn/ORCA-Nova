@@ -51,6 +51,8 @@ type RunRequest struct {
 	Files  []JobFile `json:"files"`
 	Stages []Stage   `json:"stages"`
 	Triplet *tripJobMeta `json:"triplet,omitempty"`
+	HATMapping *hatMapping `json:"hatMapping,omitempty"`
+	HATRestart *hatRestart `json:"hatRestart,omitempty"`
 	AutoCPU int `json:"autoCPU,omitempty"`
 }
 type Job struct {
@@ -335,6 +337,10 @@ func (a *App) route(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		respond(w, 200, map[string]bool{"ok": true})
+	case "/api/hat/export":
+		a.exportHAT(w,r)
+	case "/api/hat/mapping":
+		hatMappingRoute(w,r)
 	case "/api/preflight":
 		if r.Method != http.MethodPost {
 			fail(w, 405, "Method not allowed")
@@ -345,9 +351,18 @@ func (a *App) route(w http.ResponseWriter, r *http.Request) {
 			fail(w, 400, "입력 데이터 해석 실패: "+err.Error())
 			return
 		}
-		planned,allocation,err:=planStandaloneResources(req,a.probeResources())
+		planned,allocation,err:=planStandaloneResources(normalizeORCARequest(req),a.probeResources())
 		if err!=nil{fail(w,400,err.Error());return}
 		report := preflight(planned)
+		if report.OK && planned.HATRestart!=nil {
+			a.mu.Lock()
+			root:=a.cfg.WorkRoot
+			a.mu.Unlock()
+			if _,_,err:=validateHATRestart(root,planned);err!=nil {
+				report.OK=false
+				report.Errors=append(report.Errors,err.Error())
+			}
+		}
 		respond(w, 200, struct {PreflightReport; Allocation *allocationView `json:"allocation,omitempty"`}{report,allocation})
 	case "/api/run":
 		if r.Method != http.MethodPost {
@@ -503,7 +518,7 @@ func (a *App) start(w http.ResponseWriter, r *http.Request) {
 		fail(w, 400, "입력 데이터를 읽지 못했어요: "+err.Error())
 		return
 	}
-	planned,allocation,planErr:=planStandaloneResources(req,a.probeResources())
+	planned,allocation,planErr:=planStandaloneResources(normalizeORCARequest(req),a.probeResources())
 	if planErr!=nil{fail(w,400,planErr.Error());return}
 	req=planned
 	if report := preflight(req); !report.OK {
@@ -563,6 +578,8 @@ func (a *App) start(w http.ResponseWriter, r *http.Request) {
 		fail(w, 500, "작업 폴더를 만들 수 없어요: "+err.Error())
 		return
 	}
+	previous,reuse,err:=validateHATRestart(cfg.WorkRoot,req)
+	if err!=nil {fail(w,400,err.Error());return}
 	folder := filepath.Join(cfg.WorkRoot, time.Now().Format("20060102_150405")+"_"+safeLabel(req.Label))
 	for i := 1; i < 100; i++ {
 		if _, err := os.Stat(folder); errors.Is(err, os.ErrNotExist) {
@@ -585,8 +602,11 @@ func (a *App) start(w http.ResponseWriter, r *http.Request) {
 		fail(w, 400, "첫 단계 XYZ가 없어요: "+req.Stages[0].Source+" (폴더: "+folder+")")
 		return
 	}
+	if err:=writeHATMapping(folder,req);err!=nil {fail(w,500,err.Error());return}
+	completed,err:=copyHATCheckpoints(previous,folder,req,reuse)
+	if err!=nil {fail(w,400,err.Error());return}
 	ctx, cancel := context.WithCancel(context.Background())
-	job := &Job{ID: time.Now().Format("20060102_150405"), Folder: folder, State: "running", StageCount: len(req.Stages), StageName: req.Stages[0].Name, Started: time.Now().Format(time.RFC3339), Message: "계산 준비 중"}
+	job := &Job{ID: time.Now().Format("20060102_150405"), Folder: folder, State: "running", StageCount: len(req.Stages), StageName: req.Stages[0].Name, Started: time.Now().Format(time.RFC3339), Message: "계산 준비 중", CompletedStages: completed}
 	initialAtoms := xyzAtomCount(filepath.Join(folder, req.Stages[0].Source))
 	for _, stage := range req.Stages {
 		job.stageKeys = append(job.stageKeys, signatureForStage(folder, stage, initialAtoms))
@@ -702,8 +722,16 @@ func (a *App) runJob(ctx context.Context, orcaExe string, req RunRequest, j *Job
 		cmd.WaitDelay = 5 * time.Second
 		cmd.Stdout = out
 		cmd.Stderr = out
+		var errLog *os.File
+		if stage.HAT!="" {
+			path:=strings.TrimSuffix(outPath,".out")+".err"
+			errLog,err=os.OpenFile(path,os.O_CREATE|os.O_EXCL|os.O_WRONLY,0600)
+			if err!=nil {out.Close();a.failure(j,err.Error(),outPath);return}
+			cmd.Stderr=io.MultiWriter(out,errLog)
+		}
 		if err := cmd.Start(); err != nil {
 			out.Close()
+			if errLog!=nil {errLog.Close()}
 			if ctx.Err() != nil {
 				a.updateJob(j, func(j *Job) {
 					j.State = "interrupted"
@@ -720,6 +748,7 @@ func (a *App) runJob(ctx context.Context, orcaExe string, req RunRequest, j *Job
 		a.mu.Unlock()
 		err = cmd.Wait()
 		out.Close()
+		if errLog!=nil {errLog.Close()}
 		a.mu.Lock()
 		a.process = nil
 		a.mu.Unlock()
@@ -753,6 +782,10 @@ func (a *App) runJob(ctx context.Context, orcaExe string, req RunRequest, j *Job
 				a.failure(j, "Triplet Transfer 단계 검사 실패: "+err.Error(), outPath)
 				return
 			}
+		}
+		if err:=recordHATCheckpoint(j.Folder,stage);err!=nil {
+			a.failure(j,"HAT checkpoint 저장 실패: "+err.Error(),outPath)
+			return
 		}
 		verifiedStages = append(verifiedStages, stage.Input)
 		a.updateJob(j, func(j *Job) { j.CompletedStages = append(j.CompletedStages, stage.Input) })
@@ -846,6 +879,10 @@ func launch(url string) error {
 	return exec.Command("xdg-open", url).Start()
 }
 func main() {
+	if len(os.Args)==3&&os.Args[1]=="--hat-run" {
+		if err:=runHATCommand(os.Args[2]);err!=nil {fmt.Fprintln(os.Stderr,err);os.Exit(1)}
+		return
+	}
 	a := newApp()
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {

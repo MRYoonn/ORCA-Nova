@@ -1,11 +1,12 @@
 name: XYZ Manager and Batch Browser QA
 on:
   push:
-    branches: ['feat/xyz-manager-batch-ux-*', 'feat/xyz-3d-*', 'feat/batch-presets-*']
+    branches: ['feat/xyz-manager-batch-ux-*', 'feat/xyz-3d-*', 'feat/batch-presets-*', 'feat/hat-*']
   pull_request:
     paths:
       - 'assets/desktop.html'
       - 'tests/batch-ui.cjs'
+      - 'tests/hat-workflow-ui.cjs'
       - 'tests/xyz-3d-ui.cjs'
       - 'tests/batch-presets-summary-ui.cjs'
       - 'tests/si-ui.cjs'
@@ -45,6 +46,8 @@ jobs:
         run: node tests/preset-layout-library-fold-ui.cjs
       - name: Browser regression — Triplet Transfer mapping, Batch and C5/C6 spin UI
         run: node tests/triplet-transfer-ui.cjs
+      - name: Browser regression — all presets and HAT mapping, INP editing and restart
+        run: node tests/hat-workflow-ui.cjs
       - name: Attach visual UI screenshots for review
         if: always()
         uses: actions/upload-artifact@v4
