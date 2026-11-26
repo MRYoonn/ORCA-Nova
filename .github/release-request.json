@@ -1,9 +1,9 @@
 {
-  "tag": "v1.9.0-rc.1",
-  "prerelease": true,
+  "tag": "v1.9.0",
+  "prerelease": false,
   "source": "approved-main-merge",
-  "summary": "User-approved beta release of merged PR #58: D9 HAT NEB-TS workflow. Existing CI passed; real D9 ORCA calculation remains unverified.",
-  "release_type": "beta",
-  "stable_release_blocked": true,
+  "summary": "Explicit user-approved stable promotion of v1.9.0-rc.1 after successful build, tests, packaging and EXE smoke test. Actual D9 HAT NEB-TS scientific execution remains unverified and is disclosed in release notes.",
+  "release_type": "stable",
+  "stable_release_blocked": false,
   "previous_stable": "v1.8.0"
 }
