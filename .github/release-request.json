@@ -1,9 +1,9 @@
 {
-  "tag": "v1.9.0",
+  "tag": "v1.9.1",
   "prerelease": false,
   "source": "approved-main-merge",
-  "summary": "Explicit user-approved stable promotion of v1.9.0-rc.1 after successful build, tests, packaging and EXE smoke test. Actual D9 HAT NEB-TS scientific execution remains unverified and is disclosed in release notes.",
+  "summary": "User-approved stable hotfix: ORCA M062X input spelling across generation paths and D8/D9 menu order; PR #59 CI passed. Actual D9 HAT calculation remains unverified.",
   "release_type": "stable",
   "stable_release_blocked": false,
-  "previous_stable": "v1.8.0"
+  "previous_stable": "v1.9.0"
 }
