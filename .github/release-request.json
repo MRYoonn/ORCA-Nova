@@ -1,9 +1,9 @@
 {
-  "tag": "v1.9.1",
+  "tag": "v1.10.0",
   "prerelease": false,
   "source": "approved-main-merge",
-  "summary": "User-approved stable hotfix: ORCA M062X input spelling across generation paths and D8/D9 menu order; PR #59 CI passed. Actual D9 HAT calculation remains unverified.",
+  "summary": "Explicit user-approved stable promotion of verified v1.10.0-rc.1 source merged in PR #60. Real D9 ORCA execution, Hessian reuse and ORCA 7 remain unverified and are disclosed.",
   "release_type": "stable",
   "stable_release_blocked": false,
-  "previous_stable": "v1.9.0"
+  "previous_stable": "v1.9.1"
 }
