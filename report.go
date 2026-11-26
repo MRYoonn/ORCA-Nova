@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+ "slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -146,7 +147,7 @@ func ParseOrcaOutput(input io.Reader, filename string, inp string) (OrcaAnalysis
 	for _, line := range strings.Split(inp, "\n") {
 		s := strings.TrimSpace(line)
 		if strings.HasPrefix(s, "!") && a.Method == "" {
-			a.Method = strings.TrimSpace(strings.TrimPrefix(s, "!"))
+			a.Method = strings.TrimSpace(strings.TrimPrefix(normalizeORCAInput(s), "!"))
 		}
 	}
 	scanner := bufio.NewScanner(input)
@@ -389,7 +390,7 @@ func ParseOrcaOutput(input io.Reader, filename string, inp string) (OrcaAnalysis
 	if seenFreq && len(a.Frequencies) == 0 {
 		a.Warnings = append(a.Warnings, "Frequency 출력 섹션은 있으나 진동수를 추출하지 못했습니다.")
 	}
-	requiresOpt := regexp.MustCompile(`(?i)\b(?:Opt|TightOpt|LooseOpt|OptTS)\b`).MatchString(inp)
+	requiresOpt := keywordLine(inp)["neb-ts"] || regexp.MustCompile(`(?i)\b(?:Opt|TightOpt|LooseOpt|OptTS)\b`).MatchString(inp)
 	if a.Normal && a.SCFConverged && a.Electronic != nil && (!requiresOpt || a.Optimized) {
 		a.Status = "Completed"
 	}
@@ -609,6 +610,7 @@ func writeAnalysisReports(folder string, req RunRequest, completed []string) (st
 		if parseErr != nil {
 			report.Warnings = append(report.Warnings, parseErr.Error())
 		}
+		if stage.HAT!=""&&!slices.Contains(completed,stage.Input) {report.Status="Unverified"}
 		if xyz:=stageGeometry(stage);xyz!="" {
 			if info, e := os.Stat(filepath.Join(folder, xyz)); e == nil && !info.IsDir() {
 				report.FinalXYZ = xyz
@@ -671,7 +673,10 @@ func writeAnalysisReports(folder string, req RunRequest, completed []string) (st
 	}
 	composites:=gloriusComposites(folder, req, completed)
 	b.WriteString(gloriusCompositeReport(composites))
-	b.WriteString(hatWorkflowReport(folder,req,completed))
+	analyses:=make(map[string]OrcaAnalysis,len(all))
+	for _,stage:=range all {analyses[stage.Stage.Input]=stage.Analysis}
+	hat:=analyzeHAT(folder,req,completed,analyses)
+	b.WriteString(formatHATResult(hat))
 	b.WriteString("\n[SOC / BDE / SET / reaction ΔG]\n계산에 필요한 개별 상태나 여러 화학종의 에너지가 존재해야 비교할 수 있습니다. 부재한 수치는 임의 생성하지 않습니다.\n")
 	if err := os.WriteFile(path, []byte(b.String()), 0644); err != nil {
 		return "", err
@@ -684,7 +689,8 @@ func writeAnalysisReports(folder string, req RunRequest, completed []string) (st
 		Units  map[string]string
 		Stages []stageResult
         GloriusComposite []gloriusCompositeRow `json:",omitempty"`
-	}{GloriusComposite:composites,Label: req.Label, Units: map[string]string{"Electronic": "Eh", "Enthalpy": "Eh", "Gibbs": "Eh", "ZPE": "Eh", "EntropyTerm": "Eh (T*S)", "ThermalCorrection": "Eh", "ThermalEnthalpyCorrection": "Eh (H - Electronic)", "Entropy": "Eh/K", "Temperature": "K", "Frequencies": "cm^-1", "Frontier": "eV", "Roots.EV": "eV (Vertical excitation)", "Roots.EH": "Eh (Vertical excitation)", "Roots.WavelengthNM": "nm", "Populations.Spin": "electrons", "Populations.Index": "zero-based ORCA atom index"}, Stages: all}
+        HAT *hatResult `json:",omitempty"`
+	}{HAT:hat,GloriusComposite:composites,Label: req.Label, Units: map[string]string{"Electronic": "Eh", "Enthalpy": "Eh", "Gibbs": "Eh", "ZPE": "Eh", "EntropyTerm": "Eh (T*S)", "ThermalCorrection": "Eh", "ThermalEnthalpyCorrection": "Eh (H - Electronic)", "Entropy": "Eh/K", "Temperature": "K", "Frequencies": "cm^-1", "Frontier": "eV", "Roots.EV": "eV (Vertical excitation)", "Roots.EH": "Eh (Vertical excitation)", "Roots.WavelengthNM": "nm", "Populations.Spin": "electrons", "Populations.Index": "zero-based ORCA atom index"}, Stages: all}
 	data, err := json.MarshalIndent(payload, "", "  ")
 	if err != nil {
 		return "", err
@@ -699,7 +705,7 @@ func writeAnalysisReports(folder string, req RunRequest, completed []string) (st
 // settings, including solvent and TDDFT blocks, before subtracting energies.
 func comparisonSettings(inp string) string {
 	var parts []string
-	for _, line := range strings.Split(inp, "\n") {
+	for _, line := range strings.Split(normalizeORCAInput(inp), "\n") {
 		line = strings.TrimSpace(strings.SplitN(line, "#", 2)[0])
 		if line == "" || strings.HasPrefix(line, "*") {
 			continue

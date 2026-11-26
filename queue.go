@@ -316,6 +316,7 @@ func (q *JobQueue) prepareLocked(e *QueueEntry, cfg Config) error {
 	if e.Job != nil && e.Job.Folder != "" {
 		return nil
 	}
+	e.Request = normalizeORCARequest(e.Request)
 	if err = os.MkdirAll(cfg.WorkRoot, 0755); err != nil {
 		return err
 	}
@@ -328,6 +329,7 @@ func (q *JobQueue) prepareLocked(e *QueueEntry, cfg Config) error {
 			return err
 		}
 	}
+	if err:=writeHATMapping(folder,e.Request);err!=nil{return err}
 	e.Job = &Job{ID: e.ID, Folder: folder, StageCount: len(e.Request.Stages)}
 	atoms := xyzAtomCount(filepath.Join(folder, e.Request.Stages[0].Source))
 	for _, s := range e.Request.Stages {
@@ -729,6 +731,7 @@ func (a *App) queueRoute(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}
+		for i, req := range x.Jobs { x.Jobs[i] = normalizeORCARequest(req) }
 		if x.Auto != nil {
 			sys:=q.probeResources()
 			// An explicit append joins the existing reservation envelope.
@@ -751,6 +754,7 @@ func (a *App) queueRoute(w http.ResponseWriter, r *http.Request) {
 		valid := true
 		for i, req := range x.Jobs {
 			p := preflight(req)
+			if req.HATRestart!=nil{p.OK=false;p.Errors=append(p.Errors,"HAT 재시작은 Calculation에서 실행하세요")}
 			cpu, ram, err := resources(req)
 			if err != nil {
 				p.OK = false

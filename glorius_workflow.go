@@ -18,6 +18,9 @@ func stageGeometry(s Stage) string {
 	if s.Goat {
 		return stem + ".globalminimum.xyz"
 	}
+	if s.HAT == "ts" {
+		return stem + "_NEB-TS_converged.xyz"
+	}
 	if s.Opt {
 		return stem + ".xyz"
 	}

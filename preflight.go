@@ -63,6 +63,7 @@ func preflight(req RunRequest) PreflightReport {
  r:=PreflightReport{OK:true,Errors:[]string{},Warnings:[]string{},Stages:[]PreflightStage{}}
  bad:=func(s string){r.Errors=append(r.Errors,s);r.OK=false}
  if len(req.Files)==0||len(req.Files)>80||len(req.Stages)==0||len(req.Stages)>30{bad("파일은 1–80개, 실행 단계는 1–30개여야 합니다");return r}
+ req=normalizeORCARequest(req)
  files:=map[string]string{}
  for _,f:=range req.Files{
   ext:=strings.ToLower(filepath.Ext(f.Name));key:=strings.ToLower(f.Name)
@@ -85,12 +86,17 @@ func preflight(req RunRequest) PreflightReport {
   prefix:=fmt.Sprintf("%d단계 (%s): ",i+1,st.Name)
   out:=PreflightStage{Name:st.Name,Input:st.Input,Source:st.Source}
   if !safeName(st.Input)||!strings.EqualFold(filepath.Ext(st.Input),".inp"){bad(prefix+"INP 파일명이 잘못됐습니다")}
+  if _,duplicate:=earlier[strings.ToLower(st.Input)];duplicate {bad(prefix+"중복 실행 INP")}
   inp,hasInput:=files[strings.ToLower(st.Input)]
   if !hasInput{bad(prefix+"INP 누락: "+st.Input)}
   if !safeName(st.Source)||!strings.EqualFold(filepath.Ext(st.Source),".xyz"){bad(prefix+"XYZ 파일명이 잘못됐습니다")}
   matched:=false
   if hasInput {
-   if keywordLine(inp)["m06-2x"] {bad(prefix+"ORCA 6 입력 키워드 M06-2X는 지원되지 않습니다. M062X로 수정하거나 프리셋을 재생성하세요.")}
+   k:=keywordLine(inp)
+   if k["m062x"]&&!k["defgrid3"]&&st.HAT!="" {
+    r.Warnings=append(r.Warnings,prefix+"M062X는 적분 격자에 민감합니다. DEFGRID3를 검토하세요.")
+   }
+   if duplicateORCAFunctional(inp) {bad(prefix+"Functional을 하나만 지정하세요.")}
    if err:=validateGloriusDeclaration(st,inp,earlier,files);err!=nil{bad(prefix+err.Error())}
    if generated:=stageGeometry(st);generated!=""{if _,exists:=files[strings.ToLower(generated)];exists{bad(prefix+"산출 XYZ 이름이 등록 파일과 충돌합니다: "+generated)}}
    m:=xyzHeader.FindStringSubmatch(inp)

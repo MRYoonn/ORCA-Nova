@@ -27,3 +27,10 @@
 1. 실제 Windows ORCA 6.x/xTB 환경에서 Glorius Workflow를 실행한다. GOAT 산출 XYZ, DFT 단계 검증, Composite Gibbs와 재시작을 확인하고 결과를 `docs/GLORIUS_2026_SI_WORKFLOW.md`에 기록한다.
 2. P1은 `queue.go`의 자동 자원 할당 및 Batch 재개 흐름에서 이어간다. 사용자 지정 자동 동시 실행 수의 효과와 ORCA/MPI 프로세스의 실제 CPU/RAM을 Windows에서 확인한다.
 3. P2는 `docs/GLORIUS_2026_SI_WORKFLOW.md`에서 이어간다. 원본 INP, 실제 ORCA 6.x/xTB 실행, 독립 conformer 재순위화와 결과 분석이 남았다. Golden은 OUT 파서의 검증 범위다.
+
+## D9 HAT and ORCA keyword compatibility
+
+- Based on Stable v1.9.1 at `56ec867`. Development branch `feat/hat-workflow-compat`. Beta candidate `v1.10.0-rc.1`.
+- `orca_keywords.go` and `assets/desktop.html` own the ORCA 6 Functional labels and execution spellings. Checks cover 45 calculations, 29 presets and 123 generated INPs, plus the existing Batch, Glorius, SI and Triplet suites.
+- `hat_mapping.go` and `hat_workflow.go` check the declared H transfer, optimized endpoint graphs, common model and final NEB-TS artifact. `hat_restart.go` resumes from checked outputs. `hat_export.go` uses the desktop execution and validation pipeline in the Windows ZIP.
+- Resume validation on a licensed Windows ORCA 6.0.1/6.1.x workstation with the reported H14/H17 XYZ pair. Record the final NEB-TS artifact and IRC endpoint names, then qualify Hessian handoff with the applicable ORCA manual and execution results. ORCA 7 is unqualified.

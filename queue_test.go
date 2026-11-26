@@ -19,6 +19,7 @@ import (
 
 // The test executable acts as a cross-platform ORCA substitute in child processes.
 func TestMain(m *testing.M) {
+	if os.Getenv("ORCA_NOVA_HAT_MOCK")=="1"&&len(os.Args)>1&&strings.HasSuffix(os.Args[1],".inp"){os.Exit(mockHATStage(os.Args[1]))}
 	if len(os.Args) > 1 && os.Args[1] == "mock-tree-leaf" {
 		for {
 			if err := os.WriteFile(filepath.Join(os.Getenv("ORCA_NOVA_TREE_DIR"), "heartbeat"), []byte(time.Now().String()), 0600); err != nil {

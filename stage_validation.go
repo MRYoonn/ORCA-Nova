@@ -60,7 +60,7 @@ func validateStage(folder string, s Stage) error {
 		if !a.Optimized {
 			return fmt.Errorf("%s: Geometry Optimization이 수렴하지 않았습니다", s.Name)
 		}
-		xyz, err := os.ReadFile(filepath.Join(folder, strings.TrimSuffix(s.Input, filepath.Ext(s.Input))+".xyz"))
+		xyz, err := os.ReadFile(filepath.Join(folder, stageGeometry(s)))
 		if err != nil {
 			return fmt.Errorf("최적화 XYZ가 없습니다: %w", err)
 		}
@@ -101,7 +101,7 @@ func validateStage(folder string, s Stage) error {
 			}
 		}
 	}
-	return nil
+	return validateHATGeometry(folder,s)
 }
 
 // Preserve atom identity/order for spin-index comparisons and downstream stages.

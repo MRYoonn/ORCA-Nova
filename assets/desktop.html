@@ -304,6 +304,7 @@
   </details>
 <div class="section"><div class="section-head"><span class="section-title">01 · Molecule</span><span class="section-desc">Avogadro → XYZ</span></div><div class="file-box" id="dropzone"><div style="min-width:0"><div class="file-meta" id="xyz-filename">molecule.xyz</div><div class="file-details" id="xyz-meta">XYZ 파일을 불러오면 여기에 표시돼요</div></div><button class="btn small" id="xyz-load" data-help="Avogadro에서 내보낸 .xyz 파일을 불러와요. 실제 파일 내용은 서버로 전송되지 않아요.">＋ XYZ 불러오기</button><button class="btn small ghost" id="xyz-remove" disabled data-help="기본 XYZ 등록만 해제합니다. 디스크 원본이나 완료된 계산 결과는 삭제하지 않습니다.">기본 XYZ 삭제</button><button class="btn small ghost" id="xyz3d-primary" disabled data-help="현재 기본 XYZ의 구조를 회전해 보고 ORCA 원자 인덱스(0부터 시작)를 확인합니다. C5/C6 표시는 직접 지정해야 합니다.">◈ XYZ 3D 미리보기</button></div><input id="xyz-file" type="file" accept=".xyz,text/plain" hidden><div class="hint" style="margin-top:7px">삭제는 프로그램 등록 목록에만 적용됩니다. 원본 XYZ·OUT 파일은 그대로 유지됩니다.</div></div>
 <div class="section"><div class="section-head"><span class="section-title">02 · Electronic Structure</span><span class="section-desc">Method &amp; Basis</span></div><div class="fieldset"><div class="two-cols"><div class="field"><label class="field-label" for="functional">Functional <span class="help-icon" tabindex="0" data-title="Functional" data-help="전자 에너지를 근사적으로 계산하는 이론의 종류예요. 논문 SI와 비교하려면 같은 Functional을 선택하세요.">?</span></label><select class="control" id="functional"><option>B3LYP</option><option>PBE0</option><option>TPSSh</option><option>BP86</option><option>M06-2X</option><option>wB97X-D3</option><option>r2SCAN-3c</option></select></div><div class="field"><label class="field-label" for="basis">Basis Set <span class="help-icon" tabindex="0" data-title="Basis Set" data-help="원자 주변의 전자 분포를 수학적으로 표현하는 데 사용하는 함수 집합이에요. 정확도와 계산 비용에 영향을 줘요.">?</span></label><select class="control" id="basis"><option>def2-TZVP</option><option>def2-SVP</option><option>def2-TZVPP</option><option>def2-QZVP</option><option>def2-QZVPPD</option></select></div></div><div class="two-cols"><div class="field"><label class="field-label" for="dispersion">Dispersion <span class="help-icon" tabindex="0" data-title="Dispersion" data-help="분자 내부나 분자 사이의 분산 상호작용을 보정해요. 일부 Functional에는 자체 보정이 들어있으므로 중복 적용을 피해야 해요.">?</span></label><select class="control" id="dispersion"><option>D4</option><option>D3BJ</option><option>D3ZERO</option><option>None</option></select></div><div class="field"><label class="field-label" for="scf">SCF Convergence <span class="help-icon" tabindex="0" data-title="SCF Convergence" data-help="전자 밀도 계산을 얼마나 엄격하게 수렴시킬지 정해요. TightSCF는 일반적인 정밀 계산에 많이 사용돼요.">?</span></label><select class="control" id="scf"><option>TightSCF</option><option>NormalSCF</option><option>VeryTightSCF</option></select></div></div></div></div>
+  <label class="field-label" for="dft-grid">Integration Grid <span class="help-icon" tabindex="0" data-help="M06-2X에는 DEFGRID3가 권장됩니다. 문헌 프리셋은 원래 설정을 사용합니다.">?</span></label><select class="control" id="dft-grid"><option value="">Auto · M06-2X는 DEFGRID3</option><option>DEFGRID1</option><option>DEFGRID2</option><option>DEFGRID3</option></select>
   <div class="method-safety" id="method-safety" aria-live="polite" style="margin-top:10px">설정된 Functional과 Basis Set의 사용 조건을 확인해 주세요.</div>
 <div class="section"><div class="section-head"><span class="section-title">03 · Solvent</span><span class="section-desc">별도 선택</span></div><div class="fieldset"><div class="two-cols"><div class="field"><label class="field-label" for="solvmodel">Solvation Model <span class="help-icon" tabindex="0" data-title="Solvation Model" data-help="용매가 분자 에너지에 미치는 영향을 근사하는 계산 모델이에요. Gas phase는 용매를 고려하지 않아요.">?</span></label><select class="control" id="solvmodel"><option>SMD</option><option>CPCM</option><option>Gas phase</option></select></div><div class="field"><label class="field-label" for="solvent">Solvent <span class="help-icon" tabindex="0" data-title="Solvent" data-help="사용할 용매를 고르면 ORCA 입력에 맞는 이름으로 자동 반영해요. 모델별 지원 여부는 ORCA 버전에서 확인해야 해요.">?</span></label><select class="control" id="solvent"><option value="acetonitrile">Acetonitrile (ACN)</option><option value="dmf">Dimethylformamide (DMF)</option><option value="dmso">Dimethyl sulfoxide (DMSO)</option><option value="ch2cl2">Dichloromethane (DCM)</option><option value="thf">Tetrahydrofuran (THF)</option><option value="toluene">Toluene</option><option value="methanol">Methanol</option><option value="water">Water</option><option value="ethanol">Ethanol</option><option value="acetone">Acetone</option></select></div></div><div class="hint" id="solvent-note">SMD(acetonitrile) 키워드가 INP에 반영됩니다.</div></div></div>
 <div class="section"><div class="section-head"><span class="section-title">04 · Charge &amp; Spin</span><span class="section-desc">Molecule state</span></div><div class="fieldset"><div class="two-cols"><div class="field"><label class="field-label" for="charge">Charge <span class="help-icon" tabindex="0" data-title="Charge" data-help="분자 전체 전하예요. 중성은 0, Cation은 양수, Anion은 음수로 입력해요.">?</span></label><input class="control" type="number" id="charge" value="0" min="-10" max="10"></div><div class="field"><label class="field-label" for="mult">Multiplicity <span class="help-icon" tabindex="0" data-title="Multiplicity" data-help="전체 Spin 상태를 나타내는 값(2S+1)이에요. 일반적으로 Singlet=1, Doublet=2, Triplet=3이에요. 전자 수와 일치해야 해요.">?</span></label><select class="control" id="mult"><option value="1">1 · Singlet</option><option value="2">2 · Doublet</option><option value="3">3 · Triplet</option><option value="4">4 · Quartet</option><option value="5">5 · Quintet</option></select></div></div><div class="field" id="ion-extra" style="display:none"><label class="field-label" for="iontype">Ionic State <span class="help-icon" tabindex="0" data-help="원래 Charge를 기준으로 전자 하나를 제거하면 Radical Cation(+1), 추가하면 Radical Anion(-1)이 돼요.">?</span></label><select class="control" id="iontype"><option value="1">Radical Cation (+1)</option><option value="-1">Radical Anion (-1)</option></select></div><div class="field" id="tddft-extra" style="display:none"><div class="two-cols"><div><label class="field-label" for="nroots">TD-DFT · NRoots <span class="help-icon" tabindex="0" data-help="계산할 여기 상태의 개수예요. 값이 높아지면 더 많은 상태를 조사하지만 계산량이 증가해요.">?</span></label><input class="control" type="number" id="nroots" min="1" max="100" value="10"></div><div><label class="field-label" for="excstate">Excited States <span class="help-icon" tabindex="0" data-help="Singlets만 계산하거나 Singlets + Triplets를 함께 계산할 수 있어요. 기본 입력은 Singlet 기준 상태에서 출발해요.">?</span></label><select class="control" id="excstate"><option value="both">Singlets + Triplets</option><option value="singlet">Singlets only</option></select></div></div></div><div id="scan-extra" style="display:none"><div class="three-cols"><div><label class="field-label" for="atom1">Atom i <span class="help-icon" tabindex="0" data-help="PES Scan에서 이동시킬 결합의 첫 원자 번호예요. ORCA의 원자 번호는 0부터 시작해요.">?</span></label><input class="control" type="number" id="atom1" min="0" value="0"></div><div><label class="field-label" for="atom2">Atom j <span class="help-icon" tabindex="0" data-help="PES Scan에서 이동시킬 결합의 두 번째 원자 번호예요.">?</span></label><input class="control" type="number" id="atom2" min="0" value="1"></div><div><label class="field-label" for="steps">Steps <span class="help-icon" tabindex="0" data-help="시작 거리부터 끝 거리까지 나눌 단계의 개수예요.">?</span></label><input class="control" type="number" id="steps" min="2" max="100" value="12"></div></div><div class="two-cols" style="margin-top:10px"><div><label class="field-label" for="startdist" data-title="Start Distance" data-help="PES Scan이 시작할 때의 두 원자 사이 거리예요. 단위는 Å입니다.">Start (Å)</label><input class="control" type="number" step=".01" id="startdist" value="1.4"></div><div><label class="field-label" for="enddist" data-title="End Distance" data-help="PES Scan이 끝날 때의 두 원자 사이 거리예요. 단위는 Å입니다.">End (Å)</label><input class="control" type="number" step=".01" id="enddist" value="2.5"></div></div></div></div></div>
@@ -340,7 +341,23 @@
 <div class="editor-wrap" id="guide-view" style="display:none"><div style="padding:20px 24px;overflow:auto;grid-column:1/-1;line-height:1.85;color:#c7d7e8;font-size:12px"><h3 style="margin-top:0;color:#a5d5ff" id="guide-title">계산 안내</h3><p id="guide-content"></p><p id="guide-extra" style="color:#eec89a"></p></div></div>
 <div class="editor-status"><span id="edit-status">자동 생성됨 · 수정 가능</span><span>ORCA 6.x · <span id="line-count">0 lines</span></span></div></div>
 <div class="toolbar-bottom"><button class="btn primary" id="download-inp" data-help="현재 편집기 내용을 .inp 파일로 저장해요. ORCA 실행은 로컬 프로그램에서 진행해야 해요.">↓ Save INP</button><button class="btn" id="download-workflow" style="display:none;background:#1f4851;border-color:#3b8e8d" data-title="Workflow ZIP" data-help="선택한 S₀ / S₁ / T₁ 계산 단계의 .inp와 순차 실행용 Windows CMD, 안내문, 불러온 XYZ를 ZIP으로 저장해요. 브라우저 안에서는 실제 ORCA를 실행하지 않습니다.">↓ Workflow ZIP</button><button class="btn" id="copy-cmd" data-help="Windows CMD에서 사용할 ORCA 실행 명령을 복사해요. 실제 설치 경로와 파일 위치를 맞춰야 해요.">⌘ Copy CMD</button><button class="btn ghost" id="cmd-help" data-help="브라우저에서는 보안상 외부 프로그램을 직접 실행할 수 없어요. CMD 실행 안내를 열어요.">▷ Run ORCA 안내</button></div>
-<div class="lower-grid"><div class="subpanel"><div class="subpanel-head"><span>◷ Workflow</span><span class="right-small" id="wf-count">1 STEP</span></div><div class="subpanel-body" id="workflow-box"></div><div class="sub-foot"><span class="muted" id="workflow-foot" style="font-size:10px">단일 계산</span><button class="btn small ghost" id="next-stage">다음 단계 →</button></div></div>
+<div class="lower-grid"><div class="subpanel"><div class="subpanel-head"><span>◷ Workflow</span><span class="right-small" id="wf-count">1 STEP</span></div><details id="hat-controls" class="section" hidden open><summary>HAT 원자 대응 · ORCA 0-based index</summary>
+ <div class="workspace-inline">
+  <label>이동 H <input class="control" id="hat-h" type="number" min="0" step="1"></label>
+  <label>Donor <input class="control" id="hat-donor" type="number" min="0" step="1"></label>
+  <label>Acceptor <input class="control" id="hat-acceptor" type="number" min="0" step="1"></label>
+  <button class="btn small" id="hat-check-mapping" type="button">원자 대응 검사</button>
+  <button class="btn small" id="hat-accept-swap" type="button" hidden>교환 확인 · 수정 XYZ 저장</button>
+ </div>
+ <pre class="hint" id="hat-review" role="status" style="white-space:pre-wrap"></pre>
+ <canvas id="hat-preview" width="720" height="220" style="width:100%;background:#122136" aria-label="Reactant와 Product 원자 대응 비교" hidden></canvas>
+ <div class="workspace-inline">
+  <label>실행 모드 <select id="hat-run-mode" class="control"><option value="all">Run All (Step 1–4)</option><option value="step3">Run Step 3–4</option><option value="irc">Run IRC Only</option><option value="resume">Resume from Failed Stage</option></select></label>
+  <input class="control" id="hat-restart-folder" placeholder="이전 실행 폴더의 절대 경로" aria-label="이전 HAT 실행 폴더" hidden>
+  <button class="btn small ghost" id="hat-reset-edits" type="button">공통 설정으로 전체 INP 재생성</button>
+ </div>
+ </details>
+ <div class="subpanel-body" id="workflow-box"></div><div class="sub-foot"><span class="muted" id="workflow-foot" style="font-size:10px">단일 계산</span><button class="btn small ghost" id="next-stage">다음 단계 →</button></div></div>
 <div class="subpanel"><div class="subpanel-head"><span>⌘ CMD &amp; Execution</span><span class="badge" style="padding:4px 6px">CMD PREVIEW</span></div><div class="subpanel-body"><div class="console" id="console">C:\&gt; <b>orca</b> molecule_A4.inp &gt; molecule_A4.out
 
 # CMD 명령을 복사할 수 있어요.
@@ -653,7 +670,7 @@ function currentStage(){return stages()[activeStage]||stages()[0]}
 function currentStageCode(){const st=currentStage();return st[1]||'A2'}
 function displayName(i=activeStage){return filenameStem(loadedXYZ||'molecule')+'_'+active+(stages().length>1?'_step'+(i+1):'')}
 function workflowSourceName(){return filenameStem(loadedXYZ||'molecule')+'.xyz'}
-function xyzName(i=activeStage){const st=stages()[i]||stages()[0];if(st[5]&&Number.isInteger(st[5].from))return displayName(st[5].from)+(stageOptions(stages()[st[5].from]).goat?'.globalminimum.xyz':'.xyz');if(st[4])return st[4];if(calc(active).kind==='workflow'&&active.startsWith('W'))return workflowSourceName();return workflowSourceName()}
+function xyzName(i=activeStage){const st=stages()[i]||stages()[0];if(st[5]&&Number.isInteger(st[5].from))return stageOutputName({input:displayName(st[5].from)+'.inp',opt:true,...stageOptions(stages()[st[5].from])});if(st[4])return st[4];if(calc(active).kind==='workflow'&&active.startsWith('W'))return workflowSourceName();return workflowSourceName()}
 function stageOptions(st){return st[5]||{}}
 function maxLines(){return $('editor').value.split('\n').length}
 function renderLines(){const count=maxLines();$('line-nums').textContent=Array.from({length:count},(_,i)=>String(i+1)).join('\n');$('line-count').textContent=count+' lines'}
@@ -665,7 +682,13 @@ function addonUserChecked(id){const el=$(id);return el.dataset.forced==='true'?e
 function addOnChecked(id,base){return addOnAvailable(base)&&addonUserChecked(id)}
 function effectiveChargeMult(st,base){let charge=st[2]===null?num('charge',0):st[2],mult=st[3]===null?num('mult',1):st[3];if(base==='B3')mult=3;if(base==='C7'){charge=num('charge',0)+Number(val('iontype'));if(mult===1)mult=2}return {charge,mult}}
 // The literature/UI spelling is M06-2X; ORCA 6 simple input requires M062X.
-function orcaFunctionalKeyword(fn){return fn==='M06-2X'?'M062X':fn}
+const hatStageEdits=new Map();
+const ORCA6_FUNCTIONALS={'B3LYP':'B3LYP','PBE0':'PBE0','TPSSh':'TPSSh','BP86':'BP86','M06-2X':'M062X','wB97X-D3':'wB97X-D3','r2SCAN-3c':'r2SCAN-3c'};
+const orca6FunctionalLookup=new Map(Object.entries(ORCA6_FUNCTIONALS).map(([label,keyword])=>[label.toLowerCase(),keyword]));
+function orcaFunctionalKeyword(fn){return orca6FunctionalLookup.get(fn.toLowerCase())||fn}
+function normalizeORCAInput(inp){
+ return inp.replace(/^[\t ]*![^#\r\n]*/gm,line=>line.replace(/[^\s!]+/g,token=>{const keyword=orcaFunctionalKeyword(token);return keyword.toLowerCase()===token.toLowerCase()?token:keyword}));
+}
 function gloriusInput(stageIndex,autoPreview){
  const st=stages()[stageIndex],opts=stageOptions(st),base=st[1],{charge,mult}=effectiveChargeMult(st,base);
  const allocation=autoPreview?singleDraftResources():null;
@@ -685,7 +708,7 @@ function generatedStage(s,i){
  const opts=stageOptions(s);
  return {name:s[0],input:displayName(i)+'.inp',source:xyzName(i),opt:['A1','A4','A5','B3','D1','XS1OPT','XT1ROOTOPT','HATNEB'].includes(s[1]),...(opts.hat?{hat:opts.hat}:{}),...(Number.isInteger(opts.endFrom)?{endSource:stageOutputName({input:displayName(opts.endFrom)+'.inp',opt:true})}:{}),...(opts.goat?{goat:true}:{}),...(opts.stationary?{stationary:opts.stationary}:{}),...(Number.isInteger(opts.composite)?{compositeFrom:displayName(opts.composite)+'.inp'}:{})};
 }
-function stageOutputName(j){return j.goat?j.input.replace(/\.inp$/i,'.globalminimum.xyz'):j.opt?j.input.replace(/\.inp$/i,'.xyz'):'';}
+function stageOutputName(j){if(j.hat==='ts')return j.input.replace(/\.inp$/i,'_NEB-TS_converged.xyz');return j.goat?j.input.replace(/\.inp$/i,'.globalminimum.xyz'):j.opt?j.input.replace(/\.inp$/i,'.xyz'):'';}
 function buildInput(stageIndex=activeStage,autoPreview=true){
  if(calc(active).glorius)return gloriusInput(stageIndex,autoPreview);
  const c=calc(active),st=stages()[stageIndex],base=st[1],opts=stageOptions(st),fn=val('functional'),basis=val('basis'),disp=val('dispersion');
@@ -693,6 +716,9 @@ function buildInput(stageIndex=activeStage,autoPreview=true){
  let tokens=[orcaFunctionalKeyword(fn)];if(fn!=='r2SCAN-3c')tokens.push(basis);
  if(disp!=='None'&&fn!=='r2SCAN-3c'&&fn!=='wB97X-D3')tokens.push(disp);
  tokens.push(val('scf'));
+ const grid=val('dft-grid');
+ if(grid)tokens.push(grid);
+ else if(fn==='M06-2X')tokens.push('DEFGRID3');
  const baseFreq=['A3','A4','A5','B3','D1','HATNEB'].includes(base);
   if(c.hat){if(mult>1)tokens.unshift('UKS');if(fn==='M06-2X')tokens.push('def2/J','RIJCOSX');}
  const extraFreq=addOnChecked('extra-freq',base)&&!baseFreq;
@@ -734,12 +760,14 @@ function buildInput(stageIndex=activeStage,autoPreview=true){
  if(base==='C6')outputs.push('  Print[ P_Mayer ] 1');
  if(spin)outputs.push('  Print[ P_SpinDensity ] 1');
  if(spinPop)outputs.push('  Print[ P_Mulliken ] 1','  Print[ P_Hirshfeld ] 1');
+ if(c.hat&&mult>1&&base!=='D2')outputs.push('  Print[ P_Mulliken ] 1');
  if(outputs.length)lines.push('','%output',...Array.from(new Set(outputs)),'end');
  if(spin){
    const cube=displayName(stageIndex)+'_SpinDensity.cube';
    lines.push('','%plots','  dim1 60','  dim2 60','  dim3 60','  Format Gaussian_Cube',`  SpinDens("${cube}");`,'end');
  }
- if(base==='HATNEB')lines.push('','%neb',`  NEB_END_XYZFILE "${displayName(opts.endFrom)}.xyz"`,'end','','%geom','  Calc_Hess true','end');
+ if(base==='HATNEB')lines.push('','%neb',`  NEB_END_XYZFILE "${displayName(opts.endFrom)}.xyz"`,'end');
+ if(c.hat&&base==='D2')lines.push('','%irc','  Direction both','end');
   if(base==='D3')lines.push('','%geom','  Scan',`    B ${Math.max(0,Math.floor(num('atom1',0)))} ${Math.max(0,Math.floor(num('atom2',1)))} = ${num('startdist',1.4)}, ${num('enddist',2.5)}, ${Math.max(2,Math.floor(num('steps',12)))}`,'  end','end');
  lines.push('',`* xyzfile ${charge} ${mult} ${file}`,'');
  return lines.join('\n')
@@ -747,6 +775,8 @@ function buildInput(stageIndex=activeStage,autoPreview=true){
 function activeInfo(){const c=calc(active),st=currentStage(),base=st[1];const transfer=!$('triplet-panel').hidden;
  $('desktop-run').hidden=c.kind==='workflow'||transfer;$('desktop-run-wf').hidden=c.kind!=='workflow'||transfer;$('desktop-preflight').hidden=transfer;$('calc-title').textContent=c.name;$('calc-desc').textContent=c.desc;$('crumb').textContent=c.group+'. '+c.groupName;$('calc-mode').textContent=c.kind==='workflow'?'◉ MULTI-STEP WORKFLOW':'● SINGLE INPUT';$('calc-mode').style.background=c.kind==='workflow'?'#2c3248':'#1d344a';$('calc-note').textContent=c.kind==='workflow'?'이 Workflow는 ORCA 실행을 위한 여러 INP를 생성해요. ZIP으로 받으면 Windows CMD에서 순차 실행할 수 있지만, 계산 결과와 상태 검증은 직접 해야 해요.':c.guide;
  const allowAddons=!c.glorius&&addOnAvailable(base),opts=stageOptions(st);
+ $('dft-grid').disabled=!!c.glorius;
+ $('hat-controls').hidden=!c.hat;
  $('mult').disabled=!!c.glorius&&st[3]!==null&&st[3]!==undefined;
  if($('mult').disabled){$('mult').value=String(st[3]);syncPicker('mult');}
  else syncPicker('mult');
@@ -783,9 +813,9 @@ function renderWarning(){const c=calc(active);let w=[];let mem=num('cores',16)*n
  const state=effectiveChargeMult(currentStage(),currentStageCode());let ep=electronParityWarning(state.charge,state.mult);if(ep&& !['B3','C7'].includes(active))w.push(ep);
  if(w.length)$('calc-note').textContent=w.join(' ')+(c.kind==='workflow'?' 여러 단계 계산은 수동 연결이 필요합니다.':'');
 }
-function renderWorkflow(){const st=stages();$('workflow-box').innerHTML=st.map((s,i)=>`<div class="step ${i===activeStage?'active':''} ${s[1]?'step-link':''}" data-stage="${i}" title="${esc(s[0])}"><span class="step-num">${String(i+1).padStart(2,'0')}</span><div style="min-width:0"><div class="step-title">${esc(s[0])}</div><div class="step-detail">${s[1]?'INP 생성 · XYZ: '+esc(xyzName(i)):'출력 결과를 사용자가 비교해야 하는 단계'}</div></div></div>`).join('');for(const e of $('workflow-box').querySelectorAll('.step-link'))e.addEventListener('click',()=>{if(editorDirty&&!confirm('직접 수정한 INP 내용이 사라집니다. 단계를 이동할까요?'))return;activeStage=Number(e.dataset.stage);generate(true)});}
+function renderWorkflow(){const st=stages();$('workflow-box').innerHTML=st.map((s,i)=>`<div class="step ${i===activeStage?'active':''} ${s[1]?'step-link':''}" data-stage="${i}" title="${esc(s[0])}"><span class="step-num">${String(i+1).padStart(2,'0')}</span><div style="min-width:0"><div class="step-title">${esc(s[0])}</div><div class="step-detail">${s[1]?'INP 생성 · XYZ: '+esc(xyzName(i)):'출력 결과를 사용자가 비교해야 하는 단계'}</div></div></div>`).join('');for(const e of $('workflow-box').querySelectorAll('.step-link'))e.addEventListener('click',()=>{if(editorDirty&&!calc(active).hat&&!confirm('직접 수정한 INP 내용이 사라집니다. 단계를 이동할까요?'))return;activeStage=Number(e.dataset.stage);generate(true)});}
 function updateCode(text,manual=false){$('editor').value=text;editorDirty=manual;renderWarning();renderLines();$('edit-status').textContent=manual?'직접 수정됨 · 저장 필요':'자동 생성됨 · 수정 가능'}
-function generate(force=false){syncAllPickers();if(editorDirty&&!force){$('edit-status').textContent='설정 변경됨 · ↻ 재생성 필요';activeInfo();return}activeInfo();if(!currentStage()[1]){updateCode(`# ${calc(active).name} · Analysis step\n# 이 단계는 개별 ORCA 계산이 아니라 결과 비교 작업입니다.\n# 이전 단계들의 OUT에서 에너지 값을 추출하여 계산하세요.\n# 이 주석 파일은 실행 가능한 INP가 아닙니다.\n`,false);$('download-inp').disabled=true;$('top-inp').disabled=true; $('copy-cmd').disabled=true;$('copy-cmd2').disabled=true}else{updateCode(buildInput(),false);$('download-inp').disabled=false;$('top-inp').disabled=false;$('copy-cmd').disabled=false;$('copy-cmd2').disabled=false}renderConsole()}
+function generate(force=false){syncAllPickers();if(editorDirty&&!force){$('edit-status').textContent='설정 변경됨 · ↻ 재생성 필요';activeInfo();return}activeInfo();if(!currentStage()[1]){updateCode(`# ${calc(active).name} · Analysis step\n# 이 단계는 개별 ORCA 계산이 아니라 결과 비교 작업입니다.\n# 이전 단계들의 OUT에서 에너지 값을 추출하여 계산하세요.\n# 이 주석 파일은 실행 가능한 INP가 아닙니다.\n`,false);$('download-inp').disabled=true;$('top-inp').disabled=true; $('copy-cmd').disabled=true;$('copy-cmd2').disabled=true}else{const edit=calc(active).hat?hatStageEdits.get(displayName()):undefined;updateCode(edit??buildInput(),edit!==undefined);$('download-inp').disabled=false;$('top-inp').disabled=false;$('copy-cmd').disabled=false;$('copy-cmd2').disabled=false}renderConsole()}
 function renderConsole(){let filename=displayName()+'.inp',out=displayName()+'.out';$('console').textContent=`C:\\ORCA\\> "C:\\ORCA\\orca.exe" ${filename} > ${out} 2>&1\n\n# 실제 설치 경로와 작업 폴더를 수정하세요.\n# HTML에서는 ORCA.exe를 실행할 수 없어요.`}
 function selectedCalc(id){if(id==='D9'){applyPreset('hat-neb');return}if(editorDirty&&!confirm('현재 직접 편집한 INP 내용이 사라집니다. 계산을 변경할까요?'))return;active=id;activeStage=0;if(calc(active).glorius&&currentStage()[3]!==null)$('mult').value=String(currentStage()[3]);selectedPreset='';$('triplet-panel').hidden=true;refreshPresetHighlight();renderNav();generate(true)}
 // Menu is hidden by default; when expanded each category is also closed by default.
@@ -822,7 +852,7 @@ function renderNav(){
 }
 $('library-toggle').addEventListener('click',()=>setLibraryOpen(!$('workbench').classList.contains('library-open')));
 setLibraryOpen(false);
-function uiChanges(){for(const el of document.querySelectorAll('#functional,#basis,#dispersion,#scf,#solvmodel,#solvent,#charge,#mult,#iontype,#nroots,#excstate,#atom1,#atom2,#steps,#startdist,#enddist,#cores,#maxcore,#temp,#extra-freq,#extra-spin,#extra-spinpop'))el.addEventListener('input',()=>{selectedPreset='';refreshPresetHighlight();generate(false)});}
+function uiChanges(){for(const el of document.querySelectorAll('#functional,#basis,#dispersion,#scf,#dft-grid,#solvmodel,#solvent,#charge,#mult,#iontype,#nroots,#excstate,#atom1,#atom2,#steps,#startdist,#enddist,#cores,#maxcore,#temp,#extra-freq,#extra-spin,#extra-spinpop'))el.addEventListener('input',()=>{selectedPreset='';refreshPresetHighlight();generate(false)});}
 function toast(text){const e=$('toast');e.textContent=text;e.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>e.classList.remove('show'),3200)}
 async function copyText(str){try{await navigator.clipboard.writeText(str);toast('클립보드에 복사했어요.')}catch(e){const temp=document.createElement('textarea');temp.value=str;document.body.appendChild(temp);temp.select();const ok=document.execCommand('copy');temp.remove();toast(ok?'클립보드에 복사했어요.':'복사할 수 없어요. 브라우저 권한을 확인하세요.')}}
 function download(name,data,mime='text/plain;charset=utf-8'){const blob=new Blob([data],{type:mime}),a=document.createElement('a'),u=URL.createObjectURL(blob);a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),2000)}
@@ -839,15 +869,15 @@ function workflowCmd(){const c=calc(active);const stagesToRun=stages().map((s,i)
 for(const {s,i} of stagesToRun){const base=displayName(i),input=base+'.inp',out=base+'.out',source=xyzName(i),isOpt=['A1','A4','A5','B3','XS1OPT','XT1ROOTOPT','HATNEB'].includes(s[1]);head.push('',`echo [${i+1}/${stagesToRun.length}] ${s[0]}`,`if not exist "${source}" (`,`  echo [ERROR] Missing XYZ: ${source}`,`  exit /b 1`,')',`"%ORCA_EXE%" "${input}" > "${out}" 2>&1`,'if errorlevel 1 (',`  echo [ERROR] ORCA exit code failure: ${out}`,'  exit /b 1',')',`findstr /C:"ORCA TERMINATED NORMALLY" "${out}" >nul`,'if errorlevel 1 (',`  echo [ERROR] No normal termination marker: ${out}`,'  exit /b 1',')');if(stageOptions(s).goat)head.push(`findstr /C:"Global minimum found!" "${out}" >nul`,'if errorlevel 1 exit /b 1',`if not exist "${base}.globalminimum.xyz" exit /b 1`);if(isOpt)head.push(`findstr /C:"THE OPTIMIZATION HAS CONVERGED" "${out}" >nul`,'if errorlevel 1 (',`  echo [ERROR] Geometry not converged: ${out}`,'  exit /b 1',')',`if not exist "${base}.xyz" (`,`  echo [ERROR] Optimized XYZ missing: ${base}.xyz`,'  exit /b 1',')');}
 head.push('','echo [DONE] All runnable stages completed.','echo [CHECK] Review each OUT, triplet S^2, electronic state and any imaginary frequencies.','echo [CHECK] Comparative energies / gaps are NOT computed by this script.','pause','exit /b 0');return head.join('\r\n')+'\r\n';}
 function workflowReadme(){if(calc(active).hat)return ['ORCA Nova — HAT NEB-TS','R/P XYZ atom order must match; verify the transferring H index.','Run with the same method, charge, multiplicity and solvent.','Check R/P imaginary modes = 0 and TS = 1, inspect HAT normal mode, compare IRC endpoints manually.','DeltaG = G(product)-G(reactant); DeltaG barrier = G(TS)-G(reactant). Multiply Eh by 627.509474 for kcal/mol.','ZIP CMD does not implement automatic scientific validation or barrier report; use desktop workflow for those.','Manual: https://www.faccts.de/docs/orca/6.1/tutorials/react/nebts.html'].join('\r\n');return ['ORCA Nova v4 - '+calc(active).name,'','Generated for ORCA 6.x. This is a template, not verified by an actual ORCA executable.','STEP 1: Review generated INPs and set charge / multiplicity, method, functional, and solvent.','STEP 2: If XYZ was not imported, add '+workflowSourceName()+' to this folder.','STEP 3: Edit ORCA_EXE in run_workflow.cmd to your full path to orca.exe.','STEP 4: Run run_workflow.cmd in Windows CMD, in a correctly installed ORCA MPI environment.','STEP 5: Check ORCA TERMINATED NORMALLY, THE OPTIMIZATION HAS CONVERGED, frequencies, roots, and <S^2>.','', 'Workflow: '+calc(active).guide,'','Stage mapping:',...stages().map((st,i)=>`${i+1}. ${st[0]}${st[1]?' | '+displayName(i)+'.inp | XYZ: '+xyzName(i):' | manual analysis only'}`),'','NOTES:','- S0 = ground singlet (unless user changes charge or multiplicity).','- Vertical excitation energies use optimized S0 geometry without relaxing S1/T1.','- S1 state optimization uses TD-DFT IRoot=1 / IRootMult=Singlet / FollowIRoot=true.','- T1 UKS optimization uses charge and multiplicity 3, not automatically equal to TD-DFT T1 root.','- TD-DFT T1 root optimization is NOT the same as UKS T1 spin density.','- S1 closed-shell spin density is zero; excited-state electron/hole density and NTO are different quantities.','- Adiabatic energies need consistent method, solvent, zero-point corrections, and standard states.','- Each stage reads the optimized XYZ specified in its INP; independent S1 and T1 branches start from S0 XYZ.','- Multi-stage analysis and postprocessing are not automatic.','', 'Manual: https://www.faccts.de/docs/orca/6.1/manual/contents/spectroscopyproperties/tddft.html',''].join('\r\n');}
-function saveWorkflowZip(){if(calc(active).hat){try{hatInputs()}catch(e){toast(e.message);return}}if(calc(active).kind!=='workflow'){toast('Workflow를 선택해 주세요.');return;}if(editorDirty&&!confirm('INP 수동 수정 내용은 ZIP의 자동 생성 파일에 포함되지 않습니다. 현재 설정에서 다시 생성할까요?'))return;
+async function saveWorkflowZip(){if(calc(active).hat){await exportHATZip();return}if(calc(active).kind!=='workflow'){toast('Workflow를 선택해 주세요.');return;}if(editorDirty&&!confirm('INP 수동 수정 내용은 ZIP의 자동 생성 파일에 포함되지 않습니다. 현재 설정에서 다시 생성할까요?'))return;
 const list=[['README_WORKFLOW.txt',workflowReadme()],['run_workflow.cmd',workflowCmd()]];
 for(let i=0;i<stages().length;i++)if(stages()[i][1])list.push([displayName(i)+'.inp',buildInput(i)+'\n']);
-if(calc(active).hat)list.push(['product.xyz',desktopXYZ.get('product.xyz')]);
+
  if(xyzOriginal&&loadedXYZ)list.push([workflowSourceName(),xyzOriginal]);else list.push(['ADD_XYZ_FIRST.txt','The original XYZ was not imported. Add '+workflowSourceName()+' to this folder before running.\r\n']);
 const blob=zipData(list);download(filenameStem(loadedXYZ||'molecule')+'_'+active+'_Workflow.zip',blob,'application/zip');toast('Workflow ZIP 저장: '+list.length+'개 파일');}
 
 function cmdText(){let file=displayName(),i=`${file}.inp`,o=`${file}.out`;return `cd /d "C:\\YOUR_WORK_FOLDER"\r\n"C:\\ORCA\\orca.exe" "${i}" > "${o}" 2>&1`}
-function save(){if(!currentStage()[1]){toast('결과 비교 단계는 실행할 INP 파일이 없어요.');return}download(displayName()+'.inp',$('editor').value+'\n');toast('INP 파일을 저장했어요. XYZ 파일은 같은 폴더에 두세요.')}
+function save(){if(!currentStage()[1]){toast('결과 비교 단계는 실행할 INP 파일이 없어요.');return}download(displayName()+'.inp',normalizeORCAInput($('editor').value)+'\n');toast('INP 파일을 저장했어요. XYZ 파일은 같은 폴더에 두세요.')}
 function showModal(){let inp=esc(displayName()+'.inp');$('modal-title').textContent='Windows CMD 실행 안내';$('modal-content').innerHTML=`<p><b>Windows 앱의 실행 패널에서 ORCA.exe를 직접 실행할 수 있어요.</b><br>아래 순서대로 진행하면 됩니다.</p><p>① ORCA를 설치하고 <b>orca.exe</b> 경로를 확인하세요.<br>② 현재 INP와 참조하는 XYZ를 <b>같은 폴더</b>에 두세요.<br>③ Windows CMD를 열고 그 폴더로 이동하세요.<br>④ 아래 명령을 실제 경로에 맞게 수정해 실행하세요.</p><div class="console">${esc(cmdText())}</div><p style="font-size:11px">사용하는 ORCA 버전의 MPI 설치·병렬 설정을 확인해야 합니다. 다중 단계 Workflow는 자동 실행되지 않습니다.</p>`;$('modal-bg').classList.add('show');$('modal-bg').setAttribute('aria-hidden','false')}
 function closeModal(){$('modal-bg').classList.remove('show');$('modal-bg').setAttribute('aria-hidden','true')}
 function showTooltip(target){const e=target.closest('[data-help]');if(!e)return;const t=$('tooltip');let title=e.getAttribute('data-title')||'';t.innerHTML=(title?'<strong>'+esc(title)+'</strong>':'')+esc(e.getAttribute('data-help'));t.classList.add('visible');let rect=e.getBoundingClientRect(),top=rect.bottom+9,left=rect.left;t.style.left=Math.max(8,Math.min(innerWidth-t.offsetWidth-8,left))+'px';if(top+t.offsetHeight>innerHeight-10)top=Math.max(8,rect.top-t.offsetHeight-9);t.style.top=top+'px'}
@@ -873,8 +903,8 @@ function clearPrimaryXYZ(){
 $('xyz-remove').addEventListener('click',clearPrimaryXYZ);
 function loadXYZFile(file){if(!file)return;if(!file.name.toLowerCase().endsWith('.xyz')){toast('XYZ 파일을 선택해 주세요.');return}const r=new FileReader();r.onload=()=>applyPrimaryXYZ(file.name,String(r.result));r.readAsText(file)}
 $('xyz-load').addEventListener('click',()=>$('xyz-file').click());$('xyz-file').addEventListener('change',e=>loadXYZFile(e.target.files?.[0]));const dz=$('dropzone');dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over')});dz.addEventListener('dragleave',()=>dz.classList.remove('over'));dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');loadXYZFile(e.dataTransfer.files?.[0])});
-$('search').addEventListener('input',renderNav);uiChanges();$('editor').addEventListener('input',()=>{editorDirty=true;$('edit-status').textContent='직접 수정됨 · 저장 필요';renderWarning();renderLines()});$('editor').addEventListener('scroll',()=>{$('line-nums').scrollTop=$('editor').scrollTop});$('editor').addEventListener('keydown',e=>{if(e.key==='Tab'){e.preventDefault();const a=e.target.selectionStart,b=e.target.selectionEnd;e.target.setRangeText('  ',a,b,'end');e.target.dispatchEvent(new Event('input'))}});$('regen').addEventListener('click',()=>{if(editorDirty&&!confirm('직접 수정한 INP 내용을 덮어쓰고 재생성할까요?'))return;generate(true);toast('INP를 재생성했어요.')});
-$('download-workflow').addEventListener('click',saveWorkflowZip);$('download-inp').addEventListener('click',save);$('top-inp').addEventListener('click',save);$('copy-inp').addEventListener('click',()=>copyText($('editor').value));$('copy-cmd').addEventListener('click',()=>copyText(cmdText()));$('copy-cmd2').addEventListener('click',()=>copyText(cmdText()));$('cmd-help').addEventListener('click',showModal);$('modal-close').addEventListener('click',closeModal);$('modal-bg').addEventListener('click',e=>{if(e.target.id==='modal-bg')closeModal()});$('modal-copy').addEventListener('click',()=>copyText(cmdText()));document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});$('next-stage').addEventListener('click',()=>{if(editorDirty&&!confirm('직접 수정한 INP 내용이 사라집니다. 단계를 이동할까요?'))return;activeStage=(activeStage+1)%stages().length;generate(true)});
+$('search').addEventListener('input',renderNav);uiChanges();$('editor').addEventListener('input',()=>{editorDirty=true;if(calc(active).hat)hatStageEdits.set(displayName(),$('editor').value);$('edit-status').textContent='직접 수정됨 · 저장 필요';renderWarning();renderLines()});$('editor').addEventListener('scroll',()=>{$('line-nums').scrollTop=$('editor').scrollTop});$('editor').addEventListener('keydown',e=>{if(e.key==='Tab'){e.preventDefault();const a=e.target.selectionStart,b=e.target.selectionEnd;e.target.setRangeText('  ',a,b,'end');e.target.dispatchEvent(new Event('input'))}});$('regen').addEventListener('click',()=>{if(editorDirty&&!confirm('직접 수정한 INP 내용을 덮어쓰고 재생성할까요?'))return;generate(true);toast('INP를 재생성했어요.')});
+$('download-workflow').addEventListener('click',saveWorkflowZip);$('download-inp').addEventListener('click',save);$('top-inp').addEventListener('click',save);$('copy-inp').addEventListener('click',()=>copyText(normalizeORCAInput($('editor').value)));$('copy-cmd').addEventListener('click',()=>copyText(cmdText()));$('copy-cmd2').addEventListener('click',()=>copyText(cmdText()));$('cmd-help').addEventListener('click',showModal);$('modal-close').addEventListener('click',closeModal);$('modal-bg').addEventListener('click',e=>{if(e.target.id==='modal-bg')closeModal()});$('modal-copy').addEventListener('click',()=>copyText(cmdText()));document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});$('next-stage').addEventListener('click',()=>{if(editorDirty&&!calc(active).hat&&!confirm('직접 수정한 INP 내용이 사라집니다. 단계를 이동할까요?'))return;activeStage=(activeStage+1)%stages().length;generate(true)});
 $('top-manual').addEventListener('click',()=>window.open('https://www.faccts.de/docs/orca/6.1/manual/','_blank','noopener'));
 $('top-workflow').addEventListener('click',()=>{workspaceShow('calculation');document.querySelector('.lower-grid').scrollIntoView({behavior:'smooth',block:'start'});});
 $('tab-inp').addEventListener('click',()=>{view='inp';$('tab-inp').classList.add('active');$('tab-guide').classList.remove('active');$('editor-view').style.display='grid';$('guide-view').style.display='none'});$('tab-guide').addEventListener('click',()=>{view='guide';$('tab-guide').classList.add('active');$('tab-inp').classList.remove('active');$('editor-view').style.display='none';$('guide-view').style.display='grid'});
@@ -929,17 +959,85 @@ async function desktopConfig(){
  }finally{desktopConfigSaving=false;desktopConfigEpoch++}
 }
 function desktopSafe(s){return /^[A-Za-z0-9_.-]{1,120}$/.test(s)&&!s.includes('..')}
+const hatReviewState={review:null,reactant:null,product:null,key:'',corrected:null};
+function hatIndexFields(){
+ const ids=['hat-h','hat-donor','hat-acceptor'];
+ if(ids.some(id=>!$(id).value.trim()||!Number.isSafeInteger(Number($(id).value))||Number($(id).value)<0))throw Error('이동 H, donor, acceptor의 0-based 인덱스를 입력하세요.');
+ const [h,donor,acceptor]=ids.map(id=>Number($(id).value));
+ return {h,donor,acceptor};
+}
 function hatInputs(){
  if(!xyzOriginal)throw Error('HAT: 반응물 XYZ를 기본으로 등록하세요.');
  if(workflowSourceName().toLowerCase()==='product.xyz')throw Error('HAT: 기본 XYZ 이름은 product.xyz일 수 없습니다.');
  const p=desktopXYZ.get('product.xyz');if(!p)throw Error('HAT: 생성물을 product.xyz라는 이름으로 추가 XYZ 등록하세요.');
- const elements=t=>{const n=parseXYZ(t);return n?t.replace(/\r/g,'').trim().split('\n').slice(2,n+2).map(v=>v.trim().split(/\s+/)[0].toLowerCase()).join(' '):null};
- if(!elements(p)||elements(p)!==elements(xyzOriginal))throw Error('HAT: 두 XYZ의 원자 수와 원소 순서가 일치해야 합니다.');
- if(editorDirty)throw Error('HAT: 수동 INP 변경 대신 설정값을 수정하고 재생성하세요.');
- return p;
+ const mapping=hatIndexFields();
+ const current=hatReviewState.reactant===xyzOriginal&&hatReviewState.product===p&&hatReviewState.key===JSON.stringify(mapping);
+ if(!current||(!hatReviewState.review?.valid&&!hatReviewState.corrected))throw Error('HAT: 원자 대응을 검사하고 단일 H 이동을 확인하세요.');
+ return {mapping,product:hatReviewState.corrected||p,original:hatReviewState.corrected?p:null};
 }
+function drawHATReview(result,mapping){
+ const canvas=$('hat-preview'),ctx=canvas.getContext('2d');
+ canvas.hidden=false;ctx.clearRect(0,0,canvas.width,canvas.height);
+ const points=[...result.reactant,...result.product], lo=[Math.min(...points.map(p=>p[0])),Math.min(...points.map(p=>p[1]))],hi=[Math.max(...points.map(p=>p[0])),Math.max(...points.map(p=>p[1]))];
+ const scale=Math.min((canvas.width/2-56)/Math.max(hi[0]-lo[0],1),(canvas.height-54)/Math.max(hi[1]-lo[1],1));
+ for(const [index,coords] of [result.reactant,result.product].entries()){
+  const at=i=>[index*canvas.width/2+26+(coords[i][0]-lo[0])*scale,canvas.height-23-(coords[i][1]-lo[1])*scale];
+  const bonds=new Map((result.bonds||[]).map(pair=>[pair.join(','),pair]));
+  if(index)for(const {a,b,formed} of result.changes){if(formed)bonds.set([a,b].join(','),[a,b]);else bonds.delete([a,b].join(','))}
+  ctx.strokeStyle='#7392ad';ctx.fillStyle='#d8efff';ctx.font='13px sans-serif';ctx.fillText(index?'Product':'Reactant',index*canvas.width/2+12,18);
+  for(const [i,j] of bonds.values()){ctx.beginPath();ctx.moveTo(...at(i));ctx.lineTo(...at(j));ctx.stroke();}
+  for(let i=0;i<coords.length;i++){const [x,y]=at(i),label=[mapping.h,mapping.donor,mapping.acceptor].includes(i);
+   ctx.fillStyle=label?'#ffc878':'#75adca';ctx.beginPath();ctx.arc(x,y,label?4:2,0,2*Math.PI);ctx.fill();
+   if(label)ctx.fillText(result.atoms[i]+i,x+5,y-3);
+  }
+ }
+}
+async function reviewHAT(productOverride){
+ const report=$('hat-review');
+ $('hat-accept-swap').hidden=true;$('hat-preview').hidden=true;
+ const raw=desktopXYZ.get('product.xyz'),reactant=xyzOriginal;
+ try{
+  if(!reactant||!raw)throw Error('Reactant 및 product.xyz를 먼저 등록하세요.');
+  const mapping=hatIndexFields(),key=JSON.stringify(mapping);
+  hatReviewState.review=null;hatReviewState.corrected=null;
+  const result=await desktopAPI('hat/mapping',{reactant,product:productOverride||raw,mapping});
+  if(raw!==desktopXYZ.get('product.xyz')||reactant!==xyzOriginal||key!==JSON.stringify(hatIndexFields()))throw Error('입력이 변경됐습니다. 원자 대응을 다시 검사하세요.');
+  Object.assign(hatReviewState,{review:result,reactant,product:raw,key,corrected:productOverride&&result.valid?productOverride:null});
+  const changes=result.changes.map(c=>result.atoms[c.a]+c.a+'–'+result.atoms[c.b]+c.b+' '+(c.formed?'형성':'절단'));
+  const swap=result.swapCandidates||[];
+  report.textContent=[result.valid?'지정한 단일 H 이동과 일치합니다.':'예상과 다른 결합 변화가 있습니다.',...changes,
+   result.aligned?'Donor–acceptor 축 및 공통 heavy atom 기준 정렬':'원래 좌표 투영 · 정렬용 heavy atom 부족',
+   swap.length===1?'Product H'+mapping.h+' ↔ H'+swap[0]+' 교환 후보':swap.length>1?'복수 교환 후보: '+swap.join(', ')+' · Product XYZ를 직접 확인하세요.':''].filter(Boolean).join('\n');
+  $('hat-accept-swap').hidden=!result.correctedProduct;
+  drawHATReview(result,mapping);
+ }catch(e){report.textContent=e.message;}
+}
+async function exportHATZip(){
+ try{
+  const req=desktopRunData(true);delete req.hatRestart;
+  const response=await fetch('/api/hat/export?session='+encodeURIComponent(desktopSession),{
+   method:'POST',headers:{'Content-Type':'application/json','X-ORCA-Session':desktopSession},body:JSON.stringify(req)
+  });
+  if(!response.ok){const body=await response.json();throw Error(body.error||'HAT ZIP 생성 실패');}
+  download('D9_HAT_Workflow.zip',await response.blob(),'application/zip');
+ }catch(e){toast(e.message);}
+}
+$('hat-check-mapping').onclick=()=>reviewHAT();
+$('hat-accept-swap').onclick=async()=>{
+ const product=hatReviewState.review?.correctedProduct;
+ if(!product||!confirm('교환한 Product XYZ를 사용하고 수정본을 저장할까요?'))return;
+ await reviewHAT(product);
+ if(hatReviewState.corrected===product)download('product_corrected.xyz',product);
+};
+$('hat-reset-edits').onclick=()=>{
+ if(!confirm('현재 D9의 모든 단계 INP를 공통 설정으로 재생성할까요?'))return;
+ for(let i=0;i<stages().length;i++)hatStageEdits.delete(displayName(i));
+ generate(true);
+};
+$('hat-run-mode').onchange=()=>{$('hat-restart-folder').hidden=$('hat-run-mode').value==='all';};
 function desktopRunData(workflow){
- if(calc(active).hat)hatInputs();
+ const hat=calc(active).hat?hatInputs():null;
+ const hatEdited=hat&&stages().some((s,i)=>hatStageEdits.has(displayName(i)));
  // An explicitly deleted primary XYZ must never be silently restored from extras.
  if(!xyzOriginal){throw Error('XYZ 파일을 먼저 선택해 주세요. 위의 「XYZ 선택 / 추가」 또는 왼쪽 「XYZ 불러오기」를 사용하면 돼요.');}
  if(workflow&&calc(active).kind!=='workflow')throw Error('왼쪽에서 W1–W5 등 Workflow 계산을 선택해 주세요.');
@@ -947,31 +1045,35 @@ function desktopRunData(workflow){
  const generated=[], jobs=[];
  const inputs=workflow?stages().map((s,i)=>({s,i})).filter(v=>v.s[1]):[{s:currentStage(),i:activeStage}];
  for(const {s,i} of inputs){
-  const name=displayName(i)+'.inp';const text=workflow?(editorDirty&&i===activeStage?$('editor').value:buildInput(i,!editorDirty)):$('editor').value;
+  const name=displayName(i)+'.inp';const text=hat?(hatStageEdits.get(displayName(i))??buildInput(i,!hatEdited)):workflow?(editorDirty&&i===activeStage?$('editor').value:buildInput(i,!editorDirty)):$('editor').value;
   const source=xyzName(i);
   if(!desktopSafe(name)||!desktopSafe(source))throw Error('파일명에 한글이나 공백이 포함되어 있어요. XYZ를 영문/숫자 이름으로 다시 지정해 주세요: '+source);
-  generated.push({name,content:text});
+  generated.push({name,content:normalizeORCAInput(text)});
   jobs.push(generatedStage(s,i));
  }
  let src=workflowSourceName();if(!desktopSafe(src))throw Error('XYZ 이름이 올바르지 않아요: '+src);
  const files=new Map([[src,xyzOriginal]]);
  for(const [name,body] of desktopXYZ)files.set(name,body);
+ if(hat){files.set('product.xyz',hat.product);if(hat.original)files.set('product_original.xyz',hat.original);}
  for(const it of generated)files.set(it.name,it.content);
  for(const st of jobs){
   const isFromEarlier=jobs.some((j,index)=>index<jobs.indexOf(st) && stageOutputName(j)===st.source);
   if(!files.has(st.source)&&!isFromEarlier)throw Error(st.source+' 파일이 필요해요. 추가 XYZ 선택 버튼으로 불러와 주세요.');
  }
- return {label:filenameStem(loadedXYZ||'molecule')+'_'+active,files:[...files].map(([name,content])=>({name,content})),stages:jobs,...(singleAutoMode()&&!editorDirty?{autoCPU:singleSelectedCPU()}:{})};
+ const mode=$('hat-run-mode').value;
+ return {label:filenameStem(loadedXYZ||'molecule')+'_'+active,files:[...files].map(([name,content])=>({name,content})),stages:jobs,
+  ...(hat?{hatMapping:hat.mapping,...(mode==='all'?{}:{hatRestart:{mode,folder:$('hat-restart-folder').value.trim()}})}:{}),
+  ...(singleAutoMode()&&!editorDirty&&!hatEdited?{autoCPU:singleSelectedCPU()}:{})};
 }
 async function desktopRun(workflow){
  try{
   await desktopConfig();
   const req=desktopRunData(workflow);
-  if(singleAutoMode()&&editorDirty&&!confirm('직접 수정된 INP는 자동 자원 배분을 적용하지 않습니다. 현재 INP에 적힌 CPU / MaxCore 그대로 실행할까요?'))return;
+  if(singleAutoMode()&&!req.autoCPU&&(editorDirty||calc(active).hat)&&!confirm('직접 수정된 INP는 자동 자원 배분을 적용하지 않습니다. 현재 INP에 적힌 CPU / MaxCore 그대로 실행할까요?'))return;
   const checked=await desktopAPI('preflight',req);
   if(!checked.ok)throw Error('계산 전 검사 실패: '+checked.errors.join(' / '));
   if(checked.warnings?.length&&!confirm('계산 전 검사에서 주의 사항이 나왔어요.\n\n'+checked.warnings.join('\n')+'\n\n그래도 실행할까요?')){desktopMessage('검사 주의 사항 확인 후 다시 실행하세요.');return}
-  if(workflow&&editorDirty&&!confirm('현재 단계에서 수동 수정한 INP만 반영돼요. 다른 단계는 설정값에서 자동 생성됩니다. 실행할까요?'))return;
+  if(workflow&&editorDirty&&!calc(active).hat&&!confirm('현재 단계에서 수동 수정한 INP만 반영돼요. 다른 단계는 설정값에서 자동 생성됩니다. 실행할까요?'))return;
   desktopMessage('ORCA 실행 요청 중...');
   const result=await desktopAPI('run',req);desktopMessage('실행 중 — 결과 폴더: '+result.folder+(result.allocation?' · '+result.allocation.cpu+' CPU / '+(result.allocation.ramMB/1024).toFixed(1)+' GB 예약':''));
   if(result.allocation)$('single-run-allocation').textContent='실행 배분 · '+result.allocation.cpu+' CPU / '+(result.allocation.ramMB/1024).toFixed(1)+' GB 예약';else $('single-run-allocation').textContent='수동 INP 실행';
