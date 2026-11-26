@@ -82,6 +82,10 @@ func validateStage(folder string, s Stage) error {
         if s.Stationary=="ts"{want=1}
         if a.ImaginaryCount==nil||*a.ImaginaryCount!=want||a.Gibbs==nil{return fmt.Errorf("%s: Frequency/Gibbs 또는 imaginary mode 검증 실패 (필요 %d개)",s.Name,want)}
     }
+    if s.HAT=="reactant"||s.HAT=="product"||s.HAT=="ts" {
+        want:=0; if s.HAT=="ts" {want=1}
+        if a.ImaginaryCount==nil||*a.ImaginaryCount!=want||a.Gibbs==nil {return fmt.Errorf("%s: HAT Gibbs 또는 허수 진동수 검증 실패 (필요 %d개)",s.Name,want)}
+    }
     // Only compare explicit output metadata, never the parser's input fallback.
 	for _, v := range []struct {
 		pattern string
