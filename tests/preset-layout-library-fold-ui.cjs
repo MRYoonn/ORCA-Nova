@@ -80,7 +80,7 @@ const fs=require('fs'),path=require('path'),assert=require('assert');
   assert.equal(pair.stages[2].compositeFrom,pair.stages[1].input);
   assert.equal(pair.stages[4].compositeFrom,pair.stages[3].input);
   assert(pair.files.find(f=>f.name===pair.stages[0].input).content.includes('! GOAT XTB2'));
-  assert(pair.files.find(f=>f.name===pair.stages[4].input).content.includes('UKS M06-2X def2-QZVPPD def2/J RIJCOSX'));
+  assert(pair.files.find(f=>f.name===pair.stages[4].input).content.includes('UKS M062X def2-QZVPPD def2/J RIJCOSX'));
   assert(pair.files.find(f=>f.name===pair.stages[3].input).content.includes('* xyzfile 0 3'));
   assert(pair.files.find(f=>f.name===pair.stages[3].input).content.includes('P_Mulliken'));
   assert(!(pair.files.find(f=>f.name===pair.stages[2].input).content.includes(' Freq')));
