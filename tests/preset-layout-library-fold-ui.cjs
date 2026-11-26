@@ -62,6 +62,24 @@ const fs=require('fs'),path=require('path'),assert=require('assert');
   assert(titleHeights.every(x=>x.actual<x.line*1.4),'preset title unexpectedly wraps on 1600px desktop: '+JSON.stringify(titleHeights.filter(x=>x.actual>=x.line*1.4)));
   await fs.promises.mkdir(path.join(__dirname,'../ui-screenshots'),{recursive:true});
   await page.screenshot({path:path.join(__dirname,'../ui-screenshots/preset-default-1600.png')});
+  // ORCA 6.0.1 rejected the literature spelling M06-2X in a real D9 run.
+  const keywordCases=await page.evaluate(()=>{
+   const out={};
+   for(const p of PRESETS.filter(p=>p.settings?.functional==='M06-2X')){
+    applyPreset(p.id);
+    out[p.id]=stages().map((s,i)=>s[1]?buildInput(i,false).split('\n').find(l=>l.startsWith('!')):null).filter(Boolean);
+   }
+   selectedCalc('A4');$('functional').value='M06-2X';generate(true);
+   out.general=[buildInput(0,false).split('\n').find(l=>l.startsWith('!'))];
+   applyPreset('standard');
+   return {out,order:GROUPS.find(g=>g.id==='D').items.map(x=>x.id)};
+  });
+  assert(keywordCases.out['hat-neb'].length===4);
+  for(const [id,lines] of Object.entries(keywordCases.out))for(const l of lines){
+   assert(!/\bM06-2X\b/i.test(l),id+' emitted invalid keyword: '+l);
+   if(!/\bGOAT\b/.test(l))assert(/\bM062X\b/.test(l),id+' missing canonical keyword: '+l);
+  }
+  assert(keywordCases.order.indexOf('D8')+1===keywordCases.order.indexOf('D9'),'D8 must precede D9');
   // Original Method selection must remain functional.
   await page.locator('[data-preset="glorius-hartmann-opt"]').click();
   assert.equal(await page.evaluate(()=>active),'G2');
