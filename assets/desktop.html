@@ -761,7 +761,7 @@ function activeInfo(){const c=calc(active),st=currentStage(),base=st[1];const tr
  $('ion-extra').style.display=(active==='C7')?'block':'none';$('tddft-extra').style.display=['B1','B4','B5','B6','B7','W1','W3','W4','W5'].includes(active)?'block':'none';$('scan-extra').style.display=active==='D3'?'block':'none';
  $('inp-header').textContent=displayName()+'.inp';$('stage-label').textContent=String(activeStage+1).padStart(2,'0')+' / '+String(stages().length).padStart(2,'0');
  $('guide-title').textContent=c.name;$('guide-content').textContent=c.guide;
- $('guide-extra').textContent=c.kind==='workflow'?'Workflow ZIP 다운로드에는 단계별 INP와 순차 실행 CMD가 들어가요. 실제 계산 결과(수렴, 여기상태 Root, <S²>, 자유에너지)는 반드시 확인해야 해요. 결과 에너지 자동 비교는 아직 미구현입니다.':'';
+ $('guide-extra').textContent=c.hat?'R/P의 imaginary=0, TS의 imaginary=1을 확인하며 Gibbs 장벽을 보고서에 기록합니다. IRC 끝점 및 이동 H의 normal mode는 직접 검증하세요. ZIP은 자동 검증을 제공하지 않습니다.':c.kind==='workflow'?'Workflow ZIP 다운로드에는 단계별 INP와 순차 실행 CMD가 들어가요. 실제 계산 결과(수렴, 여기상태 Root, <S²>, 자유에너지)는 반드시 확인해야 해요. 결과 에너지 자동 비교는 아직 미구현입니다.':'';
  $('next-stage').disabled=stages().length===1;$('next-stage').textContent=(activeStage===stages().length-1?'처음 단계 ↺':'다음 단계 →');
  $('download-workflow').style.display=c.kind==='workflow'?'inline-flex':'none';
  $('wf-count').textContent=stages().length+' STEP'+(stages().length>1?'S':'');$('workflow-foot').textContent=c.kind==='workflow'?'단계 확인 → Workflow ZIP 저장':'단일 INP 계산';
@@ -785,7 +785,7 @@ function renderWorkflow(){const st=stages();$('workflow-box').innerHTML=st.map((
 function updateCode(text,manual=false){$('editor').value=text;editorDirty=manual;renderWarning();renderLines();$('edit-status').textContent=manual?'직접 수정됨 · 저장 필요':'자동 생성됨 · 수정 가능'}
 function generate(force=false){syncAllPickers();if(editorDirty&&!force){$('edit-status').textContent='설정 변경됨 · ↻ 재생성 필요';activeInfo();return}activeInfo();if(!currentStage()[1]){updateCode(`# ${calc(active).name} · Analysis step\n# 이 단계는 개별 ORCA 계산이 아니라 결과 비교 작업입니다.\n# 이전 단계들의 OUT에서 에너지 값을 추출하여 계산하세요.\n# 이 주석 파일은 실행 가능한 INP가 아닙니다.\n`,false);$('download-inp').disabled=true;$('top-inp').disabled=true; $('copy-cmd').disabled=true;$('copy-cmd2').disabled=true}else{updateCode(buildInput(),false);$('download-inp').disabled=false;$('top-inp').disabled=false;$('copy-cmd').disabled=false;$('copy-cmd2').disabled=false}renderConsole()}
 function renderConsole(){let filename=displayName()+'.inp',out=displayName()+'.out';$('console').textContent=`C:\\ORCA\\> "C:\\ORCA\\orca.exe" ${filename} > ${out} 2>&1\n\n# 실제 설치 경로와 작업 폴더를 수정하세요.\n# HTML에서는 ORCA.exe를 실행할 수 없어요.`}
-function selectedCalc(id){if(editorDirty&&!confirm('현재 직접 편집한 INP 내용이 사라집니다. 계산을 변경할까요?'))return;active=id;activeStage=0;if(calc(active).glorius&&currentStage()[3]!==null)$('mult').value=String(currentStage()[3]);selectedPreset='';$('triplet-panel').hidden=true;refreshPresetHighlight();renderNav();generate(true)}
+function selectedCalc(id){if(id==='D9'){applyPreset('hat-neb');return}if(editorDirty&&!confirm('현재 직접 편집한 INP 내용이 사라집니다. 계산을 변경할까요?'))return;active=id;activeStage=0;if(calc(active).glorius&&currentStage()[3]!==null)$('mult').value=String(currentStage()[3]);selectedPreset='';$('triplet-panel').hidden=true;refreshPresetHighlight();renderNav();generate(true)}
 // Menu is hidden by default; when expanded each category is also closed by default.
 const openNavGroups=new Set();
 function setLibraryOpen(open){
