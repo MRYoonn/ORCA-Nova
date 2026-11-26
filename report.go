@@ -671,6 +671,7 @@ func writeAnalysisReports(folder string, req RunRequest, completed []string) (st
 	}
 	composites:=gloriusComposites(folder, req, completed)
 	b.WriteString(gloriusCompositeReport(composites))
+	b.WriteString(hatWorkflowReport(folder,req,completed))
 	b.WriteString("\n[SOC / BDE / SET / reaction ΔG]\n계산에 필요한 개별 상태나 여러 화학종의 에너지가 존재해야 비교할 수 있습니다. 부재한 수치는 임의 생성하지 않습니다.\n")
 	if err := os.WriteFile(path, []byte(b.String()), 0644); err != nil {
 		return "", err
