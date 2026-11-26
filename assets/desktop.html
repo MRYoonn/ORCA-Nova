@@ -406,6 +406,7 @@ excstate:{
   'singlet':['Singlet 여기 상태만 계산해요.','UV–Vis Absorption 등 Singlet excited states에 초점을 맞출 때 사용해요.','UV–Vis 탐색']}
 };
 const PRESETS=[
+{"id":"hat-neb","calc":"D9","title":"1,3-HAT · NEB-TS + Gibbs + IRC","tag":"추천 · 라디칼 장벽","subtitle":"R/P Opt + Freq → NEB-TS + Freq → IRC","desc":"중성 Doublet 기본값. 반응물 XYZ를 기본으로, 생성물을 product.xyz로 추가 등록하세요. 두 파일의 원자 순서와 이동 H 번호가 동일해야 합니다. TS guess 불필요. Gibbs 장벽 자동 비교 및 IRC 경로 출력; 진동 모드와 양 끝점은 직접 검증.","settings":{"functional":"M06-2X","basis":"def2-TZVP","dispersion":"None","scf":"TightSCF","solvmodel":"CPCM","solvent":"dmf","charge":0,"mult":2}},
 // SI S48–50 verified; author exact INP not inspected.
 {"id":"glorius-goat","calc":"G1","title":"Glorius 2026 · GOAT Conformer Search","tag":"문헌 Method","subtitle":"GFN2-xTB / GOAT","desc":"GOAT 최저 conformer와 ensemble; 실제 xTB 설치 필요. SI S48–50; DOI 10.1002/anie.9565676. 원본 INP 및 실제 ORCA 검증 전.","settings":{"functional":"M06-2X","basis":"def2-TZVP","dispersion":"D3ZERO","scf":"TightSCF","solvmodel":"CPCM","solvent":"acetonitrile","charge":0,"mult":1}},
 {"id":"glorius-hartmann-opt","calc":"G2","title":"Glorius 2026 · S₀ Opt + Freq","tag":"문헌 Method","subtitle":"TZVP / RIJCOSX","desc":"Singlet minimum, imaginary=0. SI S48–50; DOI 10.1002/anie.9565676. 원본 INP 및 실제 ORCA 검증 전.","settings":{"functional":"M06-2X","basis":"def2-TZVP","dispersion":"D3ZERO","scf":"TightSCF","solvmodel":"CPCM","solvent":"acetonitrile","charge":0,"mult":1}},
@@ -561,6 +562,7 @@ const GROUPS=[
 {id:'D3',name:'PES Scan',desc:'원자 간 거리 등을 바꾸며 에너지 변화를 조사해요.',guide:'원자 인덱스는 0부터 시작합니다. Atom i / j와 시작·끝 거리, Steps를 입력하고 해당 결합이 올바른지 XYZ를 기준으로 확인하세요.',kind:'single'},
 {id:'D5',name:'Activation Barrier (ΔG‡)',desc:'Transition State와 반응물의 Gibbs Free Energy 차이를 계산해요.',guide:'반응물 Opt + Freq와 TS OptTS + Freq를 각각 실행합니다. 둘의 자유에너지에서 ΔG‡를 계산하며 표준상태와 기준을 일치시켜야 합니다.',kind:'workflow',steps:[['Reactant Opt + Freq','A4',null,null,'reactant.xyz'],['TS OptTS + Freq','D1',null,null,'ts_guess.xyz'],['ΔG‡ Comparison',null,null,null,null]]},
 {id:'D6',name:'Reaction Energy (ΔG)',desc:'반응물과 생성물의 Gibbs Free Energy 차이를 구해요.',guide:'반응물과 생성물 각각 Opt + Freq를 수행하고 화학양론을 반영해 계산한 자유에너지를 비교하세요.',kind:'workflow',steps:[['Reactant Opt + Freq','A4',null,null,'reactant.xyz'],['Product Opt + Freq','A4',null,null,'product.xyz'],['ΔG Comparison',null,null,null,null]]},
+{id:'D9',name:'HAT / NEB-TS + Gibbs + IRC',desc:'두 XYZ에서 HAT 전이상태와 Gibbs 장벽을 한 번에 탐색합니다.',guide:'반응물 XYZ를 기본으로 등록하고 생성물 XYZ는 product.xyz라는 이름으로 추가하세요. 원자 순서와 이동 H의 인덱스를 유지하세요. 같은 이론 수준으로 두 끝점을 Opt/Freq한 뒤 NEB-TS/Freq 및 IRC를 실행합니다. 결과에서 허수 모드와 IRC 끝점, 스핀 상태를 직접 검증하세요. Batch 미지원.',kind:'workflow',hat:true,steps:[['Reactant Opt + Freq','A4',null,null,null,{hat:'reactant'}],['Product Opt + Freq','A4',null,null,'product.xyz',{hat:'product'}],['NEB-TS + Freq','HATNEB',null,null,null,{from:0,hat:'ts',endFrom:1}],['IRC (both directions)','D2',null,null,null,{from:2,hat:'irc'}]]},
 {id:'D8',name:'HAT / BDE Analysis',desc:'결합 해리 및 Hydrogen Atom Transfer의 에너지 변화를 계산해요.',guide:'일반적인 X–H BDE는 X–H, X·, H·의 에너지 차이를 계산합니다. HAT ΔG는 Hydrogen donor/acceptor 상태와 반응 조건을 별도로 고려해야 합니다.',kind:'workflow',steps:[['Parent X-H Opt + Freq','A4',null,1,'parent.xyz'],['Radical X· Opt + Freq','A4',null,2,'radical.xyz'],['H· SP','A2',0,2,'hydrogen.xyz'],['BDE / HAT Analysis',null,null,null,null]]}]},
 {id:'E',name:'Thermodynamics',items:[
 {id:'E4',name:'SET Thermodynamics',desc:'산화·환원 전후의 자유에너지를 비교해 Electron Transfer의 열역학을 계산해요.',guide:'Neutral / Radical Cation / Radical Anion 종들의 계산값을 비교하는 템플릿입니다. 실제 Redox Potential에는 용매화, 자유에너지 및 기준 전극 보정이 추가로 필요합니다.',kind:'workflow',steps:[['Neutral Opt + Freq','A4',0,1,'neutral.xyz'],['Cation Opt + Freq','A4',1,2,'cation.xyz'],['Anion Opt + Freq','A4',-1,2,'anion.xyz'],['SET Analysis',null,null,null,null]]},
@@ -679,7 +681,7 @@ function gloriusInput(stageIndex,autoPreview){
 }
 function generatedStage(s,i){
  const opts=stageOptions(s);
- return {name:s[0],input:displayName(i)+'.inp',source:xyzName(i),opt:['A1','A4','A5','B3','D1','XS1OPT','XT1ROOTOPT'].includes(s[1]),...(opts.goat?{goat:true}:{}),...(opts.stationary?{stationary:opts.stationary}:{}),...(Number.isInteger(opts.composite)?{compositeFrom:displayName(opts.composite)+'.inp'}:{})};
+ return {name:s[0],input:displayName(i)+'.inp',source:xyzName(i),opt:['A1','A4','A5','B3','D1','XS1OPT','XT1ROOTOPT','HATNEB'].includes(s[1]),...(opts.hat?{hat:opts.hat}:{}),...(Number.isInteger(opts.endFrom)?{endSource:stageOutputName({input:displayName(opts.endFrom)+'.inp',opt:true})}:{}),...(opts.goat?{goat:true}:{}),...(opts.stationary?{stationary:opts.stationary}:{}),...(Number.isInteger(opts.composite)?{compositeFrom:displayName(opts.composite)+'.inp'}:{})};
 }
 function stageOutputName(j){return j.goat?j.input.replace(/\.inp$/i,'.globalminimum.xyz'):j.opt?j.input.replace(/\.inp$/i,'.xyz'):'';}
 function buildInput(stageIndex=activeStage,autoPreview=true){
@@ -689,19 +691,22 @@ function buildInput(stageIndex=activeStage,autoPreview=true){
  let tokens=[fn];if(fn!=='r2SCAN-3c')tokens.push(basis);
  if(disp!=='None'&&fn!=='r2SCAN-3c'&&fn!=='wB97X-D3')tokens.push(disp);
  tokens.push(val('scf'));
- const baseFreq=['A3','A4','A5','B3','D1'].includes(base);
+ const baseFreq=['A3','A4','A5','B3','D1','HATNEB'].includes(base);
+  if(c.hat){if(mult>1)tokens.unshift('UKS');if(fn==='M06-2X')tokens.push('def2/J','RIJCOSX');}
  const extraFreq=addOnChecked('extra-freq',base)&&!baseFreq;
  const spin=base==='C1'||opts.spin===true||addOnChecked('extra-spin',base);
  const spinPop=base==='C2'||opts.spinpop===true||addOnChecked('extra-spinpop',base);
  if(['A1','A4','A5','B3','XS1OPT','XT1ROOTOPT'].includes(base))tokens.push('Opt');
  if(baseFreq||extraFreq)tokens.push('Freq');
  if(base==='D1')tokens.push('OptTS');
+  if(base==='HATNEB')tokens.push('NEB-TS');
  if(base==='D2')tokens.push('IRC');
  if(base==='D3')tokens.push('Opt');
  if(base==='C4')tokens.push('PrintMOs','PrintGap');
  const solv=solventKeyword();if(solv)tokens.push(solv);
  let comments=[`# ORCA Nova Windows Desktop / ${active}: ${c.name}`];
- if(c.kind==='workflow')comments.push(`# Workflow stage ${stageIndex+1}/${stages().length}: ${st[0]}`);
+ if(c.hat)comments.push('# HAT: verify atom identity, transferring H index, doublet state and IRC endpoints.');
+  if(c.kind==='workflow')comments.push(`# Workflow stage ${stageIndex+1}/${stages().length}: ${st[0]}`);
  if(!loadedXYZ&&stageIndex===0)comments.push('# REQUIRED: import an actual XYZ, or place molecule.xyz in this folder.');
  if(opts.from!==undefined)comments.push(`# Geometry comes from optimized stage ${opts.from+1} (${file}), NOT from the previous stage unless specified.`);
  if(base==='B1')comments.push('# Use optimized S0 geometry for vertical T1 excitation.');
@@ -732,7 +737,8 @@ function buildInput(stageIndex=activeStage,autoPreview=true){
    const cube=displayName(stageIndex)+'_SpinDensity.cube';
    lines.push('','%plots','  dim1 60','  dim2 60','  dim3 60','  Format Gaussian_Cube',`  SpinDens("${cube}");`,'end');
  }
- if(base==='D3')lines.push('','%geom','  Scan',`    B ${Math.max(0,Math.floor(num('atom1',0)))} ${Math.max(0,Math.floor(num('atom2',1)))} = ${num('startdist',1.4)}, ${num('enddist',2.5)}, ${Math.max(2,Math.floor(num('steps',12)))}`,'  end','end');
+ if(base==='HATNEB')lines.push('','%neb',`  NEB_END_XYZFILE "${displayName(opts.endFrom)}.xyz"`,'end','','%geom','  Calc_Hess true','end');
+  if(base==='D3')lines.push('','%geom','  Scan',`    B ${Math.max(0,Math.floor(num('atom1',0)))} ${Math.max(0,Math.floor(num('atom2',1)))} = ${num('startdist',1.4)}, ${num('enddist',2.5)}, ${Math.max(2,Math.floor(num('steps',12)))}`,'  end','end');
  lines.push('',`* xyzfile ${charge} ${mult} ${file}`,'');
  return lines.join('\n')
 }
@@ -742,7 +748,7 @@ function activeInfo(){const c=calc(active),st=currentStage(),base=st[1];const tr
  $('mult').disabled=!!c.glorius&&st[3]!==null&&st[3]!==undefined;
  if($('mult').disabled){$('mult').value=String(st[3]);syncPicker('mult');}
  else syncPicker('mult');
- if(c.glorius){$('calc-note').textContent=c.guide;}
+ if(c.glorius||c.hat){$('calc-note').textContent=c.guide;}
  for(const [id,forced] of [['extra-spin',opts.spin===true],['extra-spinpop',opts.spinpop===true]]){const el=$(id),wasForced=el.dataset.forced==='true';if(forced&&!wasForced){el.dataset.prior=String(el.checked);el.checked=true;el.dataset.forced='true'}else if(!forced&&wasForced){el.checked=el.dataset.prior==='true';el.dataset.forced='false'}}
  for(const id of ['extra-freq','extra-spin','extra-spinpop'])$(id).disabled=!allowAddons;
  if(opts.spin)$('extra-spin').disabled=true;
@@ -828,13 +834,14 @@ for(const [name,data] of files){let fname=enc.encode(name),bytes=typeof data==='
 let c=new Uint8Array(46+fname.length),cv=new DataView(c.buffer);cv.setUint32(0,0x02014b50,true);cv.setUint16(4,20,true);cv.setUint16(6,20,true);cv.setUint16(8,0x800,true);cv.setUint32(16,crc,true);cv.setUint32(20,bytes.length,true);cv.setUint32(24,bytes.length,true);cv.setUint16(28,fname.length,true);cv.setUint32(42,offset,true);c.set(fname,46);central.push(c);offset+=header.length+bytes.length;}
 let centralSize=central.reduce((n,c)=>n+c.length,0),end=new Uint8Array(22),ev=new DataView(end.buffer);ev.setUint32(0,0x06054b50,true);ev.setUint16(8,central.length,true);ev.setUint16(10,central.length,true);ev.setUint32(12,centralSize,true);ev.setUint32(16,offset,true);return new Blob([...parts,...central,end],{type:'application/zip'});}
 function workflowCmd(){const c=calc(active);const stagesToRun=stages().map((s,i)=>({s,i})).filter(v=>v.s[1]);const head=['@echo off','setlocal EnableExtensions','cd /d "%~dp0"','rem Set ORCA_EXE as a FULL path or edit the next line.','if not defined ORCA_EXE set "ORCA_EXE=C:\\ORCA\\orca.exe"','if not exist "%ORCA_EXE%" (','  echo [ERROR] ORCA executable not found: %ORCA_EXE%','  echo Edit ORCA_EXE in this script or set the environment variable.','  pause','  exit /b 1',')','','echo ORCA Nova Workflow: '+c.name];
-for(const {s,i} of stagesToRun){const base=displayName(i),input=base+'.inp',out=base+'.out',source=xyzName(i),isOpt=['A1','A4','A5','B3','XS1OPT','XT1ROOTOPT'].includes(s[1]);head.push('',`echo [${i+1}/${stagesToRun.length}] ${s[0]}`,`if not exist "${source}" (`,`  echo [ERROR] Missing XYZ: ${source}`,`  exit /b 1`,')',`"%ORCA_EXE%" "${input}" > "${out}" 2>&1`,'if errorlevel 1 (',`  echo [ERROR] ORCA exit code failure: ${out}`,'  exit /b 1',')',`findstr /C:"ORCA TERMINATED NORMALLY" "${out}" >nul`,'if errorlevel 1 (',`  echo [ERROR] No normal termination marker: ${out}`,'  exit /b 1',')');if(stageOptions(s).goat)head.push(`findstr /C:"Global minimum found!" "${out}" >nul`,'if errorlevel 1 exit /b 1',`if not exist "${base}.globalminimum.xyz" exit /b 1`);if(isOpt)head.push(`findstr /C:"THE OPTIMIZATION HAS CONVERGED" "${out}" >nul`,'if errorlevel 1 (',`  echo [ERROR] Geometry not converged: ${out}`,'  exit /b 1',')',`if not exist "${base}.xyz" (`,`  echo [ERROR] Optimized XYZ missing: ${base}.xyz`,'  exit /b 1',')');}
+for(const {s,i} of stagesToRun){const base=displayName(i),input=base+'.inp',out=base+'.out',source=xyzName(i),isOpt=['A1','A4','A5','B3','XS1OPT','XT1ROOTOPT','HATNEB'].includes(s[1]);head.push('',`echo [${i+1}/${stagesToRun.length}] ${s[0]}`,`if not exist "${source}" (`,`  echo [ERROR] Missing XYZ: ${source}`,`  exit /b 1`,')',`"%ORCA_EXE%" "${input}" > "${out}" 2>&1`,'if errorlevel 1 (',`  echo [ERROR] ORCA exit code failure: ${out}`,'  exit /b 1',')',`findstr /C:"ORCA TERMINATED NORMALLY" "${out}" >nul`,'if errorlevel 1 (',`  echo [ERROR] No normal termination marker: ${out}`,'  exit /b 1',')');if(stageOptions(s).goat)head.push(`findstr /C:"Global minimum found!" "${out}" >nul`,'if errorlevel 1 exit /b 1',`if not exist "${base}.globalminimum.xyz" exit /b 1`);if(isOpt)head.push(`findstr /C:"THE OPTIMIZATION HAS CONVERGED" "${out}" >nul`,'if errorlevel 1 (',`  echo [ERROR] Geometry not converged: ${out}`,'  exit /b 1',')',`if not exist "${base}.xyz" (`,`  echo [ERROR] Optimized XYZ missing: ${base}.xyz`,'  exit /b 1',')');}
 head.push('','echo [DONE] All runnable stages completed.','echo [CHECK] Review each OUT, triplet S^2, electronic state and any imaginary frequencies.','echo [CHECK] Comparative energies / gaps are NOT computed by this script.','pause','exit /b 0');return head.join('\r\n')+'\r\n';}
-function workflowReadme(){return ['ORCA Nova v4 - '+calc(active).name,'','Generated for ORCA 6.x. This is a template, not verified by an actual ORCA executable.','STEP 1: Review generated INPs and set charge / multiplicity, method, functional, and solvent.','STEP 2: If XYZ was not imported, add '+workflowSourceName()+' to this folder.','STEP 3: Edit ORCA_EXE in run_workflow.cmd to your full path to orca.exe.','STEP 4: Run run_workflow.cmd in Windows CMD, in a correctly installed ORCA MPI environment.','STEP 5: Check ORCA TERMINATED NORMALLY, THE OPTIMIZATION HAS CONVERGED, frequencies, roots, and <S^2>.','', 'Workflow: '+calc(active).guide,'','Stage mapping:',...stages().map((st,i)=>`${i+1}. ${st[0]}${st[1]?' | '+displayName(i)+'.inp | XYZ: '+xyzName(i):' | manual analysis only'}`),'','NOTES:','- S0 = ground singlet (unless user changes charge or multiplicity).','- Vertical excitation energies use optimized S0 geometry without relaxing S1/T1.','- S1 state optimization uses TD-DFT IRoot=1 / IRootMult=Singlet / FollowIRoot=true.','- T1 UKS optimization uses charge and multiplicity 3, not automatically equal to TD-DFT T1 root.','- TD-DFT T1 root optimization is NOT the same as UKS T1 spin density.','- S1 closed-shell spin density is zero; excited-state electron/hole density and NTO are different quantities.','- Adiabatic energies need consistent method, solvent, zero-point corrections, and standard states.','- Each stage reads the optimized XYZ specified in its INP; independent S1 and T1 branches start from S0 XYZ.','- Multi-stage analysis and postprocessing are not automatic.','', 'Manual: https://www.faccts.de/docs/orca/6.1/manual/contents/spectroscopyproperties/tddft.html',''].join('\r\n');}
-function saveWorkflowZip(){if(calc(active).kind!=='workflow'){toast('Workflow를 선택해 주세요.');return;}if(editorDirty&&!confirm('INP 수동 수정 내용은 ZIP의 자동 생성 파일에 포함되지 않습니다. 현재 설정에서 다시 생성할까요?'))return;
+function workflowReadme(){if(calc(active).hat)return ['ORCA Nova — HAT NEB-TS','R/P XYZ atom order must match; verify the transferring H index.','Run with the same method, charge, multiplicity and solvent.','Check R/P imaginary modes = 0 and TS = 1, inspect HAT normal mode, compare IRC endpoints manually.','DeltaG = G(product)-G(reactant); DeltaG barrier = G(TS)-G(reactant). Multiply Eh by 627.509474 for kcal/mol.','ZIP CMD does not implement automatic scientific validation or barrier report; use desktop workflow for those.','Manual: https://www.faccts.de/docs/orca/6.1/tutorials/react/nebts.html'].join('\r\n');return ['ORCA Nova v4 - '+calc(active).name,'','Generated for ORCA 6.x. This is a template, not verified by an actual ORCA executable.','STEP 1: Review generated INPs and set charge / multiplicity, method, functional, and solvent.','STEP 2: If XYZ was not imported, add '+workflowSourceName()+' to this folder.','STEP 3: Edit ORCA_EXE in run_workflow.cmd to your full path to orca.exe.','STEP 4: Run run_workflow.cmd in Windows CMD, in a correctly installed ORCA MPI environment.','STEP 5: Check ORCA TERMINATED NORMALLY, THE OPTIMIZATION HAS CONVERGED, frequencies, roots, and <S^2>.','', 'Workflow: '+calc(active).guide,'','Stage mapping:',...stages().map((st,i)=>`${i+1}. ${st[0]}${st[1]?' | '+displayName(i)+'.inp | XYZ: '+xyzName(i):' | manual analysis only'}`),'','NOTES:','- S0 = ground singlet (unless user changes charge or multiplicity).','- Vertical excitation energies use optimized S0 geometry without relaxing S1/T1.','- S1 state optimization uses TD-DFT IRoot=1 / IRootMult=Singlet / FollowIRoot=true.','- T1 UKS optimization uses charge and multiplicity 3, not automatically equal to TD-DFT T1 root.','- TD-DFT T1 root optimization is NOT the same as UKS T1 spin density.','- S1 closed-shell spin density is zero; excited-state electron/hole density and NTO are different quantities.','- Adiabatic energies need consistent method, solvent, zero-point corrections, and standard states.','- Each stage reads the optimized XYZ specified in its INP; independent S1 and T1 branches start from S0 XYZ.','- Multi-stage analysis and postprocessing are not automatic.','', 'Manual: https://www.faccts.de/docs/orca/6.1/manual/contents/spectroscopyproperties/tddft.html',''].join('\r\n');}
+function saveWorkflowZip(){if(calc(active).hat){try{hatInputs()}catch(e){toast(e.message);return}}if(calc(active).kind!=='workflow'){toast('Workflow를 선택해 주세요.');return;}if(editorDirty&&!confirm('INP 수동 수정 내용은 ZIP의 자동 생성 파일에 포함되지 않습니다. 현재 설정에서 다시 생성할까요?'))return;
 const list=[['README_WORKFLOW.txt',workflowReadme()],['run_workflow.cmd',workflowCmd()]];
 for(let i=0;i<stages().length;i++)if(stages()[i][1])list.push([displayName(i)+'.inp',buildInput(i)+'\n']);
-if(xyzOriginal&&loadedXYZ)list.push([workflowSourceName(),xyzOriginal]);else list.push(['ADD_XYZ_FIRST.txt','The original XYZ was not imported. Add '+workflowSourceName()+' to this folder before running.\r\n']);
+if(calc(active).hat)list.push(['product.xyz',desktopXYZ.get('product.xyz')]);
+ if(xyzOriginal&&loadedXYZ)list.push([workflowSourceName(),xyzOriginal]);else list.push(['ADD_XYZ_FIRST.txt','The original XYZ was not imported. Add '+workflowSourceName()+' to this folder before running.\r\n']);
 const blob=zipData(list);download(filenameStem(loadedXYZ||'molecule')+'_'+active+'_Workflow.zip',blob,'application/zip');toast('Workflow ZIP 저장: '+list.length+'개 파일');}
 
 function cmdText(){let file=displayName(),i=`${file}.inp`,o=`${file}.out`;return `cd /d "C:\\YOUR_WORK_FOLDER"\r\n"C:\\ORCA\\orca.exe" "${i}" > "${o}" 2>&1`}
@@ -920,7 +927,17 @@ async function desktopConfig(){
  }finally{desktopConfigSaving=false;desktopConfigEpoch++}
 }
 function desktopSafe(s){return /^[A-Za-z0-9_.-]{1,120}$/.test(s)&&!s.includes('..')}
+function hatInputs(){
+ if(!xyzOriginal)throw Error('HAT: 반응물 XYZ를 기본으로 등록하세요.');
+ if(workflowSourceName().toLowerCase()==='product.xyz')throw Error('HAT: 기본 XYZ 이름은 product.xyz일 수 없습니다.');
+ const p=desktopXYZ.get('product.xyz');if(!p)throw Error('HAT: 생성물을 product.xyz라는 이름으로 추가 XYZ 등록하세요.');
+ const elements=t=>{const n=parseXYZ(t);return n?t.replace(/\r/g,'').trim().split('\n').slice(2,n+2).map(v=>v.trim().split(/\s+/)[0].toLowerCase()).join(' '):null};
+ if(!elements(p)||elements(p)!==elements(xyzOriginal))throw Error('HAT: 두 XYZ의 원자 수와 원소 순서가 일치해야 합니다.');
+ if(editorDirty)throw Error('HAT: 수동 INP 변경 대신 설정값을 수정하고 재생성하세요.');
+ return p;
+}
 function desktopRunData(workflow){
+ if(calc(active).hat)hatInputs();
  // An explicitly deleted primary XYZ must never be silently restored from extras.
  if(!xyzOriginal){throw Error('XYZ 파일을 먼저 선택해 주세요. 위의 「XYZ 선택 / 추가」 또는 왼쪽 「XYZ 불러오기」를 사용하면 돼요.');}
  if(workflow&&calc(active).kind!=='workflow')throw Error('왼쪽에서 W1–W5 등 Workflow 계산을 선택해 주세요.');
@@ -1242,7 +1259,7 @@ function batchRenderMolecules(){
   for(const group of GROUPS){
    const optgroup=document.createElement('optgroup');optgroup.label=group.name;
    for(const item of group.items){
-    if(item.hidden)continue;
+    if(item.hidden||item.hat)continue;
     optgroup.append(new Option(item.id+' · '+item.name,item.id));
    }
    if(optgroup.children.length)preset.append(optgroup);
@@ -1269,7 +1286,7 @@ function batchRenderMolecules(){
    const x=Number(control.value);
    if(!Number.isSafeInteger(x)||(key==='mult'&&(x<1||x>5))){batchMessage('Charge는 정수, Multiplicity는 1–5를 입력하세요.',true);control.value=m[key];return;}
    if(m.custom&&!confirm('개별 편집한 INP를 현재 프리셋으로 다시 생성할까요?')){control.value=m[key];return;}
-   m[key]=x;if(!m.presetId)m.presetId=active;batchCapture(m);m.custom=false;batchRenderMolecules();
+   m[key]=x;if(!m.presetId)m.presetId=calc(active).hat?'A4':active;batchCapture(m);m.custom=false;batchRenderMolecules();
   };
   const inputs=row.querySelector('.batch-inputs');
   for(const file of m.request?.files||[]){
@@ -1325,7 +1342,7 @@ function batchUpdateBudget(){
  target.textContent=included.length+'개 실행 대상 · 동시 '+concurrency+'개를 목표로 하면 최대 약 '+requiredCPU+' CPU / '+requiredRAM.toLocaleString()+' MB 예약 필요 (가장 큰 INP 요청치 기준). 현재 예산: '+cpu+' CPU / '+ram.toLocaleString()+' MB. '+(maxRAM===0?'%maxcore 입력을 확인하세요.':ok?'예산상 가능하나 실제 CPU·RAM을 반드시 확인하세요.':'자원 부족 시 Queue가 일부 Job을 대기시킵니다.');
 }
 async function batchImport(files){
- if(batchImporting)return;batchImporting=true;
+ if(batchImporting)return;if(calc(active).hat){batchMessage('HAT은 두 XYZ가 필요한 전용 Workflow입니다. 일반 실행을 사용하세요.',true);return}batchImporting=true;
  try{
   const data=[];for(const f of files){if(f.size>4*1024*1024)throw Error(f.name+': 4MB 이하 파일만 등록하세요.');if(!/\.(xyz|inp)$/i.test(f.name))continue;data.push({name:f.name,text:await f.text()});}
   if(!data.length)throw Error('XYZ 또는 INP 파일을 선택하세요.');
@@ -1500,7 +1517,7 @@ for(const id of ['batch-concurrency','batch-cpu','batch-ram'])$(id).addEventList
 $('batch-auto').addEventListener('change',batchShowResourceMode);
 $('batch-files').onchange=async e=>{await batchImport([...e.target.files]);e.target.value=''};
 const batchDrop=$('batch-drop');batchDrop.ondragover=e=>{e.preventDefault();batchDrop.classList.add('over')};batchDrop.ondragleave=()=>batchDrop.classList.remove('over');batchDrop.ondrop=e=>{e.preventDefault();batchDrop.classList.remove('over');batchImport([...e.dataTransfer.files])};
-$('batch-apply').onclick=()=>{if(batchMolecules.some(m=>m.custom)&&!confirm('모든 분자의 개별 INP 편집을 현재 프리셋으로 다시 생성할까요?'))return;for(const m of batchMolecules){m.presetId=active;batchCapture(m);m.custom=false}batchRenderMolecules();batchMessage('현재 프리셋을 전체 분자에 적용했습니다. 각 단계의 Charge / Multiplicity와 자원 설정을 확인하세요.')};
+$('batch-apply').onclick=()=>{if(calc(active).hat){batchMessage('HAT은 Batch 대신 일반 Workflow 실행을 사용하세요.',true);return}if(batchMolecules.some(m=>m.custom)&&!confirm('모든 분자의 개별 INP 편집을 현재 프리셋으로 다시 생성할까요?'))return;for(const m of batchMolecules){m.presetId=active;batchCapture(m);m.custom=false}batchRenderMolecules();batchMessage('현재 프리셋을 전체 분자에 적용했습니다. 각 단계의 Charge / Multiplicity와 자원 설정을 확인하세요.')};
 $('batch-check').onclick=()=>batchSubmit(false);$('batch-start').onclick=()=>batchSubmit(true);
 $('batch-pause').onclick=()=>batchAction('pause');$('batch-resume').onclick=()=>batchAction('resume');$('batch-stop').onclick=()=>{if(confirm('진행 중인 모든 Job을 중단하고 대기 작업도 중단할까요?'))batchAction('stopAll')};
 $('batch-csv').onclick=async()=>{try{const r=await fetch('/api/queue/export?session='+encodeURIComponent(desktopSession));if(!r.ok)throw Error('CSV를 읽지 못했습니다.');download('batch_results.csv',await r.text(),'text/csv;charset=utf-8')}catch(e){batchMessage(e.message,true)}};
