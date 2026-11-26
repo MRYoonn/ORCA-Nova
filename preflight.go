@@ -90,6 +90,7 @@ func preflight(req RunRequest) PreflightReport {
   if !safeName(st.Source)||!strings.EqualFold(filepath.Ext(st.Source),".xyz"){bad(prefix+"XYZ 파일명이 잘못됐습니다")}
   matched:=false
   if hasInput {
+   if keywordLine(inp)["m06-2x"] {bad(prefix+"ORCA 6 입력 키워드 M06-2X는 지원되지 않습니다. M062X로 수정하거나 프리셋을 재생성하세요.")}
    if err:=validateGloriusDeclaration(st,inp,earlier,files);err!=nil{bad(prefix+err.Error())}
    if generated:=stageGeometry(st);generated!=""{if _,exists:=files[strings.ToLower(generated)];exists{bad(prefix+"산출 XYZ 이름이 등록 파일과 충돌합니다: "+generated)}}
    m:=xyzHeader.FindStringSubmatch(inp)

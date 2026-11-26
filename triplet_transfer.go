@@ -272,7 +272,7 @@ func (o tripOptions) validate()error{
 func tripORCAInput(stage,source string,opt tripOptions,freeze []int)string{
  task:="Opt";if stage=="spin"{task="SP MOREAD"}else if stage=="free"&&opt.Frequency{task="Opt Freq"}
  var b strings.Builder
- fmt.Fprintf(&b,"! UKS %s %s %s TightSCF %s SMD(%s)\n",opt.Functional,opt.Dispersion,opt.Basis,task,opt.Solvent)
+ fmt.Fprintf(&b,"! UKS %s %s %s TightSCF %s SMD(%s)\n",orcaFunctionalKeyword(opt.Functional),opt.Dispersion,opt.Basis,task,opt.Solvent)
  fmt.Fprintf(&b,"%%pal\n nprocs %d\nend\n\n%%maxcore %d\n",opt.Cores,opt.MaxCore)
  if len(freeze)>0{
   b.WriteString("\n%geom\n Constraints\n")

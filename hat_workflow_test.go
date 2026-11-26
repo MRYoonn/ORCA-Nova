@@ -8,7 +8,7 @@ import (
 func hatTestRequest() RunRequest {
 	a:="3\nreactant\nC 0 0 0\nC 1.5 0 0\nH 0 1 0\n"
 	b:="3\nproduct\nC 0 0 0\nC 1.5 0 0\nH 1.5 1 0\n"
-	base:="! UKS M06-2X def2-TZVP def2/J RIJCOSX TightSCF CPCM(dmf) "
+	base:="! UKS M062X def2-TZVP def2/J RIJCOSX TightSCF CPCM(dmf) "
 	freq:="\n%freq\n Temp 298.15\nend\n"
 	return RunRequest{Files:[]JobFile{
 		{Name:"reactant.xyz",Content:a},{Name:"product.xyz",Content:b},

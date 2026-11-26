@@ -38,3 +38,5 @@ G10/G11/G12/G13 use the desktop/Batch executor and automatically write combined 
 - Windows CI tests with synthetic outputs and helper executable are not real ORCA calculations; original ORCA 6.0.1/xTB/DFT scientific reproduction remains to be tested.
 
 References: ORCA 6.0 GOAT manual https://www.faccts.de/docs/orca/6.0/manual/contents/typical/GOAT.html ; XTB keyword syntax https://www.faccts.de/docs/orca/6.0/manual/contents/detailed/model.html ; TS/IRC https://www.faccts.de/docs/orca/6.0/manual/contents/typical/optimizations.html .
+
+ORCA 6.x input templates use `M062X` (not the literature spelling `M06-2X`). Regenerate old INPs before running.

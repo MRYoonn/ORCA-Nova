@@ -9,8 +9,8 @@ import (
 	"testing"
 )
 
-const gLow = "! M06-2X def2-TZVP def2/J RIJCOSX D3ZERO CPCM(acetonitrile) TightSCF"
-const gHigh = "! M06-2X def2-QZVPPD def2/J RIJCOSX D3ZERO CPCM(acetonitrile) TightSCF"
+const gLow = "! M062X def2-TZVP def2/J RIJCOSX D3ZERO CPCM(acetonitrile) TightSCF"
+const gHigh = "! M062X def2-QZVPPD def2/J RIJCOSX D3ZERO CPCM(acetonitrile) TightSCF"
 const gResource = "\n%pal\n  nprocs 1\nend\n%maxcore 1000\n"
 
 func gReq() RunRequest {
